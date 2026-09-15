@@ -1,0 +1,16 @@
+{
+  "name": "North",
+  "short_name": "North",
+  "description": "A calm workspace for tasks, calendar, habits, and focus.",
+  "start_url": "https://kenswidzerbrivaus.com/",
+  "display": "standalone",
+  "background_color": "#efe8db",
+  "theme_color": "#b4451a",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
