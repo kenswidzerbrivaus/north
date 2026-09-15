@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
+import { AuthProvider, useAuth } from './auth/auth'
 import { Icon, type IconName } from './icons'
 import { isTypingTarget, useRoute } from './lib/route'
 import { ROUTES, type Route } from './lib/types'
 import { StoreProvider, useStore } from './store'
 import { TimerProvider, useTimer } from './timer'
+import { Login } from './views/Login'
 import { Calendar } from './views/Calendar'
 import { Focus } from './views/Focus'
 import { Goals } from './views/Goals'
@@ -36,21 +38,16 @@ function resolvedTheme(mode: 'light' | 'dark' | 'system') {
 export default function App() {
   return (
     <StoreProvider>
-      <TimerProvider>
-        <Shell />
-      </TimerProvider>
+      <AuthProvider>
+        <Gate />
+      </AuthProvider>
     </StoreProvider>
   )
 }
 
-function Shell() {
-  const { state, addTask, addNote, addEvent } = useStore()
-  const { running, start, pause } = useTimer()
-  const [route, go] = useRoute()
-  const [cmd, setCmd] = useState(false)
-  const [more, setMore] = useState(false)
-  const [query, setQuery] = useState('')
-  const [active, setActive] = useState(0)
+function Gate() {
+  const auth = useAuth()
+  const { state } = useStore()
   const theme = resolvedTheme(state.settings.theme)
 
   useEffect(() => {
@@ -58,6 +55,25 @@ function Shell() {
     const meta = document.querySelector('meta[name="theme-color"]')
     if (meta) meta.setAttribute('content', theme === 'dark' ? '#12100e' : '#efe8db')
   }, [theme])
+
+  if (!auth.ready) return null
+  if (!auth.authed) return <Login />
+  return (
+    <TimerProvider>
+      <Shell />
+    </TimerProvider>
+  )
+}
+
+function Shell() {
+  const { state, addTask, addNote, addEvent } = useStore()
+  const { signOut } = useAuth()
+  const { running, start, pause } = useTimer()
+  const [route, go] = useRoute()
+  const [cmd, setCmd] = useState(false)
+  const [more, setMore] = useState(false)
+  const [query, setQuery] = useState('')
+  const [active, setActive] = useState(0)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -177,6 +193,9 @@ function Shell() {
             Search
             <span style={{ marginLeft: 'auto', fontSize: 11 }}>⌘K</span>
           </button>
+          <button className="btn-ghost" onClick={signOut}>
+            Sign out
+          </button>
         </div>
       </aside>
 
@@ -230,6 +249,9 @@ function Shell() {
                   {ROUTES.find((r) => r.id === id)?.label}
                 </button>
               ))}
+              <button className="list-btn" onClick={signOut}>
+                Sign out
+              </button>
             </div>
           </div>
         </div>

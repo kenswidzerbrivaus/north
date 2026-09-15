@@ -297,6 +297,12 @@ form.row .input {
   filter: brightness(1.06);
 }
 
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: none;
+}
+
 .btn-ghost {
   border-color: var(--line-strong);
   background: var(--paper);
@@ -746,6 +752,32 @@ form.row .input {
 .bottom-nav,
 .top-mobile {
   display: none;
+}
+
+.gate {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.gate-card {
+  width: min(400px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px 24px;
+}
+
+.gate-card .btn {
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.gate-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 14px;
 }
 
 .mood {

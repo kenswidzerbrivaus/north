@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useAuth } from '../auth/auth'
 import { Field } from '../components/ui'
 import { useStore } from '../store'
 
 export function Settings() {
   const { state, updateSettings, importState, resetState } = useStore()
+  const { username, signOut } = useAuth()
   const s = state.settings
   const [msg, setMsg] = useState('')
 
@@ -30,6 +32,7 @@ export function Settings() {
       <div className="grid-2">
         <section className="card stack">
           <h2>Profile</h2>
+          <p className="muted">Signed in as {username}</p>
           <Field label="What should North call you?">
             <input className="input" value={s.name} onChange={(e) => updateSettings({ name: e.target.value })} />
           </Field>
@@ -142,6 +145,14 @@ export function Settings() {
             </button>
           </div>
           {msg ? <p className="muted">{msg}</p> : null}
+        </section>
+
+        <section className="card stack">
+          <h2>Access</h2>
+          <p className="muted">Only your sign-in can open this workspace in the browser.</p>
+          <button className="btn-ghost" onClick={signOut}>
+            Sign out
+          </button>
         </section>
 
         <section className="card">
