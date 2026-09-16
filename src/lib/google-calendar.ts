@@ -2,7 +2,11 @@ import { addDays, parseISO, toISO } from './dates'
 import type { CalEvent } from './types'
 
 export const GOOGLE_BLUE = '#4285f4'
-const SCOPE = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email'
+const SCOPE = [
+  'https://www.googleapis.com/auth/calendar',
+  'https://www.googleapis.com/auth/calendar.events',
+  'https://www.googleapis.com/auth/userinfo.email',
+].join(' ')
 const TOKEN_KEY = 'north.gcal.token'
 
 type TokenBlob = { access: string; exp: number; email: string }
@@ -24,6 +28,7 @@ declare global {
           initTokenClient: (cfg: {
             client_id: string
             scope: string
+            enable_granular_consent?: boolean
             callback: (resp: { access_token?: string; error?: string; expires_in?: string | number }) => void
           }) => { requestAccessToken: (opts?: { prompt?: string }) => void }
           revoke: (token: string, done?: () => void) => void
@@ -85,6 +90,7 @@ export function requestGoogleToken(clientId: string, prompt: '' | 'consent' = 'c
         const client = window.google.accounts.oauth2.initTokenClient({
           client_id: clientId,
           scope: SCOPE,
+          enable_granular_consent: false,
           callback: async (resp) => {
             if (resp.error || !resp.access_token) {
               const denied = resp.error === 'access_denied'
@@ -138,6 +144,9 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   }
   if (!res.ok) {
     const text = await res.text()
+    if (res.status === 403 && /insufficient|ACCESS_TOKEN_SCOPE/i.test(text)) {
+      throw new Error('GOOGLE_SCOPES')
+    }
     throw new Error(text.slice(0, 180) || `Google Calendar error ${res.status}`)
   }
   if (res.status === 204) return undefined as T

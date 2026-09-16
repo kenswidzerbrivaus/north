@@ -62,9 +62,11 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
         setEmail(readToken()?.email ?? '')
       } catch (err) {
         rangeKey.current = ''
-        if (err instanceof Error && err.message === 'GOOGLE_AUTH' && clientId) {
+        const code = err instanceof Error ? err.message : ''
+        if ((code === 'GOOGLE_AUTH' || code === 'GOOGLE_SCOPES') && clientId) {
           try {
-            await requestGoogleToken(clientId, '')
+            clearToken()
+            await requestGoogleToken(clientId, 'consent')
             rangeKey.current = key
             const items = await load()
             setEvents(items)
@@ -75,7 +77,13 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
             rangeKey.current = ''
           }
         }
-        setError(err instanceof Error && err.message !== 'GOOGLE_AUTH' ? err.message : 'Google Calendar needs to reconnect')
+        setError(
+          code === 'GOOGLE_SCOPES'
+            ? 'Google signed you in without Calendar access. Click Connect again and allow See, edit, share, and permanently delete all the calendars you can access.'
+            : code && code !== 'GOOGLE_AUTH'
+              ? code
+              : 'Google Calendar needs to reconnect',
+        )
         setConnected(Boolean(readToken()))
       } finally {
         setLoading(false)
@@ -104,7 +112,8 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
     setError('')
     setLoading(true)
     try {
-      const token = await requestGoogleToken(clientId, readToken() ? '' : 'consent')
+      clearToken()
+      const token = await requestGoogleToken(clientId, 'consent')
       setConnected(true)
       setEmail(token.email)
       await refresh(undefined, true)
