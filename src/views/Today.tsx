@@ -4,6 +4,7 @@ import { Check } from '../components/ui'
 import { hhmmFromMinutes, roundDown5, stashCalGap } from '../lib/cal-gap'
 import { formatTime, minutesOf, parseISO, todayISO } from '../lib/dates'
 import { habitDone, isHabitDue } from '../lib/habits'
+import { exceptions, pendingDecisions, pickNow } from '../lib/project-engine'
 import { quoteForDate } from '../lib/quotes'
 import { mergeCalendars, useGoogleCalendar } from '../google'
 import type { Route, Task } from '../lib/types'
@@ -29,7 +30,7 @@ function nowMinutes() {
 }
 
 export function Today({ go }: { go: (r: Route) => void }) {
-  const { state, toggleTask, updateTask, setHabitCount, addTask, addNote, addEvent } = useStore()
+  const { state, toggleTask, updateTask, setHabitCount, addTask, addNote, addEvent, resolveDecision, resolveWaiting } = useStore()
   const gcal = useGoogleCalendar()
   const timer = useTimer()
   const today = todayISO()
@@ -87,15 +88,31 @@ export function Today({ go }: { go: (r: Route) => void }) {
   }, [events, linked, state.tasks, today, todayTasks])
 
   const openWork = queue.filter((r) => !r.done && !r.blocked)
+  const nowPick = pickNow(state, clock)
   const nowRow =
     openWork.find((r) => r.taskId && r.taskId === timer.taskId) ??
+    (nowPick?.taskId ? openWork.find((r) => r.taskId === nowPick.taskId) : undefined) ??
     openWork.find((r) => r.time && minutesOf(r.time) <= clock) ??
     openWork[0]
+  const nowFallback = !nowRow && nowPick
+    ? { id: nowPick.id, title: nowPick.title, done: false, blocked: false, kind: 'task' as const, taskId: nowPick.taskId, time: nowPick.time }
+    : null
+  const nowShow = nowRow ?? nowFallback
+  const nowProject = nowPick?.projectName
 
   const overdue = state.tasks.filter((t) => !t.completed && t.due && t.due < today && !t.googleId).length
-  const decisions = state.tasks.filter((t) => t.decision && !t.completed)
+  const decisions = [
+    ...state.tasks.filter((t) => t.decision && !t.completed),
+    ...pendingDecisions(state.projectDecisions),
+  ]
   const blocked = state.tasks.filter((t) => t.blocked && !t.completed)
-  const waiting = state.tasks.filter((t) => t.waitingOn && !t.completed)
+  const waiting = [
+    ...state.tasks.filter((t) => t.waitingOn && !t.completed).map((t) => ({ id: t.id, person: t.waitingOn!, title: t.title, projectId: t.projectId, kind: 'task' as const })),
+    ...state.waitingOnItems
+      .filter((w) => w.status === 'open' || w.status === 'overdue')
+      .map((w) => ({ id: w.id, person: w.person, title: w.deliverable, projectId: w.projectId, kind: 'wait' as const })),
+  ]
+  const attn = exceptions(state)
   const exec = Math.round((queue.filter((r) => r.done).length / Math.max(1, queue.length)) * 100)
 
   const habits = state.habits.filter((h) => !h.archived && isHabitDue(h, date))
@@ -123,7 +140,7 @@ export function Today({ go }: { go: (r: Route) => void }) {
   }
 
   const markNow = (patch: Partial<Task>) => {
-    if (nowRow?.taskId) updateTask(nowRow.taskId, patch)
+    if (nowShow?.taskId) updateTask(nowShow.taskId, patch)
   }
 
   return (
@@ -167,7 +184,13 @@ export function Today({ go }: { go: (r: Route) => void }) {
           <p className="board-label warn">Needs attention</p>
           <p className="board-attn">
             {overdue} overdue · {decisions.length} decisions · {blocked.length} blocked
+            {attn.length ? ` · ${attn.length} project exceptions` : ''}
           </p>
+          {attn.slice(0, 3).map((a) => (
+            <button key={a.id} className="board-line" onClick={() => { location.hash = `#/projects/${a.projectId}` }}>
+              {a.title} — {a.detail}
+            </button>
+          ))}
         </section>
         <section className="hud-frame">
           <p className="board-label">Decisions</p>
@@ -175,8 +198,26 @@ export function Today({ go }: { go: (r: Route) => void }) {
             <p className="today-empty">None open.</p>
           ) : (
             decisions.slice(0, 5).map((t) => (
-              <button key={t.id} className="board-line" onClick={() => go('tasks')}>
+              <button
+                key={t.id}
+                className="board-line"
+                onClick={() => {
+                  if ('projectId' in t && t.projectId && !('listId' in t)) location.hash = `#/projects/${t.projectId}`
+                  else go('tasks')
+                }}
+              >
                 {t.title}
+                {'status' in t && t.status === 'pending' ? (
+                  <span
+                    className="chip"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      resolveDecision(t.id, 'approved', 'Approved from Today')
+                    }}
+                  >
+                    Approve
+                  </span>
+                ) : null}
               </button>
             ))
           )}
@@ -187,10 +228,27 @@ export function Today({ go }: { go: (r: Route) => void }) {
             <p className="today-empty">Clear.</p>
           ) : (
             waiting.slice(0, 5).map((t) => (
-              <p key={t.id} className="board-wait">
-                <span>{t.waitingOn}</span>
+              <button
+                key={t.id}
+                className="board-wait"
+                onClick={() => {
+                  if (t.projectId) location.hash = `#/projects/${t.projectId}`
+                }}
+              >
+                <span>{t.person}</span>
                 <span className="muted">{t.title}</span>
-              </p>
+                {t.kind === 'wait' ? (
+                  <span
+                    className="chip"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      resolveWaiting(t.id)
+                    }}
+                  >
+                    Received
+                  </span>
+                ) : null}
+              </button>
             ))
           )}
         </section>
@@ -227,31 +285,33 @@ export function Today({ go }: { go: (r: Route) => void }) {
 
       <section className="board-now hud-frame">
         <p className="board-label">Now</p>
-        {nowRow ? (
+        {nowShow ? (
           <>
-            <p className="now-star">★ {nowRow.title}</p>
+            {nowProject ? <p className="kicker">{nowProject}</p> : null}
+            <p className="now-star">★ {nowShow.title}</p>
+            {nowPick?.label ? <p className="muted">{nowPick.label}</p> : null}
             <p className="now-clock">{formatRemain(timer.remaining)}</p>
             <div className="row">
               <button
                 className="btn"
                 onClick={() => {
-                  if (nowRow.taskId) timer.setTaskId(nowRow.taskId)
+                  if (nowShow.taskId) timer.setTaskId(nowShow.taskId)
                   timer.running ? timer.pause() : timer.start()
                 }}
               >
-                {timer.running ? 'Pause' : 'Focus'}
+                {timer.running ? 'Pause' : 'Enter focus'}
               </button>
               <button
                 className="btn-ghost"
-                onClick={() => nowRow.taskId && toggleTask(nowRow.taskId)}
-                disabled={!nowRow.taskId}
+                onClick={() => nowShow.taskId && toggleTask(nowShow.taskId)}
+                disabled={!nowShow.taskId}
               >
                 Done
               </button>
               <button
                 className="btn-ghost"
                 onClick={() => markNow({ blocked: true })}
-                disabled={!nowRow.taskId}
+                disabled={!nowShow.taskId}
               >
                 Blocked
               </button>
@@ -269,7 +329,7 @@ export function Today({ go }: { go: (r: Route) => void }) {
             <li className="today-empty">Nothing scheduled today.</li>
           ) : (
             queue.map((row) => {
-              const current = nowRow?.id === row.id
+              const current = nowShow?.id === row.id
               const mark = row.done ? '✓' : row.blocked ? '●' : current ? '★' : '○'
               return (
                 <li key={row.id} className={row.done ? 'is-done' : current ? 'is-now' : ''}>

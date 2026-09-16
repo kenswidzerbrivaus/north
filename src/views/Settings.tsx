@@ -47,6 +47,16 @@ export function Settings() {
               <option value="dark">Dark</option>
             </select>
           </Field>
+          <Field label="Active project capacity">
+            <input
+              className="input"
+              type="number"
+              min={1}
+              max={50}
+              value={s.activeProjectLimit ?? 10}
+              onChange={(e) => updateSettings({ activeProjectLimit: Math.max(1, Number(e.target.value) || 10) })}
+            />
+          </Field>
           <Field label="Week starts on">
             <select
               className="select"

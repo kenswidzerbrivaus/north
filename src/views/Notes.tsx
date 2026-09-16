@@ -2,14 +2,22 @@ import { useEffect, useState } from 'react'
 import { Empty } from '../components/ui'
 import { Icon } from '../icons'
 import { formatMedium } from '../lib/dates'
+import { hashParam } from '../lib/route'
 import { useStore } from '../store'
 
 export function Notes() {
   const { state, addNote, updateNote, deleteNote } = useStore()
+  const [projectId, setProjectId] = useState(() => hashParam('project'))
   const [id, setId] = useState<string | null>(state.notes[0]?.id ?? null)
   const note = state.notes.find((n) => n.id === id)
   const [title, setTitle] = useState(note?.title ?? '')
   const [body, setBody] = useState(note?.body ?? '')
+
+  useEffect(() => {
+    const on = () => setProjectId(hashParam('project'))
+    window.addEventListener('hashchange', on)
+    return () => window.removeEventListener('hashchange', on)
+  }, [])
 
   useEffect(() => {
     setTitle(note?.title ?? '')
@@ -24,7 +32,9 @@ export function Notes() {
     return () => window.clearTimeout(t)
   }, [body, id, note, title, updateNote])
 
-  const sorted = [...state.notes].sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt.localeCompare(a.updatedAt))
+  const sorted = [...state.notes]
+    .filter((n) => !projectId || n.projectId === projectId)
+    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt.localeCompare(a.updatedAt))
 
   return (
     <div>
@@ -37,6 +47,7 @@ export function Notes() {
           className="btn"
           onClick={() => {
             const nid = addNote('Untitled')
+            if (projectId) updateNote(nid, { projectId })
             setId(nid)
           }}
         >
@@ -68,6 +79,19 @@ export function Notes() {
                 <button className="btn-ghost" onClick={() => updateNote(note.id, { pinned: !note.pinned })}>
                   {note.pinned ? 'Unpin' : 'Pin'}
                 </button>
+                <select
+                  className="select"
+                  style={{ width: 'auto' }}
+                  value={note.projectId ?? ''}
+                  onChange={(e) => updateNote(note.id, { projectId: e.target.value || undefined })}
+                >
+                  <option value="">No project</option>
+                  {state.projects.filter((p) => p.state !== 'archived').map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
                 <button className="btn-danger" onClick={() => { deleteNote(note.id); setId(sorted.find((n) => n.id !== note.id)?.id ?? null) }}>
                   <Icon name="trash" size={14} /> Delete
                 </button>

@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { Field } from '../components/ui'
 import { Icon } from '../icons'
 import { formatMedium, todayISO } from '../lib/dates'
+import { hashParam } from '../lib/route'
 import { useStore } from '../store'
 import { formatRemain, useTimer } from '../timer'
 
@@ -19,7 +21,13 @@ export function Focus() {
   const c = 2 * Math.PI * r
   const progress = 1 - timer.remaining / Math.max(1, timer.total)
   const openTasks = state.tasks.filter((t) => !t.completed).slice(0, 12)
-  const todaySessions = state.sessions.filter((sess) => sess.endedAt.slice(0, 10) === todayISO())
+  const [projectId, setProjectId] = useState(() => hashParam('project'))
+  useEffect(() => {
+    const on = () => setProjectId(hashParam('project'))
+    window.addEventListener('hashchange', on)
+    return () => window.removeEventListener('hashchange', on)
+  }, [])
+  const todaySessions = state.sessions.filter((sess) => sess.endedAt.slice(0, 10) === todayISO() && (!projectId || sess.projectId === projectId))
   const focusMins = Math.round(
     todaySessions.filter((sess) => sess.mode === 'focus').reduce((n, sess) => n + sess.seconds, 0) / 60,
   )
@@ -202,7 +210,7 @@ export function Focus() {
             {state.sessions.length === 0 ? (
               <p className="muted">Finished sessions land here. Start the timer to begin a streak of deep work.</p>
             ) : (
-              state.sessions.slice(0, 16).map((sess) => (
+              state.sessions.filter((sess) => !projectId || sess.projectId === projectId).slice(0, 16).map((sess) => (
                 <div key={sess.id} className="agenda-row">
                   <span
                     className="dot"

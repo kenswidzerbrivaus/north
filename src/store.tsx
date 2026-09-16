@@ -8,6 +8,8 @@ import {
 } from 'react'
 import { todayISO } from './lib/dates'
 import { nowISO, uid } from './lib/id'
+import { depsReady } from './lib/project-engine'
+import { seedProjectBundle } from './lib/project-seed'
 import type {
   CalEvent,
   FocusSession,
@@ -16,9 +18,14 @@ import type {
   JournalEntry,
   List,
   Note,
+  Project,
+  ProjectBlocker,
+  ProjectDecision,
+  ProjectMilestone,
   Settings,
   State,
   Task,
+  WaitingOn,
 } from './lib/types'
 import { colorFromKey, nextEventColor, PALETTE } from './lib/types'
 
@@ -37,11 +44,14 @@ const defaultSettings = (): Settings => ({
   googleClientId: '',
   pushToGoogle: true,
   morningRituals: ['Prayer', 'Self affirmation', 'Read through journal'],
+  activeProjectLimit: 10,
 })
 
 export function freshState(): State {
   const created = nowISO()
   const today = todayISO()
+  const seed = packSeed(defaultSettings().name || 'Kens')
+  const { seedTasks, ...proj } = seed
   return {
     version: 1,
     lists: [
@@ -51,6 +61,7 @@ export function freshState(): State {
       { id: 'personal', name: 'Personal', color: PALETTE[1] },
     ],
     tasks: [
+      ...seedTasks,
       {
         id: uid(),
         title: 'Walk through North — tasks, calendar, habits, focus',
@@ -121,6 +132,21 @@ export function freshState(): State {
     journal: [],
     sessions: [],
     settings: defaultSettings(),
+    ...proj,
+  }
+}
+
+function packSeed(owner: string) {
+  const s = seedProjectBundle(owner)
+  return {
+    projects: s.projects,
+    milestones: s.milestones,
+    workstreams: s.workstreams,
+    projectDecisions: s.decisions,
+    blockers: s.blockers,
+    waitingOnItems: s.waiting,
+    projectActivity: s.activity,
+    seedTasks: s.tasks,
   }
 }
 
@@ -142,6 +168,13 @@ function blankState(): State {
     journal: [],
     sessions: [],
     settings: defaultSettings(),
+    projects: [],
+    milestones: [],
+    workstreams: [],
+    projectDecisions: [],
+    blockers: [],
+    waitingOnItems: [],
+    projectActivity: [],
   }
 }
 
@@ -157,6 +190,17 @@ function load(): State {
       version: 1,
       lists: parsed.lists.length ? parsed.lists : blankState().lists,
       settings: { ...defaultSettings(), ...parsed.settings },
+    }
+    const needsSeed =
+      !Array.isArray(parsed.projects) ||
+      (parsed.projects.length === 0 &&
+        !(parsed.milestones && parsed.milestones.length) &&
+        !(parsed.projectActivity && parsed.projectActivity.length))
+    if (needsSeed) {
+      const seed = packSeed(loaded.settings.name || 'Kens')
+      const { seedTasks, ...rest } = seed
+      Object.assign(loaded, rest)
+      if (seedTasks?.length) loaded.tasks = [...seedTasks, ...loaded.tasks]
     }
     return linkExisting(loaded)
   } catch {
@@ -225,6 +269,21 @@ export type Store = {
   updateSettings: (patch: Partial<Settings>) => void
   importState: (data: unknown) => void
   resetState: () => void
+  addProject: (input: Partial<Project> & { name: string; owner: string; deadline: string; objective: string; definitionOfDone: string; successMetric: string }, opts?: { overrideCapacity?: boolean }) => string | { error: 'capacity' }
+  updateProject: (id: string, patch: Partial<Project>) => void
+  addMilestone: (projectId: string, name: string, extra?: Partial<ProjectMilestone>) => string
+  updateMilestone: (id: string, patch: Partial<ProjectMilestone>) => void
+  addWorkstream: (projectId: string, name: string, owner: string) => string
+  addDecision: (input: Partial<ProjectDecision> & { projectId: string; title: string; owner: string }) => string
+  resolveDecision: (id: string, status: ProjectDecision['status'], decision?: string) => void
+  addBlocker: (input: Partial<ProjectBlocker> & { projectId: string; title: string; owner: string }) => string
+  resolveBlocker: (id: string) => void
+  updateBlocker: (id: string, patch: Partial<ProjectBlocker>) => void
+  setPrimaryBottleneck: (projectId: string, blockerId: string) => void
+  addWaitingOn: (input: Partial<WaitingOn> & { person: string; deliverable: string }) => string
+  resolveWaiting: (id: string) => void
+  logProject: (projectId: string, type: string, description: string) => void
+  completeProject: (id: string, outcome: string, grade: Project['outcomeGrade'], lessons: string) => void
 }
 
 function withCalendarList(lists: List[]) {
@@ -657,6 +716,261 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }))
       },
       resetState: () => patch(() => freshState()),
+      addProject: (input, opts) => {
+        const id = uid()
+        let blocked: 'capacity' | null = null
+        patch((s) => {
+          const activeCount = s.projects.filter((p) => p.state === 'active').length
+          const limit = s.settings.activeProjectLimit ?? 10
+          const state = input.state ?? 'active'
+          if (state === 'active' && activeCount >= limit && !opts?.overrideCapacity) {
+            blocked = 'capacity'
+            return s
+          }
+          const t = nowISO()
+          const project: Project = {
+            company: '',
+            why: '',
+            constraints: '',
+            problem: '',
+            desiredOutcome: '',
+            assumptions: '',
+            killPivot: '',
+            state,
+            priority: 2,
+            createdAt: t,
+            updatedAt: t,
+            ...input,
+            id,
+            name: input.name.trim(),
+            owner: input.owner.trim(),
+            deadline: input.deadline,
+            objective: input.objective.trim(),
+            definitionOfDone: input.definitionOfDone.trim(),
+            successMetric: input.successMetric.trim(),
+          }
+          return {
+            ...s,
+            projects: [project, ...s.projects],
+            projectActivity: [
+              { id: uid(), projectId: id, type: 'created', description: 'Project created.', createdAt: t },
+              ...s.projectActivity,
+            ],
+          }
+        })
+        return blocked ? { error: 'capacity' } : id
+      },
+      updateProject: (id, next) =>
+        patch((s) => ({
+          ...s,
+          projects: s.projects.map((p) => (p.id === id ? { ...p, ...next, updatedAt: nowISO() } : p)),
+          projectActivity: [
+            { id: uid(), projectId: id, type: 'update', description: 'Project updated.', createdAt: nowISO() },
+            ...s.projectActivity,
+          ],
+        })),
+      addMilestone: (projectId, name, extra) => {
+        const id = uid()
+        patch((s) => {
+          const order = s.milestones.filter((m) => m.projectId === projectId).length
+          const prev = s.milestones.filter((m) => m.projectId === projectId).sort((a, b) => a.sortOrder - b.sortOrder).at(-1)
+          return {
+            ...s,
+            milestones: [
+              ...s.milestones,
+              {
+                id,
+                projectId,
+                name: name.trim(),
+                owner: extra?.owner ?? s.projects.find((p) => p.id === projectId)?.owner ?? '',
+                status: extra?.status ?? (order === 0 ? 'current' : 'upcoming'),
+                criticalPath: extra?.criticalPath ?? true,
+                sortOrder: extra?.sortOrder ?? order,
+                notes: extra?.notes ?? '',
+                dependsOn: extra?.dependsOn ?? (prev ? [prev.id] : []),
+                ...extra,
+              },
+            ],
+            projectActivity: [
+              { id: uid(), projectId, type: 'milestone', description: `Milestone added: ${name.trim()}.`, createdAt: nowISO() },
+              ...s.projectActivity,
+            ],
+          }
+        })
+        return id
+      },
+      updateMilestone: (id, next) =>
+        patch((s) => {
+          const prev = s.milestones.find((m) => m.id === id)
+          let milestones = s.milestones.map((m) => (m.id === id ? { ...m, ...next } : m))
+          if (next.status === 'complete' && prev && prev.status !== 'complete') {
+            const siblings = milestones.filter((m) => m.projectId === prev.projectId).sort((a, b) => a.sortOrder - b.sortOrder)
+            const hasCurrent = siblings.some((m) => m.id !== id && (m.status === 'current' || m.status === 'blocked'))
+            if (!hasCurrent) {
+              const nxt = siblings.find((m) => m.status !== 'complete' && m.status !== 'blocked' && depsReady(m, siblings))
+              if (nxt) milestones = milestones.map((m) => (m.id === nxt.id ? { ...m, status: 'current' as const } : m))
+            }
+          }
+          return {
+            ...s,
+            milestones,
+            projectActivity: prev
+              ? [{ id: uid(), projectId: prev.projectId, type: 'milestone', description: `Milestone updated: ${prev.name}.`, createdAt: nowISO() }, ...s.projectActivity]
+              : s.projectActivity,
+          }
+        }),
+      addWorkstream: (projectId, name, owner) => {
+        const id = uid()
+        patch((s) => ({ ...s, workstreams: [...s.workstreams, { id, projectId, name: name.trim(), owner }] }))
+        return id
+      },
+      addDecision: (input) => {
+        const id = uid()
+        const t = nowISO()
+        patch((s) => ({
+          ...s,
+          projectDecisions: [
+            {
+              description: '',
+              requestedBy: input.owner,
+              status: 'pending',
+              impactIfDelayed: '',
+              context: '',
+              ...input,
+              id,
+              title: input.title.trim(),
+              requestedAt: t,
+            },
+            ...s.projectDecisions,
+          ],
+          projectActivity: [
+            { id: uid(), projectId: input.projectId, type: 'decision', description: `Decision opened: ${input.title.trim()}.`, createdAt: t },
+            ...s.projectActivity,
+          ],
+        }))
+        return id
+      },
+      resolveDecision: (id, status, decision) =>
+        patch((s) => {
+          const prev = s.projectDecisions.find((d) => d.id === id)
+          return {
+            ...s,
+            projectDecisions: s.projectDecisions.map((d) =>
+              d.id === id ? { ...d, status, decision, decidedAt: nowISO() } : d,
+            ),
+            projectActivity: prev
+              ? [{ id: uid(), projectId: prev.projectId, type: 'decision', description: `Decision ${status}: ${prev.title}.`, createdAt: nowISO() }, ...s.projectActivity]
+              : s.projectActivity,
+          }
+        }),
+      addBlocker: (input) => {
+        const id = uid()
+        const t = nowISO()
+        patch((s) => {
+          const isPrimary = input.isPrimary ?? !s.blockers.some((b) => b.projectId === input.projectId && !b.resolvedAt && b.isPrimary)
+          return {
+            ...s,
+            blockers: [
+              {
+                description: '',
+                startedAt: t,
+                severity: 'high' as const,
+                delayDays: 0,
+                isPrimary,
+                ...input,
+                id,
+                title: input.title.trim(),
+              },
+              ...s.blockers.map((b) => (isPrimary && b.projectId === input.projectId ? { ...b, isPrimary: false } : b)),
+            ],
+            milestones: input.milestoneId
+              ? s.milestones.map((m) => (m.id === input.milestoneId && m.status !== 'complete' ? { ...m, status: 'blocked' as const } : m))
+              : s.milestones,
+            projects: s.projects.map((p) =>
+              p.id === input.projectId && isPrimary ? { ...p, primaryBottleneckId: id, updatedAt: t } : p,
+            ),
+            projectActivity: [
+              { id: uid(), projectId: input.projectId, type: 'blocker', description: `Blocker: ${input.title.trim()}.`, createdAt: t },
+              ...s.projectActivity,
+            ],
+          }
+        })
+        return id
+      },
+      resolveBlocker: (id) =>
+        patch((s) => {
+          const prev = s.blockers.find((b) => b.id === id)
+          const blockers = s.blockers.map((b) => (b.id === id ? { ...b, resolvedAt: nowISO(), isPrimary: false } : b))
+          const stillBlocked = prev?.milestoneId
+            ? blockers.some((b) => b.milestoneId === prev.milestoneId && !b.resolvedAt)
+            : true
+          return {
+            ...s,
+            blockers,
+            milestones:
+              prev?.milestoneId && !stillBlocked
+                ? s.milestones.map((m) => (m.id === prev.milestoneId && m.status === 'blocked' ? { ...m, status: 'current' as const } : m))
+                : s.milestones,
+            projects: s.projects.map((p) =>
+              prev && p.id === prev.projectId && p.primaryBottleneckId === id ? { ...p, primaryBottleneckId: undefined, updatedAt: nowISO() } : p,
+            ),
+            projectActivity: prev
+              ? [{ id: uid(), projectId: prev.projectId, type: 'blocker', description: `Blocker resolved: ${prev.title}.`, createdAt: nowISO() }, ...s.projectActivity]
+              : s.projectActivity,
+          }
+        }),
+      updateBlocker: (id, next) =>
+        patch((s) => ({
+          ...s,
+          blockers: s.blockers.map((b) => (b.id === id ? { ...b, ...next } : b)),
+        })),
+      setPrimaryBottleneck: (projectId, blockerId) =>
+        patch((s) => ({
+          ...s,
+          blockers: s.blockers.map((b) => (b.projectId === projectId ? { ...b, isPrimary: b.id === blockerId } : b)),
+          projects: s.projects.map((p) => (p.id === projectId ? { ...p, primaryBottleneckId: blockerId, updatedAt: nowISO() } : p)),
+        })),
+      addWaitingOn: (input) => {
+        const id = uid()
+        const t = nowISO()
+        patch((s) => ({
+          ...s,
+          waitingOnItems: [
+            { status: 'open', importance: 'normal', requestedAt: t, ...input, id, person: input.person.trim(), deliverable: input.deliverable.trim() },
+            ...s.waitingOnItems,
+          ],
+          projectActivity: input.projectId
+            ? [{ id: uid(), projectId: input.projectId, type: 'waiting', description: `Waiting on ${input.person.trim()}: ${input.deliverable.trim()}.`, createdAt: t }, ...s.projectActivity]
+            : s.projectActivity,
+        }))
+        return id
+      },
+      resolveWaiting: (id) =>
+        patch((s) => {
+          const prev = s.waitingOnItems.find((w) => w.id === id)
+          return {
+            ...s,
+            waitingOnItems: s.waitingOnItems.map((w) => (w.id === id ? { ...w, status: 'received' } : w)),
+            projectActivity: prev?.projectId
+              ? [{ id: uid(), projectId: prev.projectId, type: 'waiting', description: `Received: ${prev.deliverable}.`, createdAt: nowISO() }, ...s.projectActivity]
+              : s.projectActivity,
+          }
+        }),
+      logProject: (projectId, type, description) =>
+        patch((s) => ({
+          ...s,
+          projectActivity: [{ id: uid(), projectId, type, description, createdAt: nowISO() }, ...s.projectActivity],
+        })),
+      completeProject: (id, outcome, grade, lessons) =>
+        patch((s) => ({
+          ...s,
+          projects: s.projects.map((p) =>
+            p.id === id
+              ? { ...p, state: 'complete', completedAt: nowISO(), outcome, outcomeGrade: grade, lessons, updatedAt: nowISO() }
+              : p,
+          ),
+          projectActivity: [{ id: uid(), projectId: id, type: 'complete', description: `Project closed (${grade}).`, createdAt: nowISO() }, ...s.projectActivity],
+        })),
     }),
     [patch],
   )

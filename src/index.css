@@ -1389,6 +1389,114 @@ html.sepho .daily-box {
   margin-top: 8px;
 }
 
+.proj-cc {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 12px;
+  align-items: start;
+}
+
+.proj-cap {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 10px 0 14px;
+}
+
+.proj-cap b {
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  color: #6ee7ff;
+}
+
+.proj-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.proj-metric {
+  padding: 12px 14px;
+}
+
+.proj-metric b {
+  display: block;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 28px;
+  color: #6ee7ff;
+}
+
+.proj-metric b.warn {
+  color: #ffb347;
+}
+
+.proj-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 10px;
+}
+
+.proj-card {
+  padding: 16px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.proj-card:hover {
+  border-color: #6ee7ff;
+  box-shadow: 0 0 18px rgba(110, 231, 255, 0.18);
+}
+
+.proj-bar {
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  color: #6ee7ff;
+}
+
+.health {
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.health-on_track { color: #4fd2a5; }
+.health-at_risk { color: #ffb347; }
+.health-critical, .health-blocked { color: #ff4d3a; }
+
+.proj-detail {
+  display: grid;
+  grid-template-columns: 1.65fr 0.95fr;
+  gap: 12px;
+}
+
+.cpath {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cpath li {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.cpath-line {
+  grid-column: 1;
+  color: #6ee7ff;
+  text-align: center;
+}
+
+@media (max-width: 980px) {
+  .proj-metrics,
+  .proj-detail,
+  .proj-cc {
+    grid-template-columns: 1fr;
+  }
+}
+
 .morning.is-compact {
   grid-template-columns: 1fr;
   background: transparent;

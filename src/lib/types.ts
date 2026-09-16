@@ -4,6 +4,7 @@ export type Route =
   | 'today'
   | 'tasks'
   | 'calendar'
+  | 'projects'
   | 'habits'
   | 'focus'
   | 'notes'
@@ -43,6 +44,9 @@ export interface Task {
   blocked?: boolean
   waitingOn?: string
   decision?: boolean
+  projectId?: string
+  milestoneId?: string
+  workstreamId?: string
 }
 
 export interface CalEvent {
@@ -81,6 +85,7 @@ export interface Note {
   pinned: boolean
   createdAt: string
   updatedAt: string
+  projectId?: string
 }
 
 export interface Goal {
@@ -118,6 +123,7 @@ export interface FocusSession {
   startedAt: string
   endedAt: string
   taskId?: string
+  projectId?: string
   completed: boolean
 }
 
@@ -134,6 +140,118 @@ export interface Settings {
   googleClientId: string
   pushToGoogle: boolean
   morningRituals: [string, string, string]
+  activeProjectLimit: number
+}
+
+export type ProjectLifecycle = 'backlog' | 'active' | 'blocked' | 'complete' | 'archived'
+export type ProjectHealth = 'on_track' | 'at_risk' | 'critical' | 'blocked'
+export type MilestoneStatus = 'complete' | 'current' | 'upcoming' | 'blocked'
+export type DecisionStatus = 'pending' | 'approved' | 'rejected' | 'more_info' | 'delegated' | 'resolved'
+export type WaitingStatus = 'open' | 'overdue' | 'received' | 'cancelled'
+export type VelocityMark = 'accelerating' | 'stable' | 'slowing' | 'critical'
+export type OutcomeGrade = 'success' | 'partial' | 'failed'
+
+export interface Project {
+  id: string
+  name: string
+  company: string
+  owner: string
+  goalId?: string
+  objective: string
+  definitionOfDone: string
+  successMetric: string
+  why: string
+  constraints: string
+  problem: string
+  desiredOutcome: string
+  assumptions: string
+  killPivot: string
+  state: ProjectLifecycle
+  priority: number
+  startDate?: string
+  deadline: string
+  createdAt: string
+  updatedAt: string
+  completedAt?: string
+  outcome?: string
+  outcomeGrade?: OutcomeGrade
+  lessons?: string
+  primaryBottleneckId?: string
+}
+
+export interface ProjectMilestone {
+  id: string
+  projectId: string
+  workstreamId?: string
+  name: string
+  owner: string
+  plannedStart?: string
+  plannedEnd?: string
+  actualEnd?: string
+  status: MilestoneStatus
+  criticalPath: boolean
+  sortOrder: number
+  notes: string
+  dependsOn: string[]
+}
+
+export interface ProjectWorkstream {
+  id: string
+  projectId: string
+  name: string
+  owner: string
+}
+
+export interface ProjectDecision {
+  id: string
+  projectId: string
+  milestoneId?: string
+  title: string
+  description: string
+  requestedBy: string
+  owner: string
+  requestedAt: string
+  deadline?: string
+  status: DecisionStatus
+  decision?: string
+  decidedAt?: string
+  impactIfDelayed: string
+  context: string
+}
+
+export interface ProjectBlocker {
+  id: string
+  projectId: string
+  milestoneId?: string
+  title: string
+  description: string
+  owner: string
+  startedAt: string
+  expectedResolution?: string
+  resolvedAt?: string
+  severity: 'normal' | 'high' | 'critical'
+  delayDays: number
+  isPrimary: boolean
+}
+
+export interface WaitingOn {
+  id: string
+  projectId?: string
+  milestoneId?: string
+  person: string
+  deliverable: string
+  requestedAt: string
+  dueAt?: string
+  status: WaitingStatus
+  importance: 'normal' | 'high' | 'critical'
+}
+
+export interface ProjectActivity {
+  id: string
+  projectId: string
+  type: string
+  description: string
+  createdAt: string
 }
 
 export interface State {
@@ -148,6 +266,13 @@ export interface State {
   journal: JournalEntry[]
   sessions: FocusSession[]
   settings: Settings
+  projects: Project[]
+  milestones: ProjectMilestone[]
+  workstreams: ProjectWorkstream[]
+  projectDecisions: ProjectDecision[]
+  blockers: ProjectBlocker[]
+  waitingOnItems: WaitingOn[]
+  projectActivity: ProjectActivity[]
 }
 
 export const PALETTE = [
@@ -185,10 +310,11 @@ export const ROUTES: { id: Route; label: string; hint: string }[] = [
   { id: 'today', label: 'Today', hint: '1' },
   { id: 'tasks', label: 'Tasks', hint: '2' },
   { id: 'calendar', label: 'Calendar', hint: '3' },
-  { id: 'habits', label: 'Habits', hint: '4' },
-  { id: 'focus', label: 'Focus', hint: '5' },
-  { id: 'notes', label: 'Notes', hint: '6' },
-  { id: 'goals', label: 'Goals', hint: '7' },
-  { id: 'journal', label: 'Journal', hint: '8' },
-  { id: 'settings', label: 'Settings', hint: '9' },
+  { id: 'projects', label: 'Projects', hint: '4' },
+  { id: 'habits', label: 'Habits', hint: '5' },
+  { id: 'focus', label: 'Focus', hint: '6' },
+  { id: 'notes', label: 'Notes', hint: '7' },
+  { id: 'goals', label: 'Goals', hint: '8' },
+  { id: 'journal', label: 'Journal', hint: '9' },
+  { id: 'settings', label: 'Settings', hint: '0' },
 ]

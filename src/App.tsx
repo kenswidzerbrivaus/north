@@ -19,11 +19,13 @@ const Notes = lazy(() => import('./views/Notes').then((m) => ({ default: m.Notes
 const Goals = lazy(() => import('./views/Goals').then((m) => ({ default: m.Goals })))
 const Journal = lazy(() => import('./views/Journal').then((m) => ({ default: m.Journal })))
 const Settings = lazy(() => import('./views/Settings').then((m) => ({ default: m.Settings })))
+const Projects = lazy(() => import('./views/Projects').then((m) => ({ default: m.Projects })))
 
 const NAV_ICON: Record<Route, IconName> = {
   today: 'today',
   tasks: 'tasks',
   calendar: 'calendar',
+  projects: 'projects',
   habits: 'habits',
   focus: 'focus',
   notes: 'notes',
@@ -117,6 +119,15 @@ function Shell() {
         const r = ROUTES[Number(e.key) - 1]
         if (r) go(r.id)
       }
+      if (e.key === '0') go('settings')
+      if (e.key === '/' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault()
+        setCmd(true)
+        setQuery('')
+        setActive(0)
+        return
+      }
+      if (e.key.toLowerCase() === 'p' && route !== 'projects') go('projects')
       if (e.key.toLowerCase() === 'n') {
         if (route === 'tasks' || route === 'today') {
           const title = prompt('New task')
@@ -125,6 +136,8 @@ function Shell() {
         else if (route === 'calendar') {
           const title = prompt('New event')
           if (title?.trim()) addEvent({ title: title.trim(), date: todayISO(), allDay: true })
+        } else if (route === 'projects') {
+          location.hash = '#/projects?new=1'
         }
       }
     }
@@ -151,6 +164,14 @@ function Shell() {
           else go('tasks')
         },
       },
+      {
+        id: 'new-project',
+        title: 'Create project',
+        hint: 'N',
+        run: () => {
+          location.hash = '#/projects?new=1'
+        },
+      },
     ]
     if (!q) return items
     for (const t of state.tasks) {
@@ -168,8 +189,66 @@ function Shell() {
         items.push({ id: e.id, title: e.title, hint: 'Event', run: () => go('calendar') })
       }
     }
-    return items.filter((i) => i.title.toLowerCase().includes(q) || i.hint.toLowerCase().includes(q)).slice(0, 18)
-  }, [addTask, cmd, go, query, state.events, state.notes, state.tasks])
+    for (const p of state.projects) {
+      if (`${p.name} ${p.company} ${p.objective}`.toLowerCase().includes(q)) {
+        items.push({
+          id: p.id,
+          title: p.name,
+          hint: 'Project',
+          run: () => {
+            location.hash = `#/projects/${p.id}`
+          },
+        })
+      }
+    }
+    for (const d of state.projectDecisions) {
+      if (d.title.toLowerCase().includes(q)) {
+        items.push({
+          id: d.id,
+          title: d.title,
+          hint: 'Decision',
+          run: () => {
+            location.hash = `#/projects/${d.projectId}`
+          },
+        })
+      }
+    }
+    for (const m of state.milestones) {
+      if (m.name.toLowerCase().includes(q)) {
+        items.push({
+          id: m.id,
+          title: m.name,
+          hint: 'Milestone',
+          run: () => {
+            location.hash = `#/projects/${m.projectId}`
+          },
+        })
+      }
+    }
+    for (const b of state.blockers) {
+      if (`${b.title} ${b.description}`.toLowerCase().includes(q)) {
+        items.push({
+          id: b.id,
+          title: b.title,
+          hint: 'Blocker',
+          run: () => {
+            location.hash = `#/projects/${b.projectId}`
+          },
+        })
+      }
+    }
+    if ('create decision'.includes(q) || q.startsWith('dec')) {
+      items.push({
+        id: 'new-decision',
+        title: 'Create decision',
+        hint: 'Project',
+        run: () => {
+          go('projects')
+        },
+      })
+    }
+    return items.filter((i) => i.title.toLowerCase().includes(q) || i.hint.toLowerCase().includes(q) || q.length < 2).slice(0, 18)
+  }, [addTask, cmd, go, query, state.blockers, state.events, state.milestones, state.notes, state.projectDecisions, state.projects, state.tasks])
 
   useEffect(() => {
     setActive(0)
@@ -185,6 +264,7 @@ function Shell() {
     goals: <Goals />,
     journal: <Journal />,
     settings: <Settings />,
+    projects: <Projects />,
   }[route]
 
   return (
@@ -241,7 +321,7 @@ function Shell() {
       </main>
 
       <nav className="bottom-nav" aria-label="Mobile">
-        {(['today', 'tasks', 'calendar', 'habits', 'focus'] as Route[]).map((id) => (
+        {(['today', 'tasks', 'calendar', 'projects', 'focus'] as Route[]).map((id) => (
           <button key={id} data-on={route === id} onClick={() => go(id)}>
             <Icon name={NAV_ICON[id]} size={16} />
             {ROUTES.find((r) => r.id === id)?.label}
@@ -259,7 +339,7 @@ function Shell() {
               </button>
             </header>
             <div className="stack">
-              {(['notes', 'goals', 'journal', 'settings'] as Route[]).map((id) => (
+              {(['projects', 'notes', 'goals', 'journal', 'settings'] as Route[]).map((id) => (
                 <button
                   key={id}
                   className="list-btn"

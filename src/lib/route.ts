@@ -5,7 +5,19 @@ const ids = ROUTES.map((r) => r.id)
 
 function parse(): Route {
   const h = location.hash.replace(/^#\/?/, '')
-  return ids.includes(h as Route) ? (h as Route) : 'today'
+  const base = (h.split(/[/?]/)[0] || 'today') as Route
+  return ids.includes(base) ? base : 'today'
+}
+
+export function projectIdFromHash() {
+  const m = location.hash.match(/#\/projects\/([^/?#]+)/)
+  return m?.[1] ? decodeURIComponent(m[1]) : null
+}
+
+export function hashParam(name: string) {
+  const i = location.hash.indexOf('?')
+  if (i < 0) return null
+  return new URLSearchParams(location.hash.slice(i + 1)).get(name)
 }
 
 export function useRoute(): [Route, (r: Route) => void] {

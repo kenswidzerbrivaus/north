@@ -47,6 +47,9 @@ export function Goals() {
               <p className="meta">
                 {g.progress}%
                 {g.targetDate ? ` · by ${formatShort(g.targetDate)}` : ''}
+                {state.projects.filter((p) => p.goalId === g.id).length
+                  ? ` · ${state.projects.filter((p) => p.goalId === g.id).map((p) => p.name).join(', ')}`
+                  : ''}
               </p>
             </article>
           ))}

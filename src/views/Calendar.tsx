@@ -15,6 +15,7 @@ import {
   weekdayNames,
 } from '../lib/dates'
 import { takeCalGap } from '../lib/cal-gap'
+import { hashParam } from '../lib/route'
 import { nextEventColor, PALETTE, type CalEvent } from '../lib/types'
 import { useStore } from '../store'
 
@@ -34,7 +35,24 @@ export function Calendar() {
   const [gap, setGap] = useState<{ date: string; startMin: number; endMin: number } | null>(null)
   const today = todayISO()
   const names = weekdayNames(weekStartsOn)
-  const allEvents = useMemo(() => mergeCalendars(state.events, gcal.events), [gcal.events, state.events])
+  const [projectId, setProjectId] = useState(() => hashParam('project'))
+  useEffect(() => {
+    const on = () => setProjectId(hashParam('project'))
+    window.addEventListener('hashchange', on)
+    return () => window.removeEventListener('hashchange', on)
+  }, [])
+  const merged = useMemo(() => mergeCalendars(state.events, gcal.events), [gcal.events, state.events])
+  const allEvents = useMemo(() => {
+    if (!projectId) return merged
+    const ids = new Set(
+      state.tasks.filter((t) => t.projectId === projectId).flatMap((t) => [t.eventId, t.googleId].filter(Boolean) as string[]),
+    )
+    const proj = state.projects.find((p) => p.id === projectId)
+    const needle = (proj?.name ?? '').toLowerCase()
+    return merged.filter(
+      (e) => ids.has(e.id) || (e.googleId && ids.has(e.googleId)) || (needle && e.title.toLowerCase().includes(needle.slice(0, 8))),
+    )
+  }, [merged, projectId, state.projects, state.tasks])
 
   const year = cursor.getFullYear()
   const month = cursor.getMonth()
@@ -213,7 +231,7 @@ export function Calendar() {
     <div>
       <header className="page-head">
         <div>
-          <p className="kicker">Time on a page</p>
+          <p className="kicker">{projectId ? `Project // ${state.projects.find((p) => p.id === projectId)?.name ?? 'filter'}` : 'Time on a page'}</p>
           <h1>{view === 'day' ? cursor.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : monthName(cursor)}</h1>
         </div>
         <div className="row">

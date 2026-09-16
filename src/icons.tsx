@@ -31,6 +31,8 @@ const paths: Record<string, string> = {
   edit: 'M4 20h4l10-10-4-4L4 16v4zm11-15 4 4',
   google:
     'M12 11v2.8h4.6c-.2 1.2-1.4 3.4-4.6 3.4A5.1 5.1 0 1 1 12 6.9c1.3 0 2.2.5 2.7 1l1.9-1.8A8 8 0 1 0 12 20.1c4.6 0 7.6-3.2 7.6-7.7 0-.5 0-.9-.1-1.3H12z',
+  projects:
+    'M4 7h7l2 2h7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z',
 }
 
 export function Icon({

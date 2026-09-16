@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Check, Empty, Field, Modal } from '../components/ui'
 import { Icon } from '../icons'
 import { formatShort, formatTime, todayISO } from '../lib/dates'
@@ -19,9 +19,17 @@ export function Tasks() {
   const [selected, setSelected] = useState<string | null>(null)
   const [newList, setNewList] = useState(false)
   const [listName, setListName] = useState('')
+  const [projectId, setProjectId] = useState(() => new URLSearchParams(location.hash.split('?')[1] ?? '').get('project'))
+
+  useEffect(() => {
+    const on = () => setProjectId(new URLSearchParams(location.hash.split('?')[1] ?? '').get('project'))
+    window.addEventListener('hashchange', on)
+    return () => window.removeEventListener('hashchange', on)
+  }, [])
 
   const tasks = useMemo(() => {
     return state.tasks.filter((t) => {
+      if (projectId && t.projectId !== projectId) return false
       if (listId !== 'all' && t.listId !== listId) return false
       if (filter === 'done') return t.completed
       if (t.completed) return false
@@ -34,7 +42,7 @@ export function Tasks() {
       if (filter === 'upcoming') return Boolean(t.due && t.due > today)
       return true
     })
-  }, [filter, listId, state.tasks, today])
+  }, [filter, listId, projectId, state.tasks, today])
 
   const open = state.tasks.find((t) => t.id === selected)
   const listOf = (id: string) => state.lists.find((l) => l.id === id)
@@ -46,6 +54,7 @@ export function Tasks() {
       title,
       listId: listId === 'all' ? 'inbox' : listId,
       due: filter === 'today' ? today : undefined,
+      projectId: projectId || undefined,
     })
     setDraft('')
     setSelected(id)
@@ -56,7 +65,12 @@ export function Tasks() {
       <header className="page-head">
         <div>
           <p className="kicker">Capture and close</p>
-          <h1>Tasks</h1>
+          <h1>Tasks{projectId ? ' // project' : ''}</h1>
+          {projectId ? (
+            <button className="btn-ghost" onClick={() => { location.hash = '#/tasks' }}>
+              Clear project filter
+            </button>
+          ) : null}
         </div>
       </header>
 
@@ -134,6 +148,7 @@ export function Tasks() {
                     {listOf(t.listId)?.name}
                     {t.due ? <span>{t.due < today && !t.completed ? 'Overdue · ' : ''}{formatShort(t.due)}{t.dueTime ? ` ${formatTime(t.dueTime)}` : ''}</span> : null}
                     {t.eventId || t.googleId ? <span>On calendar</span> : null}
+                    {t.projectId ? <span>{state.projects.find((p) => p.id === t.projectId)?.name}</span> : null}
                     {t.priority ? (
                       <span className="prio" data-p={t.priority}>
                         {PRI[t.priority]}
@@ -182,6 +197,20 @@ export function Tasks() {
               </div>
               <Field label="Notes">
                 <textarea className="textarea" value={open.notes} onChange={(e) => updateTask(open.id, { notes: e.target.value })} />
+              </Field>
+              <Field label="Project">
+                <select
+                  className="select"
+                  value={open.projectId ?? ''}
+                  onChange={(e) => updateTask(open.id, { projectId: e.target.value || undefined })}
+                >
+                  <option value="">None</option>
+                  {state.projects.filter((p) => p.state !== 'archived').map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
               </Field>
               <p className="kicker" style={{ margin: '12px 0 6px' }}>
                 Subtasks
