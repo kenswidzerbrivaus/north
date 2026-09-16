@@ -1130,6 +1130,7 @@ html.sepho .select {
   background: rgba(0, 20, 32, 0.6);
   border-color: rgba(110, 231, 255, 0.35);
   color: #d4f6ff;
+  color-scheme: dark;
 }
 
 html.sepho .input:focus,

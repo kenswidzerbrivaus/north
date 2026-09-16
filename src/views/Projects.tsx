@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Field, Modal } from '../components/ui'
+import { parseDeadline } from '../lib/dates'
 import { projectIdFromHash } from '../lib/route'
 import {
   bar,
@@ -409,92 +410,158 @@ function CreateProject({
     milestones: '',
     goalId: '',
   })
-  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }))
-  const save = () => {
-    if (!form.name.trim() || !form.owner.trim() || !form.deadline || !form.objective.trim() || !form.definitionOfDone.trim() || !form.successMetric.trim()) {
-      alert('Name, owner, deadline, objective, definition of done, and success metric are required.')
+  const [missing, setMissing] = useState<string[]>([])
+  const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }))
+  const bind = (k: keyof typeof form) => ({
+    name: k,
+    value: form[k],
+    onChange: (e: { target: { value: string } }) => set(k, e.target.value),
+    onInput: (e: { currentTarget: { value: string } }) => set(k, e.currentTarget.value),
+  })
+  const save = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    const read = (k: keyof typeof form) => {
+      const fromDom = String(fd.get(k) ?? '')
+      const fromState = form[k]
+      return (fromDom || fromState).trim()
+    }
+    const name = read('name')
+    const owner = read('owner')
+    const deadline = parseDeadline(read('deadline'))
+    const objective = read('objective')
+    const definitionOfDone = read('definitionOfDone')
+    const successMetric = read('successMetric')
+    const blank = [
+      !name && 'Project name',
+      !owner && 'Accountable owner',
+      !deadline && 'Deadline',
+      !objective && 'Objective',
+      !definitionOfDone && 'Definition of done',
+      !successMetric && 'Success metric',
+    ].filter(Boolean) as string[]
+    if (blank.length) {
+      setMissing(blank)
+      const first = e.currentTarget.elements.namedItem(
+        blank[0] === 'Project name'
+          ? 'name'
+          : blank[0] === 'Accountable owner'
+            ? 'owner'
+            : blank[0] === 'Deadline'
+              ? 'deadline'
+              : blank[0] === 'Objective'
+                ? 'objective'
+                : blank[0] === 'Definition of done'
+                  ? 'definitionOfDone'
+                  : 'successMetric',
+      )
+      if (first instanceof HTMLElement) first.focus()
       return
     }
+    setMissing([])
     const result = addProject({
-      name: form.name,
-      company: form.company,
-      owner: form.owner,
-      deadline: form.deadline,
-      objective: form.objective,
-      definitionOfDone: form.definitionOfDone,
-      successMetric: form.successMetric,
-      why: form.why,
-      constraints: form.constraints,
-      problem: form.problem,
-      desiredOutcome: form.desiredOutcome,
-      assumptions: form.assumptions,
-      killPivot: form.killPivot,
-      goalId: form.goalId || undefined,
+      name,
+      company: read('company'),
+      owner,
+      deadline,
+      objective,
+      definitionOfDone,
+      successMetric,
+      why: read('why'),
+      constraints: read('constraints'),
+      problem: read('problem'),
+      desiredOutcome: read('desiredOutcome'),
+      assumptions: read('assumptions'),
+      killPivot: read('killPivot'),
+      goalId: read('goalId') || undefined,
       state: 'active',
     }, { overrideCapacity })
     if (typeof result !== 'string') {
-      alert('Active project capacity reached. Pause or complete a project first.')
+      setMissing(['Active project capacity reached. Pause or complete a project first.'])
       return
     }
-    form.milestones
+    read('milestones')
       .split('\n')
       .map((l) => l.trim())
       .filter(Boolean)
-      .forEach((name, i) => {
-        addMilestone(result, name, { sortOrder: i, status: i === 0 ? 'current' : 'upcoming', criticalPath: true })
+      .forEach((ms, i) => {
+        addMilestone(result, ms, { sortOrder: i, status: i === 0 ? 'current' : 'upcoming', criticalPath: true })
       })
     onCreate(result)
   }
   return (
     <Modal title="New project" onClose={onClose} wide>
-      <div className="stack">
-        <Field label="Project name">
-          <input className="input" value={form.name} onChange={(e) => set('name', e.target.value)} />
+      <form className="stack" onSubmit={save}>
+        {missing.length ? (
+          <p className="gate-error" role="alert">
+            Still needed: {missing.join(', ')}
+          </p>
+        ) : null}
+        <Field label="Project name *">
+          <input className="input" required autoComplete="off" {...bind('name')} />
         </Field>
         <div className="grid-2">
           <Field label="Company / area">
-            <input className="input" value={form.company} onChange={(e) => set('company', e.target.value)} />
+            <input className="input" autoComplete="off" {...bind('company')} />
           </Field>
-          <Field label="Accountable owner">
-            <input className="input" value={form.owner} onChange={(e) => set('owner', e.target.value)} />
+          <Field label="Accountable owner *">
+            <input className="input" required autoComplete="name" {...bind('owner')} />
           </Field>
         </div>
-        <Field label="Deadline">
-          <input className="input" type="date" value={form.deadline} onChange={(e) => set('deadline', e.target.value)} />
+        <Field label="Deadline *">
+          <input
+            className="input"
+            type="date"
+            value={/^\d{4}-\d{2}-\d{2}$/.test(form.deadline) ? form.deadline : ''}
+            onChange={(e) => set('deadline', e.target.value)}
+            onInput={(e) => set('deadline', e.currentTarget.value)}
+          />
+          <input
+            className="input"
+            name="deadline"
+            type="text"
+            autoComplete="off"
+            placeholder="or type 2026-10-30"
+            value={form.deadline}
+            onChange={(e) => set('deadline', parseDeadline(e.target.value) || e.target.value)}
+            onInput={(e) => set('deadline', parseDeadline(e.currentTarget.value) || e.currentTarget.value)}
+            aria-label="Deadline as text"
+            style={{ marginTop: 6 }}
+          />
         </Field>
-        <Field label="Objective">
-          <textarea className="textarea" value={form.objective} onChange={(e) => set('objective', e.target.value)} />
+        <Field label="Objective *">
+          <textarea className="textarea" required {...bind('objective')} />
         </Field>
-        <Field label="Definition of done">
-          <textarea className="textarea" value={form.definitionOfDone} onChange={(e) => set('definitionOfDone', e.target.value)} />
+        <Field label="Definition of done *">
+          <textarea className="textarea" required {...bind('definitionOfDone')} />
         </Field>
-        <Field label="Success metric">
-          <input className="input" value={form.successMetric} onChange={(e) => set('successMetric', e.target.value)} />
+        <Field label="Success metric *">
+          <input className="input" required autoComplete="off" {...bind('successMetric')} />
         </Field>
         <Field label="Why this exists">
-          <textarea className="textarea" value={form.why} onChange={(e) => set('why', e.target.value)} />
+          <textarea className="textarea" {...bind('why')} />
         </Field>
         <p className="kicker">First principles</p>
         <Field label="Problem">
-          <textarea className="textarea" value={form.problem} onChange={(e) => set('problem', e.target.value)} />
+          <textarea className="textarea" {...bind('problem')} />
         </Field>
         <Field label="Desired outcome">
-          <textarea className="textarea" value={form.desiredOutcome} onChange={(e) => set('desiredOutcome', e.target.value)} />
+          <textarea className="textarea" {...bind('desiredOutcome')} />
         </Field>
         <Field label="Non-negotiable constraints">
-          <textarea className="textarea" value={form.constraints} onChange={(e) => set('constraints', e.target.value)} />
+          <textarea className="textarea" {...bind('constraints')} />
         </Field>
         <Field label="Assumptions">
-          <textarea className="textarea" value={form.assumptions} onChange={(e) => set('assumptions', e.target.value)} />
+          <textarea className="textarea" {...bind('assumptions')} />
         </Field>
         <Field label="Kill / pivot condition">
-          <textarea className="textarea" value={form.killPivot} onChange={(e) => set('killPivot', e.target.value)} />
+          <textarea className="textarea" {...bind('killPivot')} />
         </Field>
         <Field label="Initial milestones (one per line)">
-          <textarea className="textarea" value={form.milestones} onChange={(e) => set('milestones', e.target.value)} placeholder="Secure Financing&#10;Purchase Truck" />
+          <textarea className="textarea" {...bind('milestones')} placeholder="Secure Financing&#10;Purchase Truck" />
         </Field>
         <Field label="Linked goal">
-          <select className="select" value={form.goalId} onChange={(e) => set('goalId', e.target.value)}>
+          <select className="select" {...bind('goalId')}>
             <option value="">None</option>
             {goals.map((g) => (
               <option key={g.id} value={g.id}>
@@ -504,14 +571,14 @@ function CreateProject({
           </select>
         </Field>
         <div className="row" style={{ justifyContent: 'flex-end' }}>
-          <button className="btn-ghost" onClick={onClose}>
+          <button className="btn-ghost" type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="btn" onClick={save}>
+          <button className="btn" type="submit">
             Create project
           </button>
         </div>
-      </div>
+      </form>
     </Modal>
   )
 }

@@ -9,6 +9,23 @@ export function todayISO(): string {
   return toISO(new Date())
 }
 
+export function parseDeadline(raw: string): string {
+  const s = raw.trim()
+  if (!s) return ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  const mdY = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$/)
+  if (mdY) {
+    const month = Number(mdY[1])
+    const day = Number(mdY[2])
+    const year = Number(mdY[3]!.length === 2 ? `20${mdY[3]}` : mdY[3])
+    const d = new Date(year, month - 1, day)
+    if (!Number.isNaN(d.getTime()) && d.getMonth() === month - 1 && d.getDate() === day) return toISO(d)
+  }
+  const parsed = new Date(s)
+  if (!Number.isNaN(parsed.getTime())) return toISO(parsed)
+  return ''
+}
+
 export function parseISO(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number)
   return new Date(y, (m ?? 1) - 1, d ?? 1)
