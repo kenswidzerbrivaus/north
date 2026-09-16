@@ -90,11 +90,19 @@ export interface Goal {
   createdAt: string
 }
 
+export type Workout = 'cardio' | 'weights' | 'rest' | 'other'
+
 export interface JournalEntry {
   date: string
   mood?: 1 | 2 | 3 | 4 | 5
   body: string
   updatedAt: string
+  blessings: [string, string, string]
+  workout?: Workout
+  currentGoals: string
+  actionsToday: string
+  actionsTomorrow: string
+  affirmation: string
 }
 
 export interface FocusSession {

@@ -587,7 +587,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         patch((s) => {
           const existing = s.journal.find((j) => j.date === date)
           if (!existing) {
-            return { ...s, journal: [...s.journal, { date, body: '', updatedAt: nowISO(), ...next }] }
+            return {
+              ...s,
+              journal: [
+                ...s.journal,
+                {
+                  date,
+                  body: '',
+                  blessings: ['', '', ''],
+                  currentGoals: '',
+                  actionsToday: '',
+                  actionsTomorrow: '',
+                  affirmation: '',
+                  updatedAt: nowISO(),
+                  ...next,
+                },
+              ],
+            }
           }
           return {
             ...s,
