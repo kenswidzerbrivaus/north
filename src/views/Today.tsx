@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Check, Empty } from '../components/ui'
 import { Icon } from '../icons'
 import { addDays, formatLong, formatTime, greeting, toISO, todayISO } from '../lib/dates'
@@ -7,6 +6,7 @@ import { mergeCalendars, useGoogleCalendar } from '../google'
 import type { Route } from '../lib/types'
 import { useStore } from '../store'
 import { formatRemain, useTimer } from '../timer'
+import { DailyUpdate } from './DailyUpdate'
 
 export function Today({ go }: { go: (r: Route) => void }) {
   const { state, toggleTask, setHabitCount } = useStore()
@@ -32,7 +32,6 @@ export function Today({ go }: { go: (r: Route) => void }) {
     return state.tasks.filter((t) => t.completedAt?.slice(0, 10) === key).length
   })
   const maxBar = Math.max(1, ...bars)
-  const [intention, setIntention] = useState(() => localStorage.getItem('north.intention') ?? '')
 
   return (
     <div>
@@ -59,6 +58,10 @@ export function Today({ go }: { go: (r: Route) => void }) {
           <span className="kicker">Focus minutes</span>
           <b>{focusMins}</b>
         </div>
+      </div>
+
+      <div style={{ marginBottom: 22 }}>
+        <DailyUpdate date={today} />
       </div>
 
       <div className="grid-2">
@@ -169,19 +172,7 @@ export function Today({ go }: { go: (r: Route) => void }) {
           </section>
 
           <section className="card">
-            <p className="kicker">Intention</p>
-            <input
-              className="input"
-              placeholder="One sentence for today"
-              value={intention}
-              onChange={(e) => {
-                setIntention(e.target.value)
-                localStorage.setItem('north.intention', e.target.value)
-              }}
-            />
-            <p className="kicker" style={{ marginTop: 16 }}>
-              Done this week
-            </p>
+            <p className="kicker">Done this week</p>
             <div className="bars" aria-hidden>
               {bars.map((n, i) => (
                 <span key={i} style={{ height: `${(n / maxBar) * 100}%` }} title={`${n} tasks`} />

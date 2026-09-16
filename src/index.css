@@ -918,7 +918,7 @@ html.matrix-gate body {
   display: flex;
   flex-direction: column;
   gap: 28px;
-  max-width: 920px;
+  max-width: 100%;
 }
 
 .daily-hero {
