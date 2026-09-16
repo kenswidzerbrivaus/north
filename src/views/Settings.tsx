@@ -37,7 +37,7 @@ export function Settings() {
         <section className="card stack">
           <h2>Profile</h2>
           <p className="muted">Signed in as {username}</p>
-          <Field label="What should North call you?">
+          <Field label="What should Sepho call you?">
             <input className="input" value={s.name} onChange={(e) => updateSettings({ name: e.target.value })} />
           </Field>
           <Field label="Theme">
@@ -114,9 +114,9 @@ export function Settings() {
         <section className="card stack">
           <h2>Google Calendar</h2>
           {gcal.connected ? (
-            <p className="muted">Linked as {gcal.email || 'Google'}. Events from your primary calendar show up in North.</p>
+            <p className="muted">Linked as {gcal.email || 'Google'}. Events from your primary calendar show up in Sepho.</p>
           ) : (
-            <p className="muted">Link your primary Google Calendar to see those events here, and to save new North events back to Google.</p>
+            <p className="muted">Link your primary Google Calendar to see those events here, and to save new Sepho events back to Google.</p>
           )}
           <Field label="Google OAuth client ID">
             <input
@@ -225,7 +225,7 @@ export function Settings() {
             <button
               className="btn-danger"
               onClick={() => {
-                if (confirm('Reset North to sample data? This cannot be undone unless you exported a backup.')) {
+                if (confirm('Reset Sepho to sample data? This cannot be undone unless you exported a backup.')) {
                   resetState()
                   setMsg('Workspace reset.')
                 }

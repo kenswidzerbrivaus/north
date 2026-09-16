@@ -44,7 +44,7 @@ export function startAlarm() {
   let on = false
   titleLoop = window.setInterval(() => {
     on = !on
-    document.title = on ? 'TIME’S UP — North' : originalTitle || 'North'
+    document.title = on ? 'TIME’S UP — Sepho' : originalTitle || 'Sepho'
   }, 700)
   try {
     navigator.vibrate?.([240, 120, 240, 120, 480])

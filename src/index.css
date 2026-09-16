@@ -918,30 +918,96 @@ html.matrix-gate body {
   word-break: break-all;
 }
 
-.jarvis {
+html.sepho {
+  --bg: #05080e;
+  --bg-2: rgba(8, 28, 42, 0.85);
+  --paper: rgba(6, 18, 28, 0.78);
   --ink: #d4f6ff;
   --ink-soft: #7eb8c9;
-  --paper: rgba(6, 18, 28, 0.72);
   --line: rgba(110, 231, 255, 0.28);
-  --line-strong: rgba(110, 231, 255, 0.55);
+  --line-strong: rgba(110, 231, 255, 0.5);
   --accent: #6ee7ff;
-  --bg-2: rgba(8, 28, 42, 0.8);
-  position: relative;
-  margin: -28px -32px -48px;
-  padding: 26px 32px 56px;
-  min-height: 100dvh;
+  --accent-soft: rgba(110, 231, 255, 0.14);
+  --forest: #4fd2a5;
+  --forest-soft: rgba(79, 210, 165, 0.16);
+  --gold: #e8b84a;
+  --danger: #ff6b5a;
+  --shadow: 0 0 40px rgba(0, 140, 200, 0.12);
+  --radius: 4px;
+}
+
+html.sepho,
+html.sepho body {
   color: #d4f6ff;
   font-family: Rajdhani, Figtree, sans-serif;
   background:
-    linear-gradient(rgba(80, 200, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(80, 200, 255, 0.04) 1px, transparent 1px),
-    radial-gradient(900px 520px at 85% -8%, rgba(0, 170, 255, 0.22), transparent 52%),
-    radial-gradient(640px 380px at 0% 110%, rgba(255, 70, 20, 0.16), transparent 50%),
+    linear-gradient(rgba(80, 200, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(80, 200, 255, 0.045) 1px, transparent 1px),
+    radial-gradient(900px 520px at 85% -8%, rgba(0, 170, 255, 0.2), transparent 52%),
+    radial-gradient(640px 380px at 0% 110%, rgba(255, 70, 20, 0.14), transparent 50%),
     #05080e;
   background-size: 42px 42px, 42px 42px, auto, auto, auto;
 }
 
-.jarvis-scan {
+html.sepho h1,
+html.sepho h2,
+html.sepho h3,
+html.sepho .display {
+  font-family: Rajdhani, sans-serif;
+  font-style: normal;
+  font-weight: 700;
+}
+
+html.sepho .kicker {
+  color: #6ee7ff;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+}
+
+html.sepho .shell {
+  position: relative;
+}
+
+html.sepho .sidebar,
+html.sepho .card,
+html.sepho .modal,
+html.sepho .cmdk,
+html.sepho .cal-month,
+html.sepho .week-grid,
+html.sepho .search-btn,
+html.sepho .bottom-nav {
+  background: rgba(4, 16, 26, 0.72);
+  border-color: rgba(110, 231, 255, 0.28);
+  box-shadow: inset 0 0 40px rgba(0, 160, 220, 0.06);
+}
+
+html.sepho .nav-btn,
+html.sepho .chip,
+html.sepho .btn,
+html.sepho .btn-ghost,
+html.sepho .btn-icon,
+html.sepho .check,
+html.sepho .input,
+html.sepho .textarea,
+html.sepho .select {
+  border-radius: 2px;
+}
+
+html.sepho .nav-btn[data-on='true'] {
+  background: rgba(110, 231, 255, 0.1);
+  color: #6ee7ff;
+  box-shadow: inset 3px 0 0 #6ee7ff;
+}
+
+html.sepho .btn {
+  background: #1287a8;
+  color: #041018;
+}
+
+html.sepho .stat b {
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+}
+
+.sepho-scan {
   pointer-events: none;
   position: absolute;
   inset: 0;
@@ -951,18 +1017,15 @@ html.matrix-gate body {
     transparent 2px,
     rgba(0, 0, 0, 0.18) 3px
   );
-  opacity: 0.35;
+  opacity: 0.28;
   z-index: 0;
 }
 
-.jarvis > *:not(.jarvis-scan) {
+html.sepho .sidebar,
+html.sepho .main,
+html.sepho .bottom-nav {
   position: relative;
   z-index: 1;
-}
-
-.jarvis .kicker {
-  color: #6ee7ff;
-  font-family: 'Share Tech Mono', ui-monospace, monospace;
 }
 
 .hud-frame {
@@ -998,7 +1061,7 @@ html.matrix-gate body {
   border-top: 0;
 }
 
-.jarvis-sys {
+.sepho-sys {
   margin: 0 0 6px;
   font-family: 'Share Tech Mono', ui-monospace, monospace;
   font-size: 11px;
@@ -1006,47 +1069,57 @@ html.matrix-gate body {
   color: #6ee7ff;
 }
 
-.jarvis .check {
+html.sepho .check {
   border-color: #6ee7ff;
   border-radius: 2px;
 }
 
-.jarvis .daily-label {
+html.sepho .daily-label {
   color: #6ee7ff;
   font-family: 'Share Tech Mono', ui-monospace, monospace;
 }
 
-.jarvis .daily-bullet {
+html.sepho .daily-bullet {
   border-color: #6ee7ff;
   border-radius: 2px;
 }
 
-.jarvis .daily-bullet[data-on='true'] {
+html.sepho .daily-bullet[data-on='true'] {
   background: #6ee7ff;
   box-shadow: inset 0 0 0 3px #041018;
 }
 
-.jarvis .daily-blessings input {
+html.sepho .daily-blessings input,
+html.sepho .daily-affirm {
   color: #d4f6ff;
   border-bottom-color: rgba(110, 231, 255, 0.35);
 }
 
-.jarvis .check[data-on='true'] {
+html.sepho .check[data-on='true'] {
   background: #6ee7ff;
   border-color: #6ee7ff;
   color: #041018;
 }
 
-.jarvis .input {
+html.sepho .input,
+html.sepho .textarea,
+html.sepho .select {
   background: rgba(0, 20, 32, 0.6);
   border-color: rgba(110, 231, 255, 0.35);
   color: #d4f6ff;
-  border-radius: 2px;
 }
 
-.jarvis .input:focus {
+html.sepho .input:focus,
+html.sepho .textarea:focus,
+html.sepho .select:focus {
   border-color: #6ee7ff;
   box-shadow: 0 0 0 3px rgba(110, 231, 255, 0.15);
+}
+
+html.sepho .daily-page,
+html.sepho .daily-box {
+  background: rgba(4, 16, 26, 0.55);
+  border-color: rgba(110, 231, 255, 0.28);
 }
 
 .today-page {
@@ -1306,10 +1379,6 @@ html.matrix-gate body {
 }
 
 @media (max-width: 860px) {
-  .jarvis {
-    margin: -18px -16px -96px;
-    padding: 18px 16px 96px;
-  }
   .today-ledger {
     grid-template-columns: 1fr;
   }

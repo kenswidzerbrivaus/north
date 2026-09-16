@@ -59,10 +59,19 @@ function Gate() {
   const theme = useResolvedTheme(state.settings.theme)
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme
+    const root = document.documentElement
     const meta = document.querySelector('meta[name="theme-color"]')
-    if (meta) meta.setAttribute('content', theme === 'dark' ? '#12100e' : '#efe8db')
-  }, [theme])
+    if (auth.authed) {
+      root.classList.add('sepho')
+      root.dataset.theme = 'dark'
+      meta?.setAttribute('content', '#05080e')
+    } else {
+      root.classList.remove('sepho')
+      root.dataset.theme = theme
+      meta?.setAttribute('content', theme === 'dark' ? '#12100e' : '#efe8db')
+    }
+    return () => root.classList.remove('sepho')
+  }, [auth.authed, theme])
 
   if (!auth.ready) return null
   if (!auth.authed) return <Login />
@@ -179,14 +188,15 @@ function Shell() {
 
   return (
     <div className="shell">
+      <div className="sepho-scan" aria-hidden />
       <aside className="sidebar">
         <a className="brand" href="#/today">
           <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden>
             <path d="M16 3 L18.4 13.6 L29 16 L18.4 18.4 L16 29 L13.6 18.4 L3 16 L13.6 13.6 Z" fill="var(--accent)" />
           </svg>
           <div>
-            <h1>North</h1>
-            <small>Your day, oriented</small>
+            <h1>Sepho</h1>
+            <small>Systems online</small>
           </div>
         </a>
         <nav className="nav" aria-label="Primary">
@@ -212,8 +222,8 @@ function Shell() {
 
       <main className="main">
         <div className="top-mobile">
-          <strong className="display" style={{ fontSize: 22, fontStyle: 'italic' }}>
-            North
+          <strong className="display" style={{ fontSize: 22 }}>
+            Sepho
           </strong>
           <div className="row">
             <button className="btn-icon" onClick={() => setCmd(true)} aria-label="Search">

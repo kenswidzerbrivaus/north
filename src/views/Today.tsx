@@ -9,7 +9,7 @@ import { useStore } from '../store'
 import { formatRemain, useTimer } from '../timer'
 import { MorningRoutine } from './MorningRoutine'
 
-function jarvisHello(name: string) {
+function sephoHello(name: string) {
   const h = new Date().getHours()
   const sir = name.trim() || 'sir'
   if (h < 5) return `Still online, ${sir}.`
@@ -64,14 +64,13 @@ export function Today({ go }: { go: (r: Route) => void }) {
   const habitsLeft = habits.filter((h) => !habitDone(h, state.habitLogs, today)).length
 
   return (
-    <div className="jarvis">
-      <div className="jarvis-scan" aria-hidden />
+    <div className="today-page">
       <header className="today-mast">
         <div>
-          <p className="jarvis-sys">
-            J.A.R.V.I.S. // {gcal.connected ? 'CAL.LINKED' : 'CAL.LOCAL'} // {timer.running ? 'FOCUS.LIVE' : 'FOCUS.IDLE'}
+          <p className="sepho-sys">
+            SEPHO // {gcal.connected ? 'CAL.LINKED' : 'CAL.LOCAL'} // {timer.running ? 'FOCUS.LIVE' : 'FOCUS.IDLE'}
           </p>
-          <p className="today-dow">{jarvisHello(state.settings.name)}</p>
+          <p className="today-dow">{sephoHello(state.settings.name)}</p>
           <div className="today-mast-row">
             <span className="today-num">{date.getDate()}</span>
             <span className="today-mon">
