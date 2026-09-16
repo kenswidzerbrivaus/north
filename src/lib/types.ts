@@ -40,6 +40,9 @@ export interface Task {
   subtasks: Subtask[]
   eventId?: string
   googleId?: string
+  blocked?: boolean
+  waitingOn?: string
+  decision?: boolean
 }
 
 export interface CalEvent {

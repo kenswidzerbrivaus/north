@@ -11,7 +11,7 @@ function fromEntry(e?: JournalEntry): Draft {
   }
 }
 
-export function MorningRoutine({ date }: { date: string }) {
+export function MorningRoutine({ date, compact }: { date: string; compact?: boolean }) {
   const { state, upsertJournal } = useStore()
   const entry = state.journal.find((j) => j.date === date)
   const [draft, setDraft] = useState<Draft>(() => fromEntry(entry))
@@ -35,24 +35,24 @@ export function MorningRoutine({ date }: { date: string }) {
   }
 
   return (
-    <article className="morning">
-      <div className="morning-rail">SEPHO</div>
+    <article className={`morning${compact ? ' is-compact' : ''}`}>
+      {compact ? null : <div className="morning-rail">SEPHO</div>}
       <div className="morning-body">
-        <div className="morning-banner">Morning protocol</div>
+        {compact ? null : <div className="morning-banner">Morning protocol</div>}
         <div className="morning-grid">
           <div className="morning-fields">
             <section className="morning-box">
-              <p className="daily-label">Short term goal</p>
+              <p className="daily-label">North star</p>
               <textarea
                 className="morning-goal"
                 rows={2}
-                placeholder="What you’re driving this season."
+                placeholder="Build ______"
                 value={draft.shortTermGoal}
                 onChange={(e) => setDraft({ ...draft, shortTermGoal: e.target.value })}
               />
             </section>
             <section className="morning-box">
-              <p className="daily-label">List the first three things you are going to do after you wake up to achieve small wins.</p>
+              <p className="daily-label">First three after waking</p>
               <ol className="daily-blessings">
                 {draft.morningWins.map((w, i) => (
                   <li key={i}>
