@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   clearToken,
   createGoogleEvent,
@@ -20,7 +20,7 @@ type GCal = {
   error: string
   connect: () => Promise<void>
   disconnect: () => void
-  refresh: (around?: Date) => Promise<void>
+  refresh: (around?: Date, force?: boolean) => Promise<void>
   saveToGoogle: (event: Omit<CalEvent, 'id' | 'color'> & { id?: string; color?: string; googleId?: string }) => Promise<CalEvent | null>
   removeFromGoogle: (googleId: string) => Promise<void>
 }
@@ -35,32 +35,53 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [connected, setConnected] = useState(false)
+  const rangeKey = useRef('')
 
   const refresh = useCallback(
-    async (around?: Date) => {
+    async (around?: Date, force = false) => {
+      const center = around ?? new Date()
+      const key = `${center.getFullYear()}-${center.getMonth()}`
+      if (!force && rangeKey.current === key && readToken()) return
       if (!readToken()) {
         setConnected(false)
         setEvents([])
         return
       }
+      rangeKey.current = key
       setLoading(true)
       setError('')
-      try {
-        const center = around ?? new Date()
+      const load = () => {
         const from = addDays(center, -40)
         const to = addDays(center, 70)
-        const items = await listGoogleEvents(from, to)
+        return listGoogleEvents(from, to)
+      }
+      try {
+        const items = await load()
         setEvents(items)
         setConnected(true)
         setEmail(readToken()?.email ?? '')
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not load Google Calendar')
+        rangeKey.current = ''
+        if (err instanceof Error && err.message === 'GOOGLE_AUTH' && clientId) {
+          try {
+            await requestGoogleToken(clientId, '')
+            rangeKey.current = key
+            const items = await load()
+            setEvents(items)
+            setConnected(true)
+            setEmail(readToken()?.email ?? '')
+            return
+          } catch {
+            rangeKey.current = ''
+          }
+        }
+        setError(err instanceof Error && err.message !== 'GOOGLE_AUTH' ? err.message : 'Google Calendar needs to reconnect')
         setConnected(Boolean(readToken()))
       } finally {
         setLoading(false)
       }
     },
-    [],
+    [clientId],
   )
 
   useEffect(() => {
@@ -82,7 +103,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       const token = await requestGoogleToken(clientId, readToken() ? '' : 'consent')
       setConnected(true)
       setEmail(token.email)
-      await refresh()
+      await refresh(undefined, true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Google sign-in was cancelled')
       setConnected(false)
@@ -93,6 +114,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
 
   const disconnect = useCallback(() => {
     clearToken()
+    rangeKey.current = ''
     setConnected(false)
     setEmail('')
     setEvents([])
@@ -104,7 +126,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       const saved = event.googleId
         ? await updateGoogleEvent(event.googleId, { ...event, title: event.title, date: event.date })
         : await createGoogleEvent(event)
-      await refresh()
+      await refresh(undefined, true)
       return saved
     },
     [refresh],
@@ -113,7 +135,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
   const removeFromGoogle = useCallback(
     async (googleId: string) => {
       await deleteGoogleEvent(googleId)
-      await refresh()
+      await refresh(undefined, true)
     },
     [refresh],
   )

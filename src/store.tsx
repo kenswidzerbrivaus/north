@@ -121,26 +121,72 @@ export function freshState(): State {
   }
 }
 
-function load(): State {
-  const base = freshState()
-  try {
-    const raw = localStorage.getItem(KEY)
-    if (!raw) return base
-    const parsed = JSON.parse(raw) as Partial<State>
-    return {
-      ...base,
-      ...parsed,
-      version: 1,
-      lists: parsed.lists?.length ? parsed.lists : base.lists,
-      settings: { ...base.settings, ...parsed.settings },
-    }
-  } catch {
-    return base
+function blankState(): State {
+  return {
+    version: 1,
+    lists: [
+      { id: 'inbox', name: 'Inbox', color: PALETTE[0] },
+      { id: 'work', name: 'Work', color: PALETTE[2] },
+      { id: 'personal', name: 'Personal', color: PALETTE[1] },
+    ],
+    tasks: [],
+    events: [],
+    habits: [],
+    habitLogs: [],
+    notes: [],
+    goals: [],
+    journal: [],
+    sessions: [],
+    settings: defaultSettings(),
   }
 }
 
+function load(): State {
+  try {
+    const raw = localStorage.getItem(KEY)
+    if (!raw) return freshState()
+    const parsed = JSON.parse(raw) as Partial<State>
+    if (!Array.isArray(parsed.lists) || !Array.isArray(parsed.tasks)) return freshState()
+    return {
+      ...blankState(),
+      ...parsed,
+      version: 1,
+      lists: parsed.lists.length ? parsed.lists : blankState().lists,
+      settings: { ...defaultSettings(), ...parsed.settings },
+    }
+  } catch {
+    return freshState()
+  }
+}
+
+let persistTimer = 0
+let pending: State | null = null
+
+function flushPersist() {
+  if (persistTimer) {
+    window.clearTimeout(persistTimer)
+    persistTimer = 0
+  }
+  if (!pending) return
+  try {
+    localStorage.setItem(KEY, JSON.stringify(pending))
+  } catch {
+    /* quota */
+  }
+  pending = null
+}
+
 function persist(state: State) {
-  localStorage.setItem(KEY, JSON.stringify(state))
+  pending = state
+  if (persistTimer) window.clearTimeout(persistTimer)
+  persistTimer = window.setTimeout(flushPersist, 250)
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', flushPersist)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) flushPersist()
+  })
 }
 
 export type Store = {

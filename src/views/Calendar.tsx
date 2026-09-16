@@ -33,10 +33,11 @@ export function Calendar() {
   const names = weekdayNames(weekStartsOn)
   const allEvents = useMemo(() => mergeCalendars(state.events, gcal.events), [gcal.events, state.events])
 
+  const year = cursor.getFullYear()
+  const month = cursor.getMonth()
   useEffect(() => {
-    if (gcal.connected) void gcal.refresh(cursor)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cursor.getFullYear(), cursor.getMonth(), gcal.connected])
+    if (gcal.connected) void gcal.refresh(new Date(year, month, 1))
+  }, [year, month, gcal.connected, gcal.refresh])
 
   const cells = useMemo(
     () => monthCells(cursor.getFullYear(), cursor.getMonth(), weekStartsOn),
@@ -67,8 +68,13 @@ export function Calendar() {
       if (draft.googleId && gcal.connected) {
         await gcal.saveToGoogle(payload)
       } else if (!draft.id && toGoogle && gcal.connected) {
-        const saved = await gcal.saveToGoogle(payload)
-        addEvent({ ...payload, googleId: saved?.googleId })
+        try {
+          const saved = await gcal.saveToGoogle(payload)
+          addEvent({ ...payload, googleId: saved?.googleId })
+        } catch (err) {
+          addEvent(payload)
+          throw err
+        }
       } else if (draft.id) {
         updateEvent(draft.id, payload)
         if (toGoogle && gcal.connected && !draft.googleId) {

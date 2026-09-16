@@ -126,6 +126,9 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
       ...(init?.headers ?? {}),
     },
   })
+  if (res.status === 401) {
+    throw new Error('GOOGLE_AUTH')
+  }
   if (!res.ok) {
     const text = await res.text()
     throw new Error(text.slice(0, 180) || `Google Calendar error ${res.status}`)
@@ -143,38 +146,39 @@ function localDateTime(date: string, time: string) {
   return { dateTime: `${date}T${time}:00`, timeZone: tz }
 }
 
-export function fromGoogleEvent(item: GEvent): CalEvent | null {
-  if (!item.id) return null
+export function fromGoogleEvent(item: GEvent): CalEvent[] {
+  if (!item.id) return []
   const start = item.start
   const end = item.end
-  if (!start) return null
-  if (start.date) {
-    return {
-      id: `gcal:${item.id}`,
-      googleId: item.id,
-      title: item.summary || '(No title)',
-      notes: item.description ?? '',
-      date: start.date,
-      allDay: true,
-      color: GOOGLE_BLUE,
-      location: item.location ?? '',
-    }
-  }
-  if (!start.dateTime) return null
-  const s = new Date(start.dateTime)
-  const e = end?.dateTime ? new Date(end.dateTime) : undefined
-  return {
-    id: `gcal:${item.id}`,
+  if (!start) return []
+  const base = {
     googleId: item.id,
     title: item.summary || '(No title)',
     notes: item.description ?? '',
-    date: toISO(s),
-    start: hhmm(s),
-    end: e ? hhmm(e) : undefined,
-    allDay: false,
     color: GOOGLE_BLUE,
     location: item.location ?? '',
   }
+  if (start.date) {
+    const last = end?.date ?? toISO(addDays(parseISO(start.date), 1))
+    const days: CalEvent[] = []
+    for (let d = parseISO(start.date); toISO(d) < last; d = addDays(d, 1)) {
+      days.push({ ...base, id: `gcal:${item.id}:${toISO(d)}`, date: toISO(d), allDay: true })
+    }
+    return days.length ? days : [{ ...base, id: `gcal:${item.id}`, date: start.date, allDay: true }]
+  }
+  if (!start.dateTime) return []
+  const s = new Date(start.dateTime)
+  const e = end?.dateTime ? new Date(end.dateTime) : undefined
+  return [
+    {
+      ...base,
+      id: `gcal:${item.id}`,
+      date: toISO(s),
+      start: hhmm(s),
+      end: e ? hhmm(e) : undefined,
+      allDay: false,
+    },
+  ]
 }
 
 function toGoogleBody(event: Pick<CalEvent, 'title' | 'notes' | 'date' | 'start' | 'end' | 'allDay' | 'location'>) {
@@ -194,15 +198,23 @@ function toGoogleBody(event: Pick<CalEvent, 'title' | 'notes' | 'date' | 'start'
 }
 
 export async function listGoogleEvents(timeMin: Date, timeMax: Date): Promise<CalEvent[]> {
-  const params = new URLSearchParams({
-    timeMin: timeMin.toISOString(),
-    timeMax: timeMax.toISOString(),
-    singleEvents: 'true',
-    orderBy: 'startTime',
-    maxResults: '250',
-  })
-  const data = await api<{ items?: GEvent[] }>(`/calendars/primary/events?${params}`)
-  return (data.items ?? []).map(fromGoogleEvent).filter((e): e is CalEvent => Boolean(e))
+  const out: CalEvent[] = []
+  let pageToken = ''
+  for (let i = 0; i < 4; i++) {
+    const params = new URLSearchParams({
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
+      singleEvents: 'true',
+      orderBy: 'startTime',
+      maxResults: '250',
+    })
+    if (pageToken) params.set('pageToken', pageToken)
+    const data = await api<{ items?: GEvent[]; nextPageToken?: string }>(`/calendars/primary/events?${params}`)
+    out.push(...(data.items ?? []).flatMap(fromGoogleEvent))
+    if (!data.nextPageToken) break
+    pageToken = data.nextPageToken
+  }
+  return out
 }
 
 export async function createGoogleEvent(event: Omit<CalEvent, 'id' | 'color'> & { color?: string }) {
@@ -210,7 +222,7 @@ export async function createGoogleEvent(event: Omit<CalEvent, 'id' | 'color'> & 
     method: 'POST',
     body: JSON.stringify(toGoogleBody(event)),
   })
-  return fromGoogleEvent(created)
+  return fromGoogleEvent(created)[0] ?? null
 }
 
 export async function updateGoogleEvent(googleId: string, event: Partial<CalEvent> & Pick<CalEvent, 'title' | 'date'>) {
@@ -226,7 +238,7 @@ export async function updateGoogleEvent(googleId: string, event: Partial<CalEven
       location: event.location ?? '',
     })),
   })
-  return fromGoogleEvent(created)
+  return fromGoogleEvent(created)[0] ?? null
 }
 
 export async function deleteGoogleEvent(googleId: string) {

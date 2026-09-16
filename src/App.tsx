@@ -1,21 +1,23 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { AuthProvider, useAuth } from './auth/auth'
 import { GoogleCalendarProvider } from './google'
 import { Icon, type IconName } from './icons'
+import { todayISO } from './lib/dates'
 import { isTypingTarget, useRoute } from './lib/route'
 import { ROUTES, type Route } from './lib/types'
 import { StoreProvider, useStore } from './store'
-import { TimerProvider, useTimer } from './timer'
+import { TimerProvider, useTimerControls } from './timer'
 import { Login } from './views/Login'
-import { Calendar } from './views/Calendar'
-import { Focus } from './views/Focus'
-import { Goals } from './views/Goals'
-import { Habits } from './views/Habits'
-import { Journal } from './views/Journal'
-import { Notes } from './views/Notes'
-import { Settings } from './views/Settings'
-import { Tasks } from './views/Tasks'
-import { Today } from './views/Today'
+
+const Today = lazy(() => import('./views/Today').then((m) => ({ default: m.Today })))
+const Tasks = lazy(() => import('./views/Tasks').then((m) => ({ default: m.Tasks })))
+const Calendar = lazy(() => import('./views/Calendar').then((m) => ({ default: m.Calendar })))
+const Habits = lazy(() => import('./views/Habits').then((m) => ({ default: m.Habits })))
+const Focus = lazy(() => import('./views/Focus').then((m) => ({ default: m.Focus })))
+const Notes = lazy(() => import('./views/Notes').then((m) => ({ default: m.Notes })))
+const Goals = lazy(() => import('./views/Goals').then((m) => ({ default: m.Goals })))
+const Journal = lazy(() => import('./views/Journal').then((m) => ({ default: m.Journal })))
+const Settings = lazy(() => import('./views/Settings').then((m) => ({ default: m.Settings })))
 
 const NAV_ICON: Record<Route, IconName> = {
   today: 'today',
@@ -29,10 +31,15 @@ const NAV_ICON: Record<Route, IconName> = {
   settings: 'settings',
 }
 
-function resolvedTheme(mode: 'light' | 'dark' | 'system') {
-  if (mode === 'system') {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  }
+function useResolvedTheme(mode: 'light' | 'dark' | 'system') {
+  const [sysDark, setSysDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const on = () => setSysDark(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  if (mode === 'system') return sysDark ? 'dark' : 'light'
   return mode
 }
 
@@ -49,7 +56,7 @@ export default function App() {
 function Gate() {
   const auth = useAuth()
   const { state } = useStore()
-  const theme = resolvedTheme(state.settings.theme)
+  const theme = useResolvedTheme(state.settings.theme)
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -71,7 +78,7 @@ function Gate() {
 function Shell() {
   const { state, addTask, addNote, addEvent } = useStore()
   const { signOut } = useAuth()
-  const { running, start, pause } = useTimer()
+  const { running, start, pause } = useTimerControls()
   const [route, go] = useRoute()
   const [cmd, setCmd] = useState(false)
   const [more, setMore] = useState(false)
@@ -107,7 +114,7 @@ function Shell() {
         } else if (route === 'notes') addNote()
         else if (route === 'calendar') {
           const title = prompt('New event')
-          if (title?.trim()) addEvent({ title: title.trim(), date: new Date().toISOString().slice(0, 10), allDay: true })
+          if (title?.trim()) addEvent({ title: title.trim(), date: todayISO(), allDay: true })
         }
       }
     }
@@ -116,6 +123,7 @@ function Shell() {
   }, [addEvent, addNote, addTask, cmd, go, pause, route, running, start])
 
   const results = useMemo(() => {
+    if (!cmd) return []
     const q = query.trim().toLowerCase()
     const items: { id: string; title: string; hint: string; run: () => void }[] = [
       ...ROUTES.map((r) => ({
@@ -151,7 +159,7 @@ function Shell() {
       }
     }
     return items.filter((i) => i.title.toLowerCase().includes(q) || i.hint.toLowerCase().includes(q)).slice(0, 18)
-  }, [addTask, go, query, state.events, state.notes, state.tasks])
+  }, [addTask, cmd, go, query, state.events, state.notes, state.tasks])
 
   useEffect(() => {
     setActive(0)
@@ -216,7 +224,7 @@ function Shell() {
             </button>
           </div>
         </div>
-        {view}
+        <Suspense fallback={<p className="muted">Loading…</p>}>{view}</Suspense>
       </main>
 
       <nav className="bottom-nav" aria-label="Mobile">

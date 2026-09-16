@@ -577,6 +577,7 @@ form.row .input {
   border-bottom: 1px dashed var(--line);
   background: transparent;
   position: relative;
+  overflow: visible;
 }
 
 .event-block {
@@ -590,6 +591,7 @@ form.row .input {
   text-align: left;
   border: 0;
   color: var(--ink);
+  z-index: 2;
 }
 
 .habit-card h3 {

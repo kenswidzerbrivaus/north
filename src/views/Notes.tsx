@@ -17,12 +17,12 @@ export function Notes() {
   }, [note?.id, note?.title, note?.body])
 
   useEffect(() => {
-    if (!note) return
-    const t = window.setTimeout(() => {
-      if (title !== note.title || body !== note.body) updateNote(note.id, { title, body })
-    }, 280)
+    if (!id || !note || note.id !== id) return
+    if (title === note.title && body === note.body) return
+    const saveId = id
+    const t = window.setTimeout(() => updateNote(saveId, { title, body }), 400)
     return () => window.clearTimeout(t)
-  }, [body, note, title, updateNote])
+  }, [body, id, note, title, updateNote])
 
   const sorted = [...state.notes].sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt.localeCompare(a.updatedAt))
 

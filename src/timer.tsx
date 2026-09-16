@@ -31,7 +31,8 @@ type TimerApi = Live & {
   setTaskId: (id?: string) => void
 }
 
-const TimerCtx = createContext<TimerApi | null>(null)
+const TimerTickCtx = createContext(0)
+const TimerApiCtx = createContext<Omit<TimerApi, 'remaining'> | null>(null)
 
 function minutesFor(mode: TimerMode, s: { focusMinutes: number; shortBreak: number; longBreak: number }) {
   if (mode === 'focus') return s.focusMinutes
@@ -115,7 +116,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       }
     }
     tick()
-    const id = window.setInterval(tick, 250)
+    const id = window.setInterval(tick, 1000)
     return () => window.clearInterval(id)
   }, [running, complete])
 
@@ -156,11 +157,10 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     [applyMode],
   )
 
-  const value = useMemo<TimerApi>(
+  const api = useMemo(
     () => ({
       mode,
       running,
-      remaining,
       total,
       taskId,
       rounds,
@@ -171,16 +171,27 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       setMode,
       setTaskId,
     }),
-    [mode, pause, remaining, reset, rounds, running, setMode, skip, start, taskId, total],
+    [mode, pause, reset, rounds, running, setMode, skip, start, taskId, total],
   )
 
-  return <TimerCtx.Provider value={value}>{children}</TimerCtx.Provider>
+  return (
+    <TimerApiCtx.Provider value={api}>
+      <TimerTickCtx.Provider value={remaining}>{children}</TimerTickCtx.Provider>
+    </TimerApiCtx.Provider>
+  )
 }
 
 export function useTimer() {
-  const ctx = useContext(TimerCtx)
-  if (!ctx) throw new Error('useTimer must be used within TimerProvider')
-  return ctx
+  const api = useContext(TimerApiCtx)
+  const remaining = useContext(TimerTickCtx)
+  if (!api) throw new Error('useTimer must be used within TimerProvider')
+  return { ...api, remaining }
+}
+
+export function useTimerControls() {
+  const api = useContext(TimerApiCtx)
+  if (!api) throw new Error('useTimerControls must be used within TimerProvider')
+  return api
 }
 
 export function formatRemain(secs: number) {

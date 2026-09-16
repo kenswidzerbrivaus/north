@@ -91,7 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (username: string, password: string, remember: boolean) => {
     const fails = readFails()
-    if (fails.lockUntil > Date.now()) {
+    const locked = fails.lockUntil > Date.now()
+    if (locked) {
       setLockUntil(fails.lockUntil)
       return 'locked'
     }
@@ -99,7 +100,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const hash = await hashPassword(password)
     const passOk = timingEqual(hash, PASSWORD_HASH_HEX)
     if (!userOk || !passOk) {
-      const n = fails.n + 1
+      const prior = fails.lockUntil && fails.lockUntil <= Date.now() ? 0 : fails.n
+      const n = prior + 1
       const next = { n, lockUntil: n >= MAX_FAILS ? Date.now() + LOCK_MS : 0 }
       sessionStorage.setItem(FAIL_KEY, JSON.stringify(next))
       setLockUntil(next.lockUntil)

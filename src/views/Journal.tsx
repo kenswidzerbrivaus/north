@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { addDays, formatLong, monthCells, parseISO, toISO, todayISO, weekdayNames } from '../lib/dates'
 import { useStore } from '../store'
 
@@ -15,6 +15,17 @@ export function Journal() {
   const today = todayISO()
   const [date, setDate] = useState(today)
   const entry = state.journal.find((j) => j.date === date)
+  const [body, setBody] = useState(entry?.body ?? '')
+
+  useEffect(() => {
+    setBody(entry?.body ?? '')
+  }, [date, entry?.body])
+
+  useEffect(() => {
+    if (body === (entry?.body ?? '')) return
+    const t = window.setTimeout(() => upsertJournal(date, { body, mood: entry?.mood }), 400)
+    return () => window.clearTimeout(t)
+  }, [body, date, entry?.body, entry?.mood, upsertJournal])
   const cursor = parseISO(date)
   const cells = monthCells(cursor.getFullYear(), cursor.getMonth(), state.settings.weekStartsOn)
   const logged = new Set(state.journal.filter((j) => j.body.trim() || j.mood).map((j) => j.date))
@@ -68,7 +79,7 @@ export function Journal() {
               <button
                 key={m.n}
                 data-on={entry?.mood === m.n}
-                onClick={() => upsertJournal(date, { mood: m.n, body: entry?.body ?? '' })}
+                onClick={() => upsertJournal(date, { mood: m.n, body })}
               >
                 {m.label}
               </button>
@@ -78,8 +89,8 @@ export function Journal() {
             className="textarea"
             style={{ marginTop: 14, minHeight: 280 }}
             placeholder="What moved. What you noticed. What you’ll leave here."
-            value={entry?.body ?? ''}
-            onChange={(e) => upsertJournal(date, { body: e.target.value, mood: entry?.mood })}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
           />
         </section>
       </div>
