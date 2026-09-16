@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 const GLYPHS =
-  'ｦｧｨｩｪｫｬｭｮｯｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789<>*+-=:.¦'
+  'ｦｧｨｩｪｫｬｭｮｯｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789ABCDEFGHJKLMNPRSTUVWXYZ'
 
 function pick() {
   return GLYPHS[Math.floor(Math.random() * GLYPHS.length)] ?? '0'
@@ -9,7 +9,7 @@ function pick() {
 
 type Column = {
   y: number
-  speed: number
+  delay: number
   glyphs: string[]
 }
 
@@ -25,7 +25,8 @@ export function MatrixRain() {
     let raf = 0
     let running = true
     let cols: Column[] = []
-    let fontSize = 18
+    let fontSize = 16
+    let stepX = 18
     let last = 0
 
     const resize = () => {
@@ -35,67 +36,64 @@ export function MatrixRain() {
       canvas.width = Math.floor(w * dpr)
       canvas.height = Math.floor(h * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      fontSize = w < 700 ? 15 : 18
-      const count = Math.max(24, Math.ceil(w / fontSize))
-      const rows = Math.ceil(h / fontSize) + 18
+      ctx.imageSmoothingEnabled = false
+      fontSize = w < 700 ? 14 : 15
+      stepX = fontSize + 5
+      const count = Math.max(16, Math.ceil(w / stepX))
+      const rows = Math.ceil(h / fontSize) + 4
       cols = Array.from({ length: count }, () => ({
-        y: Math.random() * rows * -1,
-        speed: 0.45 + Math.random() * 1.15,
-        glyphs: Array.from({ length: 12 + Math.floor(Math.random() * 22) }, pick),
+        y: Math.floor(Math.random() * rows),
+        delay: Math.floor(Math.random() * 4),
+        glyphs: Array.from({ length: 16 + Math.floor(Math.random() * 12) }, pick),
       }))
       ctx.fillStyle = '#010301'
       ctx.fillRect(0, 0, w, h)
+      last = 0
     }
 
     const draw = (t: number) => {
       if (!running) return
       raf = requestAnimationFrame(draw)
       if (document.hidden) return
-      if (t - last < 32) return
+      if (t - last < 55) return
       last = t
 
       const w = canvas.clientWidth
       const h = canvas.clientHeight
-      ctx.fillStyle = 'rgba(0, 4, 0, 0.14)'
+      const rows = Math.ceil(h / fontSize)
+      ctx.fillStyle = 'rgba(0, 4, 0, 0.45)'
       ctx.fillRect(0, 0, w, h)
-      ctx.font = `${fontSize}px ui-monospace, "SF Mono", Menlo, Consolas, monospace`
-      ctx.textBaseline = 'top'
+      ctx.font = `${fontSize}px "Menlo", "Hiragino Kaku Gothic ProN", "Yu Gothic", "MS Gothic", Consolas, monospace`
+      ctx.textBaseline = 'middle'
+      ctx.textAlign = 'center'
+      ctx.shadowBlur = 0
 
       for (let i = 0; i < cols.length; i++) {
         const col = cols[i]
-        const x = i * fontSize
-        const head = col.y
+        const x = Math.round(i * stepX + stepX / 2)
 
         for (let tIdx = 0; tIdx < col.glyphs.length; tIdx++) {
-          const row = head - tIdx
-          const y = row * fontSize
-          if (y < -fontSize || y > h) continue
-          if (Math.random() > 0.96) col.glyphs[tIdx] = pick()
+          const row = col.y - tIdx
+          if (row < 0 || row > rows) continue
+          const y = Math.round(row * fontSize + fontSize / 2)
+          if (Math.random() > 0.985) col.glyphs[tIdx] = pick()
           const ch = col.glyphs[tIdx]
-          if (tIdx === 0) {
-            ctx.shadowColor = '#7cff9a'
-            ctx.shadowBlur = 10
-            ctx.fillStyle = '#e8ffe9'
-          } else if (tIdx < 3) {
-            ctx.shadowBlur = 4
-            ctx.shadowColor = '#00ff62'
-            ctx.fillStyle = '#5dff7a'
-          } else {
-            ctx.shadowBlur = 0
-            const fade = 1 - tIdx / col.glyphs.length
-            const g = Math.floor(70 + fade * 140)
-            ctx.fillStyle = `rgba(0, ${g}, ${Math.floor(20 + fade * 40)}, ${0.25 + fade * 0.75})`
-          }
+          const fade = 1 - tIdx / col.glyphs.length
+          if (tIdx === 0) ctx.fillStyle = '#f3fff4'
+          else if (tIdx === 1) ctx.fillStyle = '#b6ffc2'
+          else ctx.fillStyle = `rgba(80, ${Math.floor(160 + fade * 80)}, 90, ${0.7 + fade * 0.3})`
           ctx.fillText(ch, x, y)
         }
 
-        col.y += col.speed
-        if ((col.y - col.glyphs.length) * fontSize > h) {
-          if (Math.random() > 0.96) {
-            col.y = Math.random() * -24
-            col.speed = 0.45 + Math.random() * 1.15
-            col.glyphs = Array.from({ length: 12 + Math.floor(Math.random() * 22) }, pick)
-          }
+        if (col.delay > 0) {
+          col.delay -= 1
+          continue
+        }
+        col.y += 1
+        if (col.y - col.glyphs.length > rows) {
+          col.y = 0
+          col.delay = 2 + Math.floor(Math.random() * 10)
+          col.glyphs = Array.from({ length: 16 + Math.floor(Math.random() * 12) }, pick)
         }
       }
     }
