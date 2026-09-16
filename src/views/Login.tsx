@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/auth'
 import { Field } from '../components/ui'
+import { MatrixRain } from './MatrixRain'
 
 export function Login() {
   const { signIn, lockUntil } = useAuth()
@@ -10,6 +11,17 @@ export function Login() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [now, setNow] = useState(Date.now())
+
+  useEffect(() => {
+    document.documentElement.classList.add('matrix-gate')
+    const meta = document.querySelector('meta[name="theme-color"]')
+    const prev = meta?.getAttribute('content')
+    meta?.setAttribute('content', '#010301')
+    return () => {
+      document.documentElement.classList.remove('matrix-gate')
+      if (meta && prev) meta.setAttribute('content', prev)
+    }
+  }, [])
 
   useEffect(() => {
     if (lockUntil <= Date.now()) return
@@ -33,10 +45,12 @@ export function Login() {
 
   return (
     <div className="gate">
-      <form className="gate-card card" onSubmit={submit}>
+      <MatrixRain />
+      <div className="gate-veil" />
+      <form className="gate-card" onSubmit={submit}>
         <div className="brand" style={{ padding: 0, marginBottom: 8 }}>
           <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden>
-            <path d="M16 3 L18.4 13.6 L29 16 L18.4 18.4 L16 29 L13.6 18.4 L3 16 L13.6 13.6 Z" fill="var(--accent)" />
+            <path d="M16 3 L18.4 13.6 L29 16 L18.4 18.4 L16 29 L13.6 18.4 L3 16 L13.6 13.6 Z" fill="#39ff14" />
           </svg>
           <div>
             <h1>North</h1>
