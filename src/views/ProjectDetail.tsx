@@ -12,6 +12,7 @@ import {
   labelHealth,
   labelState,
   labelVelocity,
+  parseMilestoneLines,
   pendingDecisions,
   primaryBlocker,
   progressOf,
@@ -143,59 +144,75 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
             </div>
           </section>
 
-          <section className="hud-frame" style={{ padding: 16 }}>
+          <section className="hud-frame cpath-panel" style={{ padding: 16 }}>
             <p className="board-label">Critical path</p>
             <p className="muted">
               Variance {variance ? `-${variance} days` : '0'} · Projected {projected} · Original {project.deadline}
             </p>
-            <ol className="cpath">
-              {path.map((m, i) => (
-                <li key={m.id} className={`cpath-${m.status}`}>
-                  <span>{m.status === 'complete' ? '✓' : m.status === 'current' || m.status === 'blocked' ? '●' : '○'}</span>
-                  <div>
-                    <strong>{m.name}</strong>
-                    <span className="muted"> {m.owner}{m.plannedEnd ? ` · ${m.plannedEnd}` : ''}{m.dependsOn.length ? ` · waits on ${m.dependsOn.length}` : ''}{!depsReady(m, ms) && m.status !== 'complete' ? ' · deps open' : ''}</span>
-                    {m.status !== 'complete' && project.state !== 'complete' ? (
-                      <button className="chip" onClick={() => store.updateMilestone(m.id, { status: 'complete', actualEnd: todayISO() })}>
-                        Mark complete
-                      </button>
-                    ) : null}
-                    {ms.length > 1 && m.status !== 'complete' ? (
-                      <select
-                        className="select"
-                        style={{ width: 'auto', marginTop: 4 }}
-                        value=""
-                        onChange={(e) => {
-                          const dep = e.target.value
-                          if (!dep) return
-                          const next = m.dependsOn.includes(dep) ? m.dependsOn.filter((d) => d !== dep) : [...m.dependsOn, dep]
-                          store.updateMilestone(m.id, { dependsOn: next })
-                        }}
-                      >
-                        <option value="">Depends on…</option>
-                        {ms.filter((x) => x.id !== m.id).map((x) => (
-                          <option key={x.id} value={x.id}>
-                            {m.dependsOn.includes(x.id) ? '✓ ' : ''}
-                            {x.name}
-                          </option>
-                        ))}
-                      </select>
-                    ) : null}
-                  </div>
-                  {i < path.length - 1 ? <div className="cpath-line">↓</div> : null}
-                </li>
-              ))}
-            </ol>
+            {path.length === 0 ? (
+              <div className="cpath-empty">
+                <p className="kicker">No sequence defined</p>
+                <p>The critical path is the ordered chain of outcomes that must complete for this project to finish.</p>
+              </div>
+            ) : (
+              <ol className="cpath">
+                {path.map((m, i) => (
+                  <li key={m.id} className={`cpath-${m.status}`}>
+                    <span className="cpath-mark">{m.status === 'complete' ? '✓' : m.status === 'current' || m.status === 'blocked' ? '●' : '○'}</span>
+                    <div>
+                      <strong>{m.name}</strong>
+                      <span className="muted"> {m.owner}{m.plannedEnd ? ` · ${m.plannedEnd}` : ''}{m.dependsOn.length ? ` · waits on ${m.dependsOn.length}` : ''}{!depsReady(m, ms) && m.status !== 'complete' ? ' · deps open' : ''}</span>
+                      {m.status !== 'complete' && project.state !== 'complete' ? (
+                        <button className="chip" onClick={() => store.updateMilestone(m.id, { status: 'complete', actualEnd: todayISO() })}>
+                          Mark complete
+                        </button>
+                      ) : null}
+                      {ms.length > 1 && m.status !== 'complete' ? (
+                        <select
+                          className="select"
+                          style={{ width: 'auto', marginTop: 4 }}
+                          value=""
+                          onChange={(e) => {
+                            const dep = e.target.value
+                            if (!dep) return
+                            const next = m.dependsOn.includes(dep) ? m.dependsOn.filter((d) => d !== dep) : [...m.dependsOn, dep]
+                            store.updateMilestone(m.id, { dependsOn: next })
+                          }}
+                        >
+                          <option value="">Depends on…</option>
+                          {ms.filter((x) => x.id !== m.id).map((x) => (
+                            <option key={x.id} value={x.id}>
+                              {m.dependsOn.includes(x.id) ? '✓ ' : ''}
+                              {x.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : null}
+                    </div>
+                    {i < path.length - 1 ? <div className="cpath-line">↓</div> : null}
+                  </li>
+                ))}
+              </ol>
+            )}
             <form
-              className="row"
+              className="stack"
               onSubmit={(e) => {
                 e.preventDefault()
-                if (!addMs.trim()) return
-                store.addMilestone(project.id, addMs.trim())
+                const names = parseMilestoneLines(addMs)
+                if (!names.length) return
+                store.addMilestones(project.id, names)
                 setAddMs('')
               }}
             >
-              <input className="input" value={addMs} onChange={(e) => setAddMs(e.target.value)} placeholder="Add milestone" />
+              <textarea
+                className="textarea"
+                value={addMs}
+                onChange={(e) => setAddMs(e.target.value)}
+                placeholder={path.length ? 'Add next milestone (or several, one per line)' : 'Secure Financing\nPurchase Truck\nInsurance'}
+              />
+              <button className="btn" type="submit">
+                {path.length ? 'Add to path' : 'Build critical path'}
+              </button>
             </form>
           </section>
 

@@ -13,6 +13,7 @@ import {
   labelState,
   labelVelocity,
   nextMilestone,
+  parseMilestoneLines,
   pendingDecisions,
   portfolioIntel,
   velocityOf,
@@ -23,7 +24,7 @@ import { ProjectDetail } from './ProjectDetail'
 type Filter = 'all' | 'active' | 'at_risk' | 'blocked' | 'backlog' | 'complete'
 
 export function Projects() {
-  const { state, addProject, addMilestone, updateProject } = useStore()
+  const { state, addProject, addMilestones, updateProject } = useStore()
   const [filter, setFilter] = useState<Filter>('all')
   const [company, setCompany] = useState('all')
   const [owner, setOwner] = useState('all')
@@ -316,7 +317,7 @@ export function Projects() {
             location.hash = `#/projects/${id}`
           }}
           addProject={addProject}
-          addMilestone={addMilestone}
+          addMilestones={addMilestones}
           ownerDefault={state.settings.name || 'Kens'}
           goals={state.goals}
           overrideCapacity={overrideCap}
@@ -380,7 +381,7 @@ function CreateProject({
   onClose,
   onCreate,
   addProject,
-  addMilestone,
+  addMilestones,
   ownerDefault,
   goals,
   overrideCapacity,
@@ -388,7 +389,7 @@ function CreateProject({
   onClose: () => void
   onCreate: (id: string) => void
   addProject: ReturnType<typeof useStore>['addProject']
-  addMilestone: ReturnType<typeof useStore>['addMilestone']
+  addMilestones: ReturnType<typeof useStore>['addMilestones']
   ownerDefault: string
   goals: { id: string; title: string }[]
   overrideCapacity?: boolean
@@ -432,6 +433,7 @@ function CreateProject({
     const objective = read('objective')
     const definitionOfDone = read('definitionOfDone')
     const successMetric = read('successMetric')
+    const pathNames = parseMilestoneLines(read('milestones'))
     const blank = [
       !name && 'Project name',
       !owner && 'Accountable owner',
@@ -439,6 +441,7 @@ function CreateProject({
       !objective && 'Objective',
       !definitionOfDone && 'Definition of done',
       !successMetric && 'Success metric',
+      !pathNames.length && 'Critical path (at least one milestone)',
     ].filter(Boolean) as string[]
     if (blank.length) {
       setMissing(blank)
@@ -480,13 +483,7 @@ function CreateProject({
       setMissing(['Active project capacity reached. Pause or complete a project first.'])
       return
     }
-    read('milestones')
-      .split('\n')
-      .map((l) => l.trim())
-      .filter(Boolean)
-      .forEach((ms, i) => {
-        addMilestone(result, ms, { sortOrder: i, status: i === 0 ? 'current' : 'upcoming', criticalPath: true })
-      })
+    addMilestones(result, pathNames)
     onCreate(result)
   }
   return (
@@ -538,6 +535,26 @@ function CreateProject({
         <Field label="Success metric *">
           <input className="input" required autoComplete="off" {...bind('successMetric')} />
         </Field>
+        <Field label="Critical path *">
+          <textarea
+            className="textarea"
+            required
+            {...bind('milestones')}
+            placeholder={'Secure Financing\nPurchase Truck\nInsurance\nDriver Onboarding\nFirst Paid Load'}
+          />
+          <span className="muted">One milestone per line. This becomes the project’s execution sequence.</span>
+          {parseMilestoneLines(form.milestones).length ? (
+            <ol className="cpath cpath-preview">
+              {parseMilestoneLines(form.milestones).map((n, i, arr) => (
+                <li key={`${n}-${i}`}>
+                  <span>{i === 0 ? '●' : '○'}</span>
+                  <strong>{n}</strong>
+                  {i < arr.length - 1 ? <div className="cpath-line">↓</div> : null}
+                </li>
+              ))}
+            </ol>
+          ) : null}
+        </Field>
         <Field label="Why this exists">
           <textarea className="textarea" {...bind('why')} />
         </Field>
@@ -556,9 +573,6 @@ function CreateProject({
         </Field>
         <Field label="Kill / pivot condition">
           <textarea className="textarea" {...bind('killPivot')} />
-        </Field>
-        <Field label="Initial milestones (one per line)">
-          <textarea className="textarea" {...bind('milestones')} placeholder="Secure Financing&#10;Purchase Truck" />
         </Field>
         <Field label="Linked goal">
           <select className="select" {...bind('goalId')}>

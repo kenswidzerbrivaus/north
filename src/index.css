@@ -1489,23 +1489,57 @@ html.sepho .daily-box {
   gap: 12px;
 }
 
+.cpath-panel {
+  border-color: rgba(110, 231, 255, 0.55);
+}
+
 .cpath {
   list-style: none;
-  margin: 0;
+  margin: 10px 0 14px;
   padding: 0;
 }
 
 .cpath li {
   display: grid;
-  grid-template-columns: 22px 1fr;
+  grid-template-columns: 28px 1fr;
   gap: 8px;
-  padding: 6px 0;
+  padding: 8px 0 2px;
+  align-items: start;
+}
+
+.cpath-mark {
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  color: #6ee7ff;
+  text-align: center;
+}
+
+.cpath-current .cpath-mark,
+.cpath-blocked .cpath-mark {
+  color: #ffb347;
+}
+
+.cpath-complete .cpath-mark {
+  color: #4fd2a5;
 }
 
 .cpath-line {
   grid-column: 1;
   color: #6ee7ff;
   text-align: center;
+  line-height: 1;
+  padding: 2px 0 4px;
+}
+
+.cpath-preview {
+  margin-top: 8px;
+}
+
+.cpath-empty {
+  padding: 12px 0 8px;
+}
+
+.cpath-empty p {
+  margin: 0 0 8px;
 }
 
 @media (max-width: 980px) {

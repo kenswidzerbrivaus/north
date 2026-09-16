@@ -272,6 +272,7 @@ export type Store = {
   addProject: (input: Partial<Project> & { name: string; owner: string; deadline: string; objective: string; definitionOfDone: string; successMetric: string }, opts?: { overrideCapacity?: boolean }) => string | { error: 'capacity' }
   updateProject: (id: string, patch: Partial<Project>) => void
   addMilestone: (projectId: string, name: string, extra?: Partial<ProjectMilestone>) => string
+  addMilestones: (projectId: string, names: string[]) => void
   updateMilestone: (id: string, patch: Partial<ProjectMilestone>) => void
   addWorkstream: (projectId: string, name: string, owner: string) => string
   addDecision: (input: Partial<ProjectDecision> & { projectId: string; title: string; owner: string }) => string
@@ -798,6 +799,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }
         })
         return id
+      },
+      addMilestones: (projectId, names) => {
+        const clean = names.map((n) => n.trim()).filter(Boolean)
+        if (!clean.length) return
+        patch((s) => {
+          const existing = s.milestones.filter((m) => m.projectId === projectId).sort((a, b) => a.sortOrder - b.sortOrder)
+          const owner = s.projects.find((p) => p.id === projectId)?.owner ?? ''
+          let prevId = existing.at(-1)?.id
+          const added = clean.map((name, i) => {
+            const id = uid()
+            const sortOrder = existing.length + i
+            const row: ProjectMilestone = {
+              id,
+              projectId,
+              name,
+              owner,
+              status: existing.length === 0 && i === 0 ? 'current' : 'upcoming',
+              criticalPath: true,
+              sortOrder,
+              notes: '',
+              dependsOn: prevId ? [prevId] : [],
+            }
+            prevId = id
+            return row
+          })
+          return {
+            ...s,
+            milestones: [...s.milestones, ...added],
+            projectActivity: [
+              { id: uid(), projectId, type: 'milestone', description: `Critical path updated (+${added.length}).`, createdAt: nowISO() },
+              ...s.projectActivity,
+            ],
+          }
+        })
       },
       updateMilestone: (id, next) =>
         patch((s) => {

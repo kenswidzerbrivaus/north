@@ -214,6 +214,13 @@ export function bar(pct: number) {
   return '█'.repeat(n) + '░'.repeat(10 - n)
 }
 
+export function parseMilestoneLines(raw: string) {
+  return raw
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*(?:\d+[.)]\s*|[-*•]\s*)/, '').trim())
+    .filter(Boolean)
+}
+
 export function depsReady(m: ProjectMilestone, all: ProjectMilestone[]) {
   return m.dependsOn.every((id) => all.find((x) => x.id === id)?.status === 'complete')
 }
