@@ -78,7 +78,7 @@ function Gate() {
 function Shell() {
   const { state, addTask, addNote, addEvent } = useStore()
   const { signOut } = useAuth()
-  const { running, start, pause } = useTimerControls()
+  const { running, start, pause, alert, dismissAlert } = useTimerControls()
   const [route, go] = useRoute()
   const [cmd, setCmd] = useState(false)
   const [more, setMore] = useState(false)
@@ -264,6 +264,23 @@ function Shell() {
                 Sign out
               </button>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {alert ? (
+        <div className="timer-alert" role="alertdialog" aria-modal="true" aria-label="Timer finished">
+          <div className="timer-alert-card">
+            <p className="kicker">Time’s up</p>
+            <h2>{alert.finished === 'focus' ? 'Focus session complete' : 'Break over'}</h2>
+            <p className="muted">
+              {alert.finished === 'focus'
+                ? `Take a ${alert.next === 'long' ? 'long' : 'short'} break.`
+                : 'Ready for another focus block.'}
+            </p>
+            <button className="btn" onClick={dismissAlert}>
+              Got it
+            </button>
           </div>
         </div>
       ) : null}

@@ -257,6 +257,49 @@ form.row .input {
   gap: 12px;
 }
 
+.timer-alert {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--accent) 28%, rgba(10, 6, 4, 0.72));
+  animation: timer-pulse 1.1s ease-in-out infinite;
+}
+
+.timer-alert-card {
+  width: min(420px, 100%);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 28px 24px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.timer-alert-card h2 {
+  font-size: 32px;
+}
+
+.timer-alert-card .btn {
+  margin-top: 8px;
+}
+
+@keyframes timer-pulse {
+  0%,
+  100% {
+    background: color-mix(in srgb, var(--accent) 22%, rgba(10, 6, 4, 0.7));
+  }
+  50% {
+    background: color-mix(in srgb, var(--accent) 48%, rgba(10, 6, 4, 0.55));
+  }
+}
+
 .card {
   background: var(--paper);
   border: 1px solid var(--line);

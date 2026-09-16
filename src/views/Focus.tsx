@@ -1,7 +1,6 @@
 import { Field } from '../components/ui'
 import { Icon } from '../icons'
 import { formatMedium, todayISO } from '../lib/dates'
-import { requestNotify } from '../lib/sound'
 import { useStore } from '../store'
 import { formatRemain, useTimer } from '../timer'
 
@@ -125,7 +124,6 @@ export function Focus() {
             <button
               className="btn"
               onClick={() => {
-                requestNotify()
                 timer.running ? timer.pause() : timer.start()
               }}
             >

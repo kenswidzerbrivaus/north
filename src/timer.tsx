@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { nowISO } from './lib/id'
-import { chime, notify } from './lib/sound'
+import { notify, requestNotify, startAlarm, stopAlarm, warmAudio } from './lib/sound'
 import type { TimerMode } from './lib/types'
 import { useStore } from './store'
 
@@ -22,6 +22,8 @@ type Live = {
   rounds: number
 }
 
+type Alert = { finished: TimerMode; next: TimerMode }
+
 type TimerApi = Live & {
   start: () => void
   pause: () => void
@@ -29,6 +31,8 @@ type TimerApi = Live & {
   skip: () => void
   setMode: (mode: TimerMode) => void
   setTaskId: (id?: string) => void
+  alert: Alert | null
+  dismissAlert: () => void
 }
 
 const TimerTickCtx = createContext(0)
@@ -49,6 +53,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const [total, setTotal] = useState(settings.focusMinutes * 60)
   const [taskId, setTaskId] = useState<string | undefined>()
   const [rounds, setRounds] = useState(0)
+  const [alert, setAlert] = useState<Alert | null>(null)
   const endsAt = useRef<number | null>(null)
   const startedAt = useRef<string | null>(null)
   const completing = useRef(false)
@@ -88,17 +93,14 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       taskId,
       completed: true,
     })
-    if (s.sound) chime()
+    const next: TimerMode =
+      mode === 'focus' ? ((rounds + 1) % s.roundsUntilLong === 0 ? 'long' : 'short') : 'focus'
+    if (mode === 'focus') setRounds((n) => n + 1)
+    applyMode(next, mode === 'focus' ? s.autoBreaks : false)
+    setAlert({ finished: mode, next })
+    if (s.sound) startAlarm()
     const label = mode === 'focus' ? 'Focus session complete' : 'Break over'
     notify(label, mode === 'focus' ? 'Time for a pause.' : 'Ready when you are.')
-    if (mode === 'focus') {
-      const nextRounds = rounds + 1
-      setRounds(nextRounds)
-      const next: TimerMode = nextRounds % s.roundsUntilLong === 0 ? 'long' : 'short'
-      applyMode(next, s.autoBreaks)
-    } else {
-      applyMode('focus', false)
-    }
     window.setTimeout(() => {
       completing.current = false
     }, 400)
@@ -120,8 +122,17 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(id)
   }, [running, complete])
 
+  const dismissAlert = useCallback(() => {
+    stopAlarm()
+    setAlert(null)
+  }, [])
+
   const start = useCallback(() => {
     if (remaining <= 0) return
+    stopAlarm()
+    setAlert(null)
+    warmAudio()
+    requestNotify()
     endsAt.current = Date.now() + remaining * 1000
     if (!startedAt.current) startedAt.current = nowISO()
     setRunning(true)
@@ -136,10 +147,14 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const reset = useCallback(() => {
+    stopAlarm()
+    setAlert(null)
     applyMode(mode, false)
   }, [applyMode, mode])
 
   const skip = useCallback(() => {
+    stopAlarm()
+    setAlert(null)
     setRunning(false)
     if (mode === 'focus') {
       const next: TimerMode = (rounds + 1) % settingsRef.current.roundsUntilLong === 0 ? 'long' : 'short'
@@ -170,8 +185,10 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       skip,
       setMode,
       setTaskId,
+      alert,
+      dismissAlert,
     }),
-    [mode, pause, reset, rounds, running, setMode, skip, start, taskId, total],
+    [alert, dismissAlert, mode, pause, reset, rounds, running, setMode, skip, start, taskId, total],
   )
 
   return (
