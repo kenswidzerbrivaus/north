@@ -599,6 +599,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                   actionsToday: '',
                   actionsTomorrow: '',
                   affirmation: '',
+                  shortTermGoal: '',
+                  morningWins: ['', '', ''],
                   updatedAt: nowISO(),
                   ...next,
                 },

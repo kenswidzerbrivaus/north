@@ -103,6 +103,8 @@ export interface JournalEntry {
   actionsToday: string
   actionsTomorrow: string
   affirmation: string
+  shortTermGoal: string
+  morningWins: [string, string, string]
 }
 
 export interface FocusSession {

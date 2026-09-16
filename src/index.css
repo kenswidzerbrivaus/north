@@ -909,6 +909,103 @@ html.matrix-gate body {
   word-break: break-all;
 }
 
+.morning {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  min-height: 280px;
+}
+
+.morning-rail {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  display: grid;
+  place-items: center;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 16px 0;
+}
+
+.morning-banner {
+  background: var(--ink);
+  color: var(--paper);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-size: 22px;
+  font-weight: 700;
+  padding: 14px 22px;
+}
+
+.morning-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 20px;
+  padding: 22px;
+  align-items: stretch;
+}
+
+.morning-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.morning-box {
+  border: 1px solid var(--line-strong);
+  padding: 14px 16px 12px;
+}
+
+.morning-goal {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  resize: vertical;
+  min-height: 72px;
+  outline: none;
+  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.morning-mark {
+  margin: 0;
+  align-self: end;
+  font-size: clamp(42px, 7vw, 72px);
+  line-height: 0.88;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 8px;
+  color: var(--ink);
+}
+
+@media (max-width: 760px) {
+  .morning {
+    grid-template-columns: 1fr;
+  }
+  .morning-rail {
+    writing-mode: horizontal-tb;
+    transform: none;
+    padding: 8px 12px;
+    letter-spacing: 0.2em;
+  }
+  .morning-grid {
+    grid-template-columns: 1fr;
+  }
+  .morning-mark {
+    text-align: right;
+    font-size: 48px;
+  }
+}
+
 .daily-page {
   background: var(--paper);
   border: 1px solid var(--line);

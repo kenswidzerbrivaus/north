@@ -6,7 +6,7 @@ import { mergeCalendars, useGoogleCalendar } from '../google'
 import type { Route } from '../lib/types'
 import { useStore } from '../store'
 import { formatRemain, useTimer } from '../timer'
-import { DailyUpdate } from './DailyUpdate'
+import { MorningRoutine } from './MorningRoutine'
 
 export function Today({ go }: { go: (r: Route) => void }) {
   const { state, toggleTask, setHabitCount } = useStore()
@@ -61,7 +61,7 @@ export function Today({ go }: { go: (r: Route) => void }) {
       </div>
 
       <div style={{ marginBottom: 22 }}>
-        <DailyUpdate date={today} />
+        <MorningRoutine date={today} />
       </div>
 
       <div className="grid-2">
