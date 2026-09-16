@@ -33,6 +33,8 @@ const defaultSettings = (): Settings => ({
   roundsUntilLong: 4,
   sound: true,
   autoBreaks: true,
+  googleClientId: '',
+  pushToGoogle: true,
 })
 
 export function freshState(): State {

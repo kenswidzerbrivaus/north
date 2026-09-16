@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AuthProvider, useAuth } from './auth/auth'
+import { GoogleCalendarProvider } from './google'
 import { Icon, type IconName } from './icons'
 import { isTypingTarget, useRoute } from './lib/route'
 import { ROUTES, type Route } from './lib/types'
@@ -59,9 +60,11 @@ function Gate() {
   if (!auth.ready) return null
   if (!auth.authed) return <Login />
   return (
-    <TimerProvider>
-      <Shell />
-    </TimerProvider>
+    <GoogleCalendarProvider>
+      <TimerProvider>
+        <Shell />
+      </TimerProvider>
+    </GoogleCalendarProvider>
   )
 }
 

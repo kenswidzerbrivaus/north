@@ -3,18 +3,20 @@ import { Check, Empty } from '../components/ui'
 import { Icon } from '../icons'
 import { addDays, formatLong, formatTime, greeting, toISO, todayISO } from '../lib/dates'
 import { habitDone, isHabitDue } from '../lib/habits'
+import { mergeCalendars, useGoogleCalendar } from '../google'
 import type { Route } from '../lib/types'
 import { useStore } from '../store'
 import { formatRemain, useTimer } from '../timer'
 
 export function Today({ go }: { go: (r: Route) => void }) {
   const { state, toggleTask, setHabitCount } = useStore()
+  const gcal = useGoogleCalendar()
   const timer = useTimer()
   const today = todayISO()
   const due = state.tasks
     .filter((t) => !t.completed && t.due && t.due <= today)
     .sort((a, b) => (a.due === b.due ? b.priority - a.priority : (a.due ?? '').localeCompare(b.due ?? '')))
-  const events = state.events
+  const events = mergeCalendars(state.events, gcal.events)
     .filter((e) => e.date === today)
     .sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''))
   const habits = state.habits.filter((h) => !h.archived && isHabitDue(h, new Date()))

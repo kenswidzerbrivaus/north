@@ -29,6 +29,8 @@ const paths: Record<string, string> = {
   spark: 'M12 3l1.6 6.4L20 11l-6.4 1.6L12 19l-1.6-6.4L4 11l6.4-1.6L12 3z',
   inbox: 'M4 13h4l2 3h4l2-3h4v6H4v-6zm0 0 3-8h10l3 8',
   edit: 'M4 20h4l10-10-4-4L4 16v4zm11-15 4 4',
+  google:
+    'M12 11v2.8h4.6c-.2 1.2-1.4 3.4-4.6 3.4A5.1 5.1 0 1 1 12 6.9c1.3 0 2.2.5 2.7 1l1.9-1.8A8 8 0 1 0 12 20.1c4.6 0 7.6-3.2 7.6-7.7 0-.5 0-.9-.1-1.3H12z',
 }
 
 export function Icon({

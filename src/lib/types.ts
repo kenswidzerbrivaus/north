@@ -50,6 +50,7 @@ export interface CalEvent {
   allDay: boolean
   color: string
   location: string
+  googleId?: string
 }
 
 export interface Habit {
@@ -114,6 +115,8 @@ export interface Settings {
   roundsUntilLong: number
   sound: boolean
   autoBreaks: boolean
+  googleClientId: string
+  pushToGoogle: boolean
 }
 
 export interface State {

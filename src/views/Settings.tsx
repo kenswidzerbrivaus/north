@@ -1,13 +1,17 @@
 import { useState } from 'react'
 import { useAuth } from '../auth/auth'
+import { useGoogleCalendar } from '../google'
 import { Field } from '../components/ui'
+import { Icon } from '../icons'
 import { useStore } from '../store'
 
 export function Settings() {
   const { state, updateSettings, importState, resetState } = useStore()
   const { username, signOut } = useAuth()
+  const gcal = useGoogleCalendar()
   const s = state.settings
   const [msg, setMsg] = useState('')
+  const [showGoogleHelp, setShowGoogleHelp] = useState(!s.googleClientId)
 
   const exportBackup = () => {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })
@@ -105,6 +109,72 @@ export function Settings() {
             <input type="checkbox" checked={s.autoBreaks} onChange={(e) => updateSettings({ autoBreaks: e.target.checked })} />
             Auto-start breaks
           </label>
+        </section>
+
+        <section className="card stack">
+          <h2>Google Calendar</h2>
+          {gcal.connected ? (
+            <p className="muted">Linked as {gcal.email || 'Google'}. Events from your primary calendar show up in North.</p>
+          ) : (
+            <p className="muted">Link your primary Google Calendar to see those events here, and to save new North events back to Google.</p>
+          )}
+          <Field label="Google OAuth client ID">
+            <input
+              className="input"
+              value={s.googleClientId}
+              placeholder="xxxx.apps.googleusercontent.com"
+              onChange={(e) => updateSettings({ googleClientId: e.target.value.trim() })}
+              autoComplete="off"
+            />
+          </Field>
+          <label className="row">
+            <input
+              type="checkbox"
+              checked={s.pushToGoogle}
+              onChange={(e) => updateSettings({ pushToGoogle: e.target.checked })}
+            />
+            Save new events to Google by default
+          </label>
+          <div className="row">
+            {gcal.connected ? (
+              <>
+                <button className="btn" onClick={() => void gcal.refresh()} disabled={gcal.loading}>
+                  <Icon name="google" size={16} /> {gcal.loading ? 'Syncing…' : 'Sync now'}
+                </button>
+                <button className="btn-ghost" onClick={gcal.disconnect}>
+                  Disconnect
+                </button>
+              </>
+            ) : (
+              <button className="btn" onClick={() => void gcal.connect()} disabled={!s.googleClientId || gcal.loading}>
+                <Icon name="google" size={16} /> Connect Google Calendar
+              </button>
+            )}
+          </div>
+          {gcal.error ? <p className="gate-error">{gcal.error}</p> : null}
+          <button className="btn-ghost" onClick={() => setShowGoogleHelp((v) => !v)}>
+            {showGoogleHelp ? 'Hide setup steps' : 'How to get a client ID'}
+          </button>
+          {showGoogleHelp ? (
+            <ol className="muted" style={{ paddingLeft: 18, margin: 0, display: 'grid', gap: 6 }}>
+              <li>
+                Open{' '}
+                <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer">
+                  Google Cloud Credentials
+                </a>
+              </li>
+              <li>Create a project, then enable the <strong>Google Calendar API</strong>.</li>
+              <li>OAuth consent screen → External → add your Gmail as a test user.</li>
+              <li>
+                Create credentials → OAuth client ID → <strong>Web application</strong>.
+              </li>
+              <li>
+                Authorized JavaScript origins: <code>https://kenswidzerbrivaus.com</code>,{' '}
+                <code>http://localhost:5173</code>, <code>http://127.0.0.1:5173</code>
+              </li>
+              <li>Paste the client ID above, then click Connect.</li>
+            </ol>
+          ) : null}
         </section>
 
         <section className="card stack">

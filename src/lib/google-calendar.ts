@@ -1,0 +1,234 @@
+import { addDays, parseISO, toISO } from './dates'
+import type { CalEvent } from './types'
+
+export const GOOGLE_BLUE = '#4285f4'
+const SCOPE = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email'
+const TOKEN_KEY = 'north.gcal.token'
+
+type TokenBlob = { access: string; exp: number; email: string }
+
+type GEvent = {
+  id?: string
+  summary?: string
+  description?: string
+  location?: string
+  start?: { date?: string; dateTime?: string }
+  end?: { date?: string; dateTime?: string }
+}
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        oauth2: {
+          initTokenClient: (cfg: {
+            client_id: string
+            scope: string
+            callback: (resp: { access_token?: string; error?: string; expires_in?: string | number }) => void
+          }) => { requestAccessToken: (opts?: { prompt?: string }) => void }
+          revoke: (token: string, done?: () => void) => void
+        }
+      }
+    }
+  }
+}
+
+export function readToken(): TokenBlob | null {
+  try {
+    const raw = sessionStorage.getItem(TOKEN_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as TokenBlob
+    if (!parsed.access || parsed.exp < Date.now() + 15_000) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeToken(blob: TokenBlob) {
+  sessionStorage.setItem(TOKEN_KEY, JSON.stringify(blob))
+}
+
+export function clearToken() {
+  const t = readToken()
+  if (t && window.google?.accounts.oauth2.revoke) window.google.accounts.oauth2.revoke(t.access)
+  sessionStorage.removeItem(TOKEN_KEY)
+}
+
+function loadGis(): Promise<void> {
+  if (window.google?.accounts?.oauth2) return Promise.resolve()
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-gis]')
+    if (existing) {
+      existing.addEventListener('load', () => resolve())
+      existing.addEventListener('error', () => reject(new Error('Google sign-in failed to load')))
+      return
+    }
+    const s = document.createElement('script')
+    s.src = 'https://accounts.google.com/gsi/client'
+    s.async = true
+    s.dataset.gis = 'true'
+    s.onload = () => resolve()
+    s.onerror = () => reject(new Error('Google sign-in failed to load'))
+    document.head.appendChild(s)
+  })
+}
+
+export function requestGoogleToken(clientId: string, prompt: '' | 'consent' = 'consent'): Promise<TokenBlob> {
+  return loadGis().then(
+    () =>
+      new Promise((resolve, reject) => {
+        if (!window.google?.accounts.oauth2) {
+          reject(new Error('Google sign-in is unavailable'))
+          return
+        }
+        const client = window.google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: SCOPE,
+          callback: async (resp) => {
+            if (resp.error || !resp.access_token) {
+              reject(new Error(resp.error || 'Google permission was not granted'))
+              return
+            }
+            const seconds = Number(resp.expires_in ?? 3600)
+            const email = await fetchEmail(resp.access_token)
+            const blob = { access: resp.access_token, exp: Date.now() + seconds * 1000, email }
+            writeToken(blob)
+            resolve(blob)
+          },
+        })
+        client.requestAccessToken({ prompt })
+      }),
+  )
+}
+
+async function fetchEmail(access: string) {
+  try {
+    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${access}` },
+    })
+    if (!res.ok) return ''
+    const data = (await res.json()) as { email?: string }
+    return data.email ?? ''
+  } catch {
+    return ''
+  }
+}
+
+async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = readToken()
+  if (!token) throw new Error('Google Calendar is not connected')
+  const res = await fetch(`https://www.googleapis.com/calendar/v3${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${token.access}`,
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {}),
+    },
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(text.slice(0, 180) || `Google Calendar error ${res.status}`)
+  }
+  if (res.status === 204) return undefined as T
+  return res.json() as Promise<T>
+}
+
+function hhmm(d: Date) {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function localDateTime(date: string, time: string) {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+  return { dateTime: `${date}T${time}:00`, timeZone: tz }
+}
+
+export function fromGoogleEvent(item: GEvent): CalEvent | null {
+  if (!item.id) return null
+  const start = item.start
+  const end = item.end
+  if (!start) return null
+  if (start.date) {
+    return {
+      id: `gcal:${item.id}`,
+      googleId: item.id,
+      title: item.summary || '(No title)',
+      notes: item.description ?? '',
+      date: start.date,
+      allDay: true,
+      color: GOOGLE_BLUE,
+      location: item.location ?? '',
+    }
+  }
+  if (!start.dateTime) return null
+  const s = new Date(start.dateTime)
+  const e = end?.dateTime ? new Date(end.dateTime) : undefined
+  return {
+    id: `gcal:${item.id}`,
+    googleId: item.id,
+    title: item.summary || '(No title)',
+    notes: item.description ?? '',
+    date: toISO(s),
+    start: hhmm(s),
+    end: e ? hhmm(e) : undefined,
+    allDay: false,
+    color: GOOGLE_BLUE,
+    location: item.location ?? '',
+  }
+}
+
+function toGoogleBody(event: Pick<CalEvent, 'title' | 'notes' | 'date' | 'start' | 'end' | 'allDay' | 'location'>) {
+  const body: GEvent = {
+    summary: event.title,
+    description: event.notes || undefined,
+    location: event.location || undefined,
+  }
+  if (event.allDay || !event.start) {
+    body.start = { date: event.date }
+    body.end = { date: toISO(addDays(parseISO(event.date), 1)) }
+  } else {
+    body.start = localDateTime(event.date, event.start)
+    body.end = localDateTime(event.date, event.end || event.start)
+  }
+  return body
+}
+
+export async function listGoogleEvents(timeMin: Date, timeMax: Date): Promise<CalEvent[]> {
+  const params = new URLSearchParams({
+    timeMin: timeMin.toISOString(),
+    timeMax: timeMax.toISOString(),
+    singleEvents: 'true',
+    orderBy: 'startTime',
+    maxResults: '250',
+  })
+  const data = await api<{ items?: GEvent[] }>(`/calendars/primary/events?${params}`)
+  return (data.items ?? []).map(fromGoogleEvent).filter((e): e is CalEvent => Boolean(e))
+}
+
+export async function createGoogleEvent(event: Omit<CalEvent, 'id' | 'color'> & { color?: string }) {
+  const created = await api<GEvent>('/calendars/primary/events', {
+    method: 'POST',
+    body: JSON.stringify(toGoogleBody(event)),
+  })
+  return fromGoogleEvent(created)
+}
+
+export async function updateGoogleEvent(googleId: string, event: Partial<CalEvent> & Pick<CalEvent, 'title' | 'date'>) {
+  const created = await api<GEvent>(`/calendars/primary/events/${encodeURIComponent(googleId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(toGoogleBody({
+      title: event.title,
+      notes: event.notes ?? '',
+      date: event.date,
+      start: event.start,
+      end: event.end,
+      allDay: Boolean(event.allDay || !event.start),
+      location: event.location ?? '',
+    })),
+  })
+  return fromGoogleEvent(created)
+}
+
+export async function deleteGoogleEvent(googleId: string) {
+  await api(`/calendars/primary/events/${encodeURIComponent(googleId)}`, { method: 'DELETE' })
+}

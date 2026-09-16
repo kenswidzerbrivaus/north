@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { mergeCalendars, useGoogleCalendar } from '../google'
 import { ColorDots, Field, Modal } from '../components/ui'
 import { Icon } from '../icons'
 import {
@@ -21,12 +22,21 @@ const HOURS = Array.from({ length: 16 }, (_, i) => i + 6)
 
 export function Calendar() {
   const { state, addEvent, updateEvent, deleteEvent } = useStore()
+  const gcal = useGoogleCalendar()
   const weekStartsOn = state.settings.weekStartsOn
   const [cursor, setCursor] = useState(() => new Date())
   const [view, setView] = useState<View>('month')
   const [draft, setDraft] = useState<Partial<CalEvent> | null>(null)
+  const [toGoogle, setToGoogle] = useState(true)
+  const [busy, setBusy] = useState(false)
   const today = todayISO()
   const names = weekdayNames(weekStartsOn)
+  const allEvents = useMemo(() => mergeCalendars(state.events, gcal.events), [gcal.events, state.events])
+
+  useEffect(() => {
+    if (gcal.connected) void gcal.refresh(cursor)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cursor.getFullYear(), cursor.getMonth(), gcal.connected])
 
   const cells = useMemo(
     () => monthCells(cursor.getFullYear(), cursor.getMonth(), weekStartsOn),
@@ -36,29 +46,48 @@ export function Calendar() {
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const dayIso = toISO(cursor)
 
-  const eventsOn = (iso: string) => state.events.filter((e) => e.date === iso)
+  const eventsOn = (iso: string) => allEvents.filter((e) => e.date === iso)
   const tasksOn = (iso: string) => state.tasks.filter((t) => t.due === iso && !t.completed)
 
-  const save = () => {
-    if (!draft?.title?.trim() || !draft.date) return
-    if (draft.id) {
-      updateEvent(draft.id, draft)
-    } else {
-      addEvent({
-        title: draft.title,
-        date: draft.date,
-        start: draft.start,
-        end: draft.end,
-        allDay: Boolean(draft.allDay || !draft.start),
-        color: draft.color ?? PALETTE[2],
-        notes: draft.notes ?? '',
-        location: draft.location ?? '',
-      })
+  const save = async () => {
+    if (!draft?.title?.trim() || !draft.date || busy) return
+    const payload = {
+      title: draft.title.trim(),
+      date: draft.date,
+      start: draft.start,
+      end: draft.end,
+      allDay: Boolean(draft.allDay || !draft.start),
+      color: draft.color ?? PALETTE[2],
+      notes: draft.notes ?? '',
+      location: draft.location ?? '',
+      googleId: draft.googleId,
     }
-    setDraft(null)
+    setBusy(true)
+    try {
+      if (draft.googleId && gcal.connected) {
+        await gcal.saveToGoogle(payload)
+      } else if (!draft.id && toGoogle && gcal.connected) {
+        const saved = await gcal.saveToGoogle(payload)
+        addEvent({ ...payload, googleId: saved?.googleId })
+      } else if (draft.id) {
+        updateEvent(draft.id, payload)
+        if (toGoogle && gcal.connected && !draft.googleId) {
+          const saved = await gcal.saveToGoogle(payload)
+          if (saved?.googleId) updateEvent(draft.id, { googleId: saved.googleId })
+        }
+      } else {
+        addEvent(payload)
+      }
+      setDraft(null)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Could not save the event')
+    } finally {
+      setBusy(false)
+    }
   }
 
   const openNew = (date: string, start?: string) => {
+    setToGoogle(state.settings.pushToGoogle && gcal.connected)
     setDraft({
       title: '',
       date,
@@ -104,16 +133,40 @@ export function Calendar() {
           <textarea className="textarea" value={draft.notes ?? ''} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />
         </Field>
         <ColorDots colors={PALETTE} value={draft.color ?? PALETTE[2]} onChange={(color) => setDraft({ ...draft, color })} />
+        {gcal.connected ? (
+          draft.googleId ? (
+            <p className="muted">This event lives on Google Calendar.</p>
+          ) : (
+            <label className="row">
+              <input type="checkbox" checked={toGoogle} onChange={(e) => setToGoogle(e.target.checked)} />
+              Also add to Google Calendar
+            </label>
+          )
+        ) : null}
         <div className="row" style={{ justifyContent: 'space-between' }}>
           {draft.id ? (
-            <button className="btn-danger" onClick={() => { deleteEvent(draft.id!); setDraft(null) }}>
+            <button
+              className="btn-danger"
+              onClick={async () => {
+                if (draft.googleId && gcal.connected) {
+                  try {
+                    await gcal.removeFromGoogle(draft.googleId)
+                  } catch (err) {
+                    alert(err instanceof Error ? err.message : 'Could not delete from Google')
+                    return
+                  }
+                }
+                if (draft.id && !draft.id.startsWith('gcal:')) deleteEvent(draft.id)
+                setDraft(null)
+              }}
+            >
               Delete
             </button>
           ) : (
             <span />
           )}
-          <button className="btn" onClick={save}>
-            Save
+          <button className="btn" onClick={() => void save()} disabled={busy}>
+            {busy ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>
@@ -134,10 +187,23 @@ export function Calendar() {
           <p className="kicker">Time on a page</p>
           <h1>{view === 'day' ? cursor.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : monthName(cursor)}</h1>
         </div>
-        <button className="btn" onClick={() => openNew(dayIso)}>
-          <Icon name="plus" size={16} /> Event
-        </button>
+        <div className="row">
+          {gcal.connected ? (
+            <button className="btn-ghost" onClick={() => void gcal.refresh(cursor)} disabled={gcal.loading}>
+              <Icon name="google" size={16} /> {gcal.loading ? 'Syncing…' : 'Sync Google'}
+            </button>
+          ) : (
+            <button className="btn-ghost" onClick={() => void gcal.connect()}>
+              <Icon name="google" size={16} /> Link Google
+            </button>
+          )}
+          <button className="btn" onClick={() => openNew(dayIso)}>
+            <Icon name="plus" size={16} /> Event
+          </button>
+        </div>
       </header>
+      {gcal.error ? <p className="muted" style={{ marginTop: -12 }}>{gcal.error}</p> : null}
+      {gcal.connected && gcal.email ? <p className="muted" style={{ marginTop: -8 }}>Showing Google Calendar for {gcal.email}</p> : null}
 
       <div className="cal-toolbar">
         <div className="row">
@@ -201,7 +267,7 @@ export function Calendar() {
       {view === 'week' || view === 'day' ? (
         <WeekGrid
           days={view === 'day' ? [cursor] : weekDays}
-          events={state.events}
+          events={allEvents}
           onSlot={openNew}
           onEvent={(e) => setDraft({ ...e })}
         />
