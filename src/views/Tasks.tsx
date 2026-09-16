@@ -26,7 +26,11 @@ export function Tasks() {
       if (filter === 'done') return t.completed
       if (t.completed) return false
       if (filter === 'inbox') return t.listId === 'inbox' && !t.due
-      if (filter === 'today') return Boolean(t.due && t.due <= today)
+      if (filter === 'today') {
+        if (!t.due) return false
+        if (t.googleId || t.listId === 'calendar') return t.due === today
+        return t.due <= today
+      }
       if (filter === 'upcoming') return Boolean(t.due && t.due > today)
       return true
     })

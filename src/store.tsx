@@ -312,11 +312,18 @@ function linkExisting(s: State): State {
     used.push(color.toLowerCase())
     return { ...e, color }
   })
-  return syncTasksFromEvents({ ...s, events, tasks })
+  return pruneGoogleToToday(syncTasksFromEvents({ ...s, events, tasks }))
 }
 
-function syncTasksFromEvents(s: State, extra: CalEvent[] = []): State {
-  const events = extra.length ? [...s.events, ...extra] : s.events
+function pruneGoogleToToday(s: State): State {
+  const today = todayISO()
+  const tasks = s.tasks.filter((t) => !t.googleId || t.completed || t.due === today)
+  if (tasks.length === s.tasks.length) return s
+  return { ...s, tasks }
+}
+
+function syncTasksFromEvents(s: State, extra: CalEvent[] = [], onlyExtra = false): State {
+  const events = onlyExtra ? extra : extra.length ? [...s.events, ...extra] : s.events
   const lists = withCalendarList(s.lists)
   let tasks = s.tasks
   let changed = lists !== s.lists
@@ -515,7 +522,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             }),
           }
         }),
-      syncFromCalendar: (events) => patch((s) => syncTasksFromEvents(s, events)),
+      syncFromCalendar: (events) =>
+        patch((s) => {
+          const today = todayISO()
+          const todays = events.filter((e) => e.date === today)
+          const next = syncTasksFromEvents(s, todays, true)
+          const tasks = next.tasks.filter((t) => !t.googleId || t.completed || t.due === today)
+          if (tasks.length === next.tasks.length) return next
+          return { ...next, tasks }
+        }),
       dropGoogleItems: (googleId) =>
         patch((s) => ({
           ...s,

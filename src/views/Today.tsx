@@ -14,7 +14,11 @@ export function Today({ go }: { go: (r: Route) => void }) {
   const timer = useTimer()
   const today = todayISO()
   const due = state.tasks
-    .filter((t) => !t.completed && t.due && t.due <= today)
+    .filter((t) => {
+      if (t.completed || !t.due) return false
+      if (t.googleId || t.listId === 'calendar') return t.due === today
+      return t.due <= today
+    })
     .sort((a, b) => (a.due === b.due ? b.priority - a.priority : (a.due ?? '').localeCompare(b.due ?? '')))
   const nextEvent = mergeCalendars(state.events, gcal.events)
     .filter((e) => e.date === today)
