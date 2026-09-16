@@ -87,7 +87,14 @@ export function requestGoogleToken(clientId: string, prompt: '' | 'consent' = 'c
           scope: SCOPE,
           callback: async (resp) => {
             if (resp.error || !resp.access_token) {
-              reject(new Error(resp.error || 'Google permission was not granted'))
+              const denied = resp.error === 'access_denied'
+              reject(
+                new Error(
+                  denied
+                    ? 'Google blocked the app because it is still in Testing. In Google Cloud → OAuth consent screen → Test users, add kensbrivaus103@gmail.com, wait a minute, then Connect again with that same account.'
+                    : resp.error || 'Google permission was not granted',
+                ),
+              )
               return
             }
             const seconds = Number(resp.expires_in ?? 3600)

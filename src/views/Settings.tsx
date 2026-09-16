@@ -164,7 +164,17 @@ export function Settings() {
                 </a>
               </li>
               <li>Create a project, then enable the <strong>Google Calendar API</strong>.</li>
-              <li>OAuth consent screen → External → add your Gmail as a test user.</li>
+              <li>
+                Open{' '}
+                <a href="https://console.cloud.google.com/auth/audience" target="_blank" rel="noreferrer">
+                  OAuth consent / Audience
+                </a>
+                . Keep publishing status on <strong>Testing</strong> (no Google verification needed for you).
+              </li>
+              <li>
+                Under <strong>Test users</strong>, add <code>kensbrivaus103@gmail.com</code> — the exact account you
+                sign in with. Leave Testing; do not click Publish.
+              </li>
               <li>
                 Create credentials → OAuth client ID → <strong>Web application</strong>.
               </li>
@@ -172,7 +182,7 @@ export function Settings() {
                 Authorized JavaScript origins: <code>https://kenswidzerbrivaus.com</code>,{' '}
                 <code>http://localhost:5173</code>, <code>http://127.0.0.1:5173</code>
               </li>
-              <li>Paste the client ID above, then click Connect.</li>
+              <li>Paste the client ID above, then Connect again with that Gmail.</li>
             </ol>
           ) : null}
         </section>
