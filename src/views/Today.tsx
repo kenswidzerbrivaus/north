@@ -64,13 +64,15 @@ function DayClock() {
     return () => cancelAnimationFrame(raf)
   }, [])
   const t = formatDayLeft(left)
+  const hours = left / 3_600_000
+  const heat = hours < 1 ? 'is-critical' : hours < 6 ? 'is-hot' : 'is-warn'
   return (
-    <div className="day-clock">
-      <span className="kicker">Clock</span>
+    <div className={`day-clock hud-frame ${heat}`}>
+      <span className="kicker">⚠ Time remaining</span>
       <b>
         {t.h}H {t.m}M {t.s}S {t.ms}MS {t.us}μS
       </b>
-      <span className="kicker">Left in the day</span>
+      <span className="kicker">Until midnight</span>
     </div>
   )
 }

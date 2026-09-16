@@ -1177,13 +1177,58 @@ html.sepho .daily-box {
 .day-clock {
   text-align: right;
   min-width: 16rem;
+  padding: 8px 12px 10px;
+  border-color: rgba(255, 179, 71, 0.55);
+}
+
+.day-clock .kicker {
+  color: #ffb347;
 }
 
 .day-clock b {
   font-size: 18px;
   letter-spacing: 0.06em;
-  text-shadow: 0 0 14px rgba(110, 231, 255, 0.45);
+  color: #ffb347;
+  text-shadow: 0 0 16px rgba(255, 140, 40, 0.7);
   white-space: nowrap;
+  animation: clock-warn 1.2s ease-in-out infinite;
+}
+
+.day-clock.is-hot {
+  border-color: rgba(255, 90, 40, 0.7);
+  box-shadow:
+    inset 0 0 24px rgba(255, 70, 20, 0.18),
+    0 0 18px rgba(255, 70, 20, 0.2);
+}
+
+.day-clock.is-hot .kicker,
+.day-clock.is-hot b {
+  color: #ff7a45;
+}
+
+.day-clock.is-critical {
+  border-color: #ff4d3a;
+  box-shadow:
+    inset 0 0 28px rgba(255, 40, 20, 0.28),
+    0 0 22px rgba(255, 40, 20, 0.35);
+}
+
+.day-clock.is-critical .kicker,
+.day-clock.is-critical b {
+  color: #ff4d3a;
+  animation: clock-warn 0.55s ease-in-out infinite;
+}
+
+@keyframes clock-warn {
+  0%,
+  100% {
+    opacity: 1;
+    text-shadow: 0 0 12px rgba(255, 140, 40, 0.45);
+  }
+  50% {
+    opacity: 0.72;
+    text-shadow: 0 0 22px rgba(255, 80, 20, 0.9);
+  }
 }
 
 .board-morning {
