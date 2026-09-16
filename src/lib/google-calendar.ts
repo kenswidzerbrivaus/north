@@ -147,6 +147,11 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     if (res.status === 403 && /insufficient|ACCESS_TOKEN_SCOPE/i.test(text)) {
       throw new Error('GOOGLE_SCOPES')
     }
+    if (res.status === 403 && /has not been used|is disabled|accessNotConfigured/i.test(text)) {
+      throw new Error(
+        'Enable the Google Calendar API, then Connect again: https://console.cloud.google.com/apis/library/calendar-json.googleapis.com?project=969056584851',
+      )
+    }
     throw new Error(text.slice(0, 180) || `Google Calendar error ${res.status}`)
   }
   if (res.status === 204) return undefined as T

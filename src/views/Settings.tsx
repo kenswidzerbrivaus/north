@@ -163,7 +163,17 @@ export function Settings() {
                   Google Cloud Credentials
                 </a>
               </li>
-              <li>Create a project, then enable the <strong>Google Calendar API</strong>.</li>
+              <li>
+                Enable the{' '}
+                <a
+                  href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com?project=969056584851"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Google Calendar API
+                </a>{' '}
+                for this project, then wait a minute.
+              </li>
               <li>
                 Open{' '}
                 <a href="https://console.cloud.google.com/auth/audience" target="_blank" rel="noreferrer">
