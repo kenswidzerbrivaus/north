@@ -210,7 +210,7 @@ function Shell() {
           ))}
         </nav>
         <div className="sidebar-foot">
-          <DayClock />
+          {route !== 'today' ? <DayClock /> : null}
           <button className="search-btn" onClick={() => setCmd(true)}>
             <Icon name="search" size={16} />
             Search
@@ -227,7 +227,7 @@ function Shell() {
           <strong className="display" style={{ fontSize: 22 }}>
             Sepho
           </strong>
-          <DayClock />
+          {route !== 'today' ? <DayClock /> : null}
           <div className="row">
             <button className="btn-icon" onClick={() => setCmd(true)} aria-label="Search">
               <Icon name="search" />

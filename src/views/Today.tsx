@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { DayClock } from '../components/DayClock'
 import { Check } from '../components/ui'
 import { hhmmFromMinutes, roundDown5, stashCalGap } from '../lib/cal-gap'
 import { formatTime, minutesOf, parseISO, todayISO } from '../lib/dates'
@@ -148,6 +149,7 @@ export function Today({ go }: { go: (r: Route) => void }) {
             <span className="kicker">Execution</span>
             <b>{exec}%</b>
           </div>
+          <DayClock />
           <button className="today-focus hud-frame" onClick={() => go('focus')}>
             <span className="kicker">{timer.running ? 'Reactor' : 'Focus // Standby'}</span>
             <b>{formatRemain(timer.remaining)}</b>
