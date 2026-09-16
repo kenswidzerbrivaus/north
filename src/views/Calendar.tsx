@@ -13,7 +13,7 @@ import {
   todayISO,
   weekdayNames,
 } from '../lib/dates'
-import { PALETTE, type CalEvent } from '../lib/types'
+import { nextEventColor, PALETTE, type CalEvent } from '../lib/types'
 import { useStore } from '../store'
 
 type View = 'month' | 'week' | 'day'
@@ -59,7 +59,7 @@ export function Calendar() {
       start: draft.start,
       end: draft.end,
       allDay: Boolean(draft.allDay || !draft.start),
-      color: draft.color ?? PALETTE[2],
+      color: draft.color ?? nextEventColor(allEvents.map((e) => e.color)),
       notes: draft.notes ?? '',
       location: draft.location ?? '',
       googleId: draft.googleId,
@@ -101,7 +101,7 @@ export function Calendar() {
       date,
       start,
       allDay: !start,
-      color: PALETTE[2],
+      color: nextEventColor(allEvents.map((e) => e.color)),
       notes: '',
       location: '',
     })
@@ -140,7 +140,7 @@ export function Calendar() {
         <Field label="Notes">
           <textarea className="textarea" value={draft.notes ?? ''} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />
         </Field>
-        <ColorDots colors={PALETTE} value={draft.color ?? PALETTE[2]} onChange={(color) => setDraft({ ...draft, color })} />
+        <ColorDots colors={PALETTE} value={draft.color ?? nextEventColor(allEvents.map((e) => e.color))} onChange={(color) => setDraft({ ...draft, color })} />
         {gcal.connected ? (
           draft.googleId ? (
             <p className="muted">This event lives on Google Calendar.</p>

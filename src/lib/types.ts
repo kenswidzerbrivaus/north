@@ -154,7 +154,27 @@ export const PALETTE = [
   '#3d6b70',
   '#8b4b2b',
   '#4a5568',
+  '#4285f4',
+  '#0b8043',
+  '#d50000',
+  '#f6bf26',
+  '#8e24aa',
+  '#039be5',
+  '#e67c73',
+  '#33b679',
 ]
+
+export function colorFromKey(key: string, colors: string[] = PALETTE) {
+  let h = 0
+  for (let i = 0; i < key.length; i++) h = (h * 33 + key.charCodeAt(i)) >>> 0
+  return colors[h % colors.length] ?? colors[0] ?? '#4285f4'
+}
+
+export function nextEventColor(used: string[], colors: string[] = PALETTE) {
+  const counts = colors.map((c) => used.filter((u) => u.toLowerCase() === c.toLowerCase()).length)
+  const min = Math.min(...counts)
+  return colors[counts.findIndex((n) => n === min)] ?? colors[0] ?? '#4285f4'
+}
 
 export const ROUTES: { id: Route; label: string; hint: string }[] = [
   { id: 'today', label: 'Today', hint: '1' },

@@ -1,7 +1,21 @@
 import { addDays, parseISO, toISO } from './dates'
-import type { CalEvent } from './types'
+import { colorFromKey, type CalEvent } from './types'
 
 export const GOOGLE_BLUE = '#4285f4'
+
+const GOOGLE_EVENT_COLORS: Record<string, string> = {
+  '1': '#a4bdfc',
+  '2': '#7ae7bf',
+  '3': '#dbadff',
+  '4': '#ff887c',
+  '5': '#fbd75b',
+  '6': '#ffb878',
+  '7': '#46d6db',
+  '8': '#e1e1e1',
+  '9': '#5484ed',
+  '10': '#51b749',
+  '11': '#dc2127',
+}
 const SCOPE = [
   'https://www.googleapis.com/auth/calendar',
   'https://www.googleapis.com/auth/calendar.events',
@@ -16,6 +30,7 @@ type GEvent = {
   summary?: string
   description?: string
   location?: string
+  colorId?: string
   start?: { date?: string; dateTime?: string }
   end?: { date?: string; dateTime?: string }
 }
@@ -176,7 +191,7 @@ export function fromGoogleEvent(item: GEvent): CalEvent[] {
     googleId: item.id,
     title: item.summary || '(No title)',
     notes: item.description ?? '',
-    color: GOOGLE_BLUE,
+    color: (item.colorId && GOOGLE_EVENT_COLORS[item.colorId]) || colorFromKey(item.id),
     location: item.location ?? '',
   }
   if (start.date) {

@@ -20,7 +20,7 @@ import type {
   State,
   Task,
 } from './lib/types'
-import { PALETTE } from './lib/types'
+import { colorFromKey, nextEventColor, PALETTE } from './lib/types'
 
 const KEY = 'north.v1'
 
@@ -295,12 +295,22 @@ function linkExisting(s: State): State {
         date: t.due,
         start: t.dueTime,
         allDay: !t.dueTime,
-        color: PALETTE[2],
+        color: colorFromKey(eventId),
         location: '',
       },
       ...events,
     ]
     return { ...t, eventId }
+  })
+  const used: string[] = []
+  events = events.map((e) => {
+    if (!used.includes(e.color.toLowerCase())) {
+      used.push(e.color.toLowerCase())
+      return e
+    }
+    const color = nextEventColor(used)
+    used.push(color.toLowerCase())
+    return { ...e, color }
   })
   return syncTasksFromEvents({ ...s, events, tasks })
 }
@@ -383,7 +393,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                 date: input.due,
                 start: input.dueTime,
                 allDay: !input.dueTime,
-                color: PALETTE[2],
+                color: colorFromKey(eventId),
                 location: '',
               },
               ...s.events,
@@ -424,7 +434,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                   date: task.due,
                   start: task.dueTime,
                   allDay: !task.dueTime,
-                  color: PALETTE[2],
+                  color: colorFromKey(eventId),
                   location: '',
                 },
                 ...events,
@@ -476,9 +486,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const event: CalEvent = {
             notes: '',
             allDay: !input.start,
-            color: PALETTE[2],
             location: '',
             ...input,
+            color: input.color ?? nextEventColor(s.events.map((e) => e.color)),
             id,
             title: input.title.trim(),
           }
