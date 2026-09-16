@@ -1644,6 +1644,15 @@ html.sepho .daily-box {
   color: #d4f6ff;
 }
 
+.morning-check-label {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  padding: 0;
+  font: inherit;
+}
+
 .morning-mark {
   margin: 0;
   font-size: clamp(32px, 5.4vw, 56px);

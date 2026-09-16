@@ -36,6 +36,7 @@ const defaultSettings = (): Settings => ({
   autoBreaks: true,
   googleClientId: '',
   pushToGoogle: true,
+  morningRituals: ['Prayer', 'Self affirmation', 'Read through journal'],
 })
 
 export function freshState(): State {
@@ -626,6 +627,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                   affirmation: '',
                   shortTermGoal: '',
                   morningWins: ['', '', ''],
+                  morningChecks: [false, false, false],
                   updatedAt: nowISO(),
                   ...next,
                 },

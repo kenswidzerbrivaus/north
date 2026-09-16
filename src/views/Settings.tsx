@@ -60,6 +60,24 @@ export function Settings() {
         </section>
 
         <section className="card stack">
+          <h2>First three after waking</h2>
+          <p className="muted">These stay on Today. Check them off each morning; edit the names here.</p>
+          {([0, 1, 2] as const).map((i) => (
+            <Field key={i} label={`Ritual ${i + 1}`}>
+              <input
+                className="input"
+                value={s.morningRituals?.[i] ?? ''}
+                onChange={(e) => {
+                  const next = [...(s.morningRituals ?? ['', '', ''])] as [string, string, string]
+                  next[i] = e.target.value
+                  updateSettings({ morningRituals: next })
+                }}
+              />
+            </Field>
+          ))}
+        </section>
+
+        <section className="card stack">
           <h2>Focus timer</h2>
           <Field label="Focus minutes">
             <input

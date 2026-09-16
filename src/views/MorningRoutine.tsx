@@ -1,18 +1,22 @@
 import { useEffect, useState } from 'react'
+import { Check } from '../components/ui'
 import type { JournalEntry } from '../lib/types'
 import { useStore } from '../store'
 
-type Draft = Pick<JournalEntry, 'shortTermGoal' | 'morningWins'>
+const FALLBACK: [string, string, string] = ['Prayer', 'Self affirmation', 'Read through journal']
+
+type Draft = Pick<JournalEntry, 'shortTermGoal' | 'morningChecks'>
 
 function fromEntry(e?: JournalEntry): Draft {
   return {
     shortTermGoal: e?.shortTermGoal ?? '',
-    morningWins: e?.morningWins ?? ['', '', ''],
+    morningChecks: e?.morningChecks ?? [false, false, false],
   }
 }
 
 export function MorningRoutine({ date, compact }: { date: string; compact?: boolean }) {
   const { state, upsertJournal } = useStore()
+  const labels = state.settings.morningRituals ?? FALLBACK
   const entry = state.journal.find((j) => j.date === date)
   const [draft, setDraft] = useState<Draft>(() => fromEntry(entry))
 
@@ -24,14 +28,14 @@ export function MorningRoutine({ date, compact }: { date: string; compact?: bool
   useEffect(() => {
     const current = fromEntry(entry)
     if (JSON.stringify(draft) === JSON.stringify(current)) return
-    const t = window.setTimeout(() => upsertJournal(date, draft), 400)
+    const t = window.setTimeout(() => upsertJournal(date, draft), 200)
     return () => window.clearTimeout(t)
   }, [date, draft, entry, upsertJournal])
 
-  const setWin = (i: number, value: string) => {
-    const morningWins = [...draft.morningWins] as [string, string, string]
-    morningWins[i] = value
-    setDraft({ ...draft, morningWins })
+  const toggle = (i: number) => {
+    const morningChecks = [...draft.morningChecks] as [boolean, boolean, boolean]
+    morningChecks[i] = !morningChecks[i]
+    setDraft({ ...draft, morningChecks })
   }
 
   return (
@@ -54,15 +58,12 @@ export function MorningRoutine({ date, compact }: { date: string; compact?: bool
             <section className="morning-box">
               <p className="daily-label">First three after waking</p>
               <ol className="daily-blessings">
-                {draft.morningWins.map((w, i) => (
+                {labels.map((label, i) => (
                   <li key={i}>
-                    <span className="daily-bullet" data-on={w.trim() ? 'true' : 'false'} />
-                    <input
-                      value={w}
-                      onChange={(e) => setWin(i, e.target.value)}
-                      placeholder={['Prayer', 'Self affirmation', 'Read through journal'][i]}
-                      aria-label={`Morning win ${i + 1}`}
-                    />
+                    <Check on={draft.morningChecks[i]} onClick={() => toggle(i)} label={label || FALLBACK[i]} />
+                    <button type="button" className="morning-check-label" onClick={() => toggle(i)}>
+                      {label || FALLBACK[i]}
+                    </button>
                   </li>
                 ))}
               </ol>

@@ -108,6 +108,7 @@ export interface JournalEntry {
   affirmation: string
   shortTermGoal: string
   morningWins: [string, string, string]
+  morningChecks: [boolean, boolean, boolean]
 }
 
 export interface FocusSession {
@@ -132,6 +133,7 @@ export interface Settings {
   autoBreaks: boolean
   googleClientId: string
   pushToGoogle: boolean
+  morningRituals: [string, string, string]
 }
 
 export interface State {
