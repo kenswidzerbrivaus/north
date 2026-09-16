@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { addDays, formatLong, parseISO, toISO, todayISO } from '../lib/dates'
+import { quoteForDate } from '../lib/quotes'
 import type { JournalEntry, Workout } from '../lib/types'
 import { useStore } from '../store'
-
-const QUOTE = 'The last place to want to be is where you were yesterday.'
 
 const WORKOUTS: { id: Workout; label: string }[] = [
   { id: 'cardio', label: 'Cardio' },
@@ -42,6 +41,7 @@ export function Journal() {
   const today = todayISO()
   const [date, setDate] = useState(today)
   const entry = state.journal.find((j) => j.date === date)
+  const quote = quoteForDate(date)
   const [draft, setDraft] = useState<Draft>(() => fromEntry(entry))
 
   useEffect(() => {
@@ -92,7 +92,8 @@ export function Journal() {
         <header className="daily-hero">
           <p className="daily-kicker">The successful man</p>
           <h2>Daily update</h2>
-          <p className="daily-quote">“{QUOTE}”</p>
+          <p className="daily-quote">“{quote.text}”</p>
+          <p className="daily-by">{quote.by}</p>
         </header>
 
         <div className="daily-top">
