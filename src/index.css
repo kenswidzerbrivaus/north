@@ -590,8 +590,9 @@ form.row .input {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--ink);
   border-left: 2px solid var(--c, var(--accent));
-  background: color-mix(in srgb, var(--c, var(--accent)) 18%, transparent);
+  background: color-mix(in srgb, var(--c, var(--accent)) 32%, var(--paper));
 }
 
 .week-grid {
@@ -633,11 +634,19 @@ form.row .input {
   border-radius: 8px;
   padding: 4px 6px;
   font-size: 12px;
+  font-weight: 650;
   overflow: hidden;
   text-align: left;
   border: 0;
   color: var(--ink);
   z-index: 2;
+  background: color-mix(in srgb, var(--c, var(--accent)) 42%, var(--paper));
+  box-shadow: inset 3px 0 0 var(--c, var(--accent));
+}
+
+.event-block .muted {
+  color: var(--ink-soft);
+  font-weight: 500;
 }
 
 .habit-card h3 {

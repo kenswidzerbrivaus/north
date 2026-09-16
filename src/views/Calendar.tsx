@@ -356,8 +356,7 @@ function HourRow({
                   style={{
                     top: (start / 60) * 48,
                     height,
-                    background: `color-mix(in srgb, ${e.color} 28%, white)`,
-                    borderLeft: `3px solid ${e.color}`,
+                    ['--c' as string]: e.color,
                   }}
                   onClick={(ev) => {
                     ev.stopPropagation()
