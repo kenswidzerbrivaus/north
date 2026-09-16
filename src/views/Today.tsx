@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Check } from '../components/ui'
 import { hhmmFromMinutes, roundDown5, stashCalGap } from '../lib/cal-gap'
 import { formatTime, minutesOf, parseISO, todayISO } from '../lib/dates'
@@ -27,11 +27,33 @@ function nowMinutes() {
   return n.getHours() * 60 + n.getMinutes()
 }
 
-function hoursLeft() {
-  const left = 24 * 60 - nowMinutes()
-  const h = Math.max(0, Math.floor(left / 60))
-  const m = Math.max(0, left % 60)
-  return `${h}H ${String(m).padStart(2, '0')}M LEFT`
+function msUntilMidnight(from = Date.now()) {
+  const d = new Date(from)
+  const end = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)
+  return Math.max(0, end.getTime() - from)
+}
+
+function formatDayLeft(ms: number) {
+  const total = Math.floor(ms / 1000)
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  return `${h}H ${String(m).padStart(2, '0')}M ${String(s).padStart(2, '0')}S`
+}
+
+function DayClock() {
+  const [left, setLeft] = useState(() => msUntilMidnight())
+  useEffect(() => {
+    const id = window.setInterval(() => setLeft(msUntilMidnight()), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+  return (
+    <div className="day-clock">
+      <span className="kicker">Clock</span>
+      <b>{formatDayLeft(left)}</b>
+      <span className="kicker">Left in the day</span>
+    </div>
+  )
 }
 
 export function Today({ go }: { go: (r: Route) => void }) {
@@ -155,10 +177,7 @@ export function Today({ go }: { go: (r: Route) => void }) {
             <span className="kicker">Execution</span>
             <b>{exec}%</b>
           </div>
-          <div>
-            <span className="kicker">Clock</span>
-            <b>{hoursLeft()}</b>
-          </div>
+          <DayClock />
           <button className="today-focus hud-frame" onClick={() => go('focus')}>
             <span className="kicker">{timer.running ? 'Reactor' : 'Focus // Standby'}</span>
             <b>{formatRemain(timer.remaining)}</b>

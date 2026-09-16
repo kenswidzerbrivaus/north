@@ -1171,6 +1171,18 @@ html.sepho .daily-box {
   font-size: 20px;
   color: #6ee7ff;
   letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.day-clock {
+  text-align: right;
+  min-width: 11.5rem;
+}
+
+.day-clock b {
+  font-size: 22px;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 14px rgba(110, 231, 255, 0.45);
 }
 
 .board-morning {
