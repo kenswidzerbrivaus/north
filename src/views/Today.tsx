@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Check } from '../components/ui'
+import { hhmmFromMinutes, roundDown5, stashCalGap } from '../lib/cal-gap'
 import { formatTime, minutesOf, parseISO, todayISO } from '../lib/dates'
 import { habitDone, isHabitDue } from '../lib/habits'
 import { quoteForDate } from '../lib/quotes'
@@ -216,7 +217,17 @@ export function Today({ go }: { go: (r: Route) => void }) {
             >
               Accept
             </button>
-            <button className="btn-ghost" onClick={() => go('calendar')}>
+            <button
+              className="btn-ghost"
+              onClick={() => {
+                stashCalGap({
+                  date: today,
+                  start: hhmmFromMinutes(roundDown5(clock)),
+                  end: nextTimed?.start,
+                })
+                go('calendar')
+              }}
+            >
               Adjust
             </button>
           </div>

@@ -8,11 +8,13 @@ import {
   minutesOf,
   monthCells,
   monthName,
+  parseISO,
   startOfWeek,
   toISO,
   todayISO,
   weekdayNames,
 } from '../lib/dates'
+import { takeCalGap } from '../lib/cal-gap'
 import { nextEventColor, PALETTE, type CalEvent } from '../lib/types'
 import { useStore } from '../store'
 
@@ -29,6 +31,7 @@ export function Calendar() {
   const [draft, setDraft] = useState<Partial<CalEvent> | null>(null)
   const [toGoogle, setToGoogle] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [gap, setGap] = useState<{ date: string; startMin: number; endMin: number } | null>(null)
   const today = todayISO()
   const names = weekdayNames(weekStartsOn)
   const allEvents = useMemo(() => mergeCalendars(state.events, gcal.events), [gcal.events, state.events])
@@ -94,18 +97,35 @@ export function Calendar() {
     }
   }
 
-  const openNew = (date: string, start?: string) => {
+  const openNew = (date: string, start?: string, end?: string) => {
     setToGoogle(state.settings.pushToGoogle && gcal.connected)
     setDraft({
       title: '',
       date,
       start,
+      end,
       allDay: !start,
       color: nextEventColor(allEvents.map((e) => e.color)),
       notes: '',
       location: '',
     })
   }
+
+  useEffect(() => {
+    const g = takeCalGap()
+    if (!g) return
+    setCursor(parseISO(g.date))
+    setView('day')
+    const startMin = minutesOf(g.start)
+    const endMin = g.end ? minutesOf(g.end) : startMin + 60
+    setGap({ date: g.date, startMin, endMin })
+    openNew(g.date, g.start, g.end)
+    window.setTimeout(() => {
+      const hour = Math.max(6, Math.min(21, Math.floor(startMin / 60)))
+      document.querySelector(`[data-cal-hour="${hour}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }, 80)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const form = draft ? (
     <Modal title={draft.id ? 'Edit event' : 'New event'} onClose={() => setDraft(null)}>
@@ -279,6 +299,7 @@ export function Calendar() {
           events={allEvents}
           onSlot={openNew}
           onEvent={(e) => setDraft({ ...e })}
+          gap={gap}
         />
       ) : null}
 
@@ -292,11 +313,13 @@ function WeekGrid({
   events,
   onSlot,
   onEvent,
+  gap,
 }: {
   days: Date[]
   events: CalEvent[]
-  onSlot: (iso: string, start?: string) => void
+  onSlot: (iso: string, start?: string, end?: string) => void
   onEvent: (e: CalEvent) => void
+  gap: { date: string; startMin: number; endMin: number } | null
 }) {
   const isos = days.map(toISO)
   return (
@@ -317,7 +340,7 @@ function WeekGrid({
         )
       })}
       {HOURS.map((h) => (
-        <HourRow key={h} hour={h} isos={isos} events={events} onSlot={onSlot} onEvent={onEvent} />
+        <HourRow key={h} hour={h} isos={isos} events={events} onSlot={onSlot} onEvent={onEvent} gap={gap} />
       ))}
     </div>
   )
@@ -329,22 +352,34 @@ function HourRow({
   events,
   onSlot,
   onEvent,
+  gap,
 }: {
   hour: number
   isos: string[]
   events: CalEvent[]
-  onSlot: (iso: string, start?: string) => void
+  onSlot: (iso: string, start?: string, end?: string) => void
   onEvent: (e: CalEvent) => void
+  gap: { date: string; startMin: number; endMin: number } | null
 }) {
   const label = `${hour % 12 || 12} ${hour < 12 ? 'AM' : 'PM'}`
   const stamp = `${String(hour).padStart(2, '0')}:00`
+  const hourStart = hour * 60
+  const hourEnd = hourStart + 60
   return (
     <>
-      <div className="gutter">{label}</div>
+      <div className="gutter" data-cal-hour={hour}>
+        {label}
+      </div>
       {isos.map((iso) => {
         const timed = events.filter((e) => e.date === iso && e.start && Math.floor(minutesOf(e.start) / 60) === hour)
+        const inGap = Boolean(gap && iso === gap.date && hourStart < gap.endMin && hourEnd > gap.startMin)
         return (
-          <button key={iso + hour} className="hour-cell" onClick={() => onSlot(iso, stamp)}>
+          <button
+            key={iso + hour}
+            className={`hour-cell${inGap ? ' is-gap' : ''}`}
+            data-cal-hour={hour}
+            onClick={() => onSlot(iso, stamp)}
+          >
             {timed.map((e) => {
               const start = minutesOf(e.start!) - hour * 60
               const end = e.end ? minutesOf(e.end) : minutesOf(e.start!) + 60
