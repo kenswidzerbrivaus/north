@@ -918,6 +918,137 @@ html.matrix-gate body {
   word-break: break-all;
 }
 
+.jarvis {
+  --ink: #d4f6ff;
+  --ink-soft: #7eb8c9;
+  --paper: rgba(6, 18, 28, 0.72);
+  --line: rgba(110, 231, 255, 0.28);
+  --line-strong: rgba(110, 231, 255, 0.55);
+  --accent: #6ee7ff;
+  --bg-2: rgba(8, 28, 42, 0.8);
+  position: relative;
+  margin: -28px -32px -48px;
+  padding: 26px 32px 56px;
+  min-height: 100dvh;
+  color: #d4f6ff;
+  font-family: Rajdhani, Figtree, sans-serif;
+  background:
+    linear-gradient(rgba(80, 200, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(80, 200, 255, 0.04) 1px, transparent 1px),
+    radial-gradient(900px 520px at 85% -8%, rgba(0, 170, 255, 0.22), transparent 52%),
+    radial-gradient(640px 380px at 0% 110%, rgba(255, 70, 20, 0.16), transparent 50%),
+    #05080e;
+  background-size: 42px 42px, 42px 42px, auto, auto, auto;
+}
+
+.jarvis-scan {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 2px,
+    rgba(0, 0, 0, 0.18) 3px
+  );
+  opacity: 0.35;
+  z-index: 0;
+}
+
+.jarvis > *:not(.jarvis-scan) {
+  position: relative;
+  z-index: 1;
+}
+
+.jarvis .kicker {
+  color: #6ee7ff;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+}
+
+.hud-frame {
+  position: relative;
+  background: rgba(4, 16, 26, 0.55);
+  border: 1px solid rgba(110, 231, 255, 0.32);
+  box-shadow:
+    inset 0 0 40px rgba(0, 160, 220, 0.08),
+    0 0 24px rgba(0, 140, 200, 0.08);
+}
+
+.hud-frame::before,
+.hud-frame::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #6ee7ff;
+  pointer-events: none;
+}
+
+.hud-frame::before {
+  top: -1px;
+  left: -1px;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.hud-frame::after {
+  right: -1px;
+  bottom: -1px;
+  border-left: 0;
+  border-top: 0;
+}
+
+.jarvis-sys {
+  margin: 0 0 6px;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: #6ee7ff;
+}
+
+.jarvis .check {
+  border-color: #6ee7ff;
+  border-radius: 2px;
+}
+
+.jarvis .daily-label {
+  color: #6ee7ff;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+}
+
+.jarvis .daily-bullet {
+  border-color: #6ee7ff;
+  border-radius: 2px;
+}
+
+.jarvis .daily-bullet[data-on='true'] {
+  background: #6ee7ff;
+  box-shadow: inset 0 0 0 3px #041018;
+}
+
+.jarvis .daily-blessings input {
+  color: #d4f6ff;
+  border-bottom-color: rgba(110, 231, 255, 0.35);
+}
+
+.jarvis .check[data-on='true'] {
+  background: #6ee7ff;
+  border-color: #6ee7ff;
+  color: #041018;
+}
+
+.jarvis .input {
+  background: rgba(0, 20, 32, 0.6);
+  border-color: rgba(110, 231, 255, 0.35);
+  color: #d4f6ff;
+  border-radius: 2px;
+}
+
+.jarvis .input:focus {
+  border-color: #6ee7ff;
+  box-shadow: 0 0 0 3px rgba(110, 231, 255, 0.15);
+}
+
 .today-page {
   display: flex;
   flex-direction: column;
@@ -930,7 +1061,7 @@ html.matrix-gate body {
   justify-content: space-between;
   align-items: flex-end;
   gap: 16px;
-  border-bottom: 3px solid var(--ink);
+  border-bottom: 1px solid rgba(110, 231, 255, 0.45);
   padding-bottom: 14px;
 }
 
@@ -950,11 +1081,13 @@ html.matrix-gate body {
 }
 
 .today-num {
-  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-family: Rajdhani, sans-serif;
   font-size: clamp(56px, 8vw, 84px);
-  font-weight: 560;
+  font-weight: 700;
   line-height: 0.8;
   letter-spacing: -0.04em;
+  color: #e8fbff;
+  text-shadow: 0 0 24px rgba(110, 231, 255, 0.35);
 }
 
 .today-mon {
@@ -967,15 +1100,17 @@ html.matrix-gate body {
   border: 0;
   background: transparent;
   text-align: right;
-  padding: 0;
+  padding: 12px 16px;
 }
 
 .today-focus b {
   display: block;
-  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
   font-size: 28px;
-  letter-spacing: -0.03em;
+  letter-spacing: 0.04em;
   line-height: 1;
+  color: #6ee7ff;
+  text-shadow: 0 0 16px rgba(110, 231, 255, 0.55);
 }
 
 .today-quote {
@@ -1003,9 +1138,12 @@ html.matrix-gate body {
 .today-ledger {
   display: grid;
   grid-template-columns: 1.35fr 0.65fr;
-  gap: 8px 48px;
-  border-top: 1px solid var(--ink);
-  padding-top: 16px;
+  gap: 16px;
+  padding-top: 0;
+}
+
+.today-ledger > .hud-frame {
+  padding: 14px 16px 16px;
 }
 
 .today-col-head {
@@ -1017,10 +1155,11 @@ html.matrix-gate body {
   padding: 0 0 10px;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--ink);
-  border-bottom: 1px solid var(--line);
+  color: #6ee7ff;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  border-bottom: 1px solid rgba(110, 231, 255, 0.25);
 }
 
 .today-col-head span {
@@ -1087,10 +1226,10 @@ html.matrix-gate body {
 .morning {
   display: grid;
   grid-template-columns: 36px 1fr;
-  background: var(--paper);
-  border: 1px solid var(--line);
+  background: rgba(4, 16, 26, 0.62);
+  border: 1px solid rgba(110, 231, 255, 0.32);
   overflow: hidden;
-  box-shadow: var(--shadow);
+  box-shadow: inset 0 0 40px rgba(0, 160, 220, 0.08);
 }
 
 .morning-rail {
@@ -1102,19 +1241,22 @@ html.matrix-gate body {
   text-transform: uppercase;
   font-size: 11px;
   font-weight: 700;
-  background: var(--ink);
-  color: var(--paper);
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  background: linear-gradient(180deg, #083044, #041018);
+  color: #6ee7ff;
   padding: 16px 0;
 }
 
 .morning-banner {
-  background: var(--ink);
-  color: var(--paper);
-  letter-spacing: 0.22em;
+  background: linear-gradient(90deg, rgba(0, 40, 60, 0.9), rgba(0, 20, 32, 0.4));
+  color: #6ee7ff;
+  letter-spacing: 0.28em;
   text-transform: uppercase;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
   padding: 10px 18px;
+  border-bottom: 1px solid rgba(110, 231, 255, 0.28);
 }
 
 .morning-grid {
@@ -1132,8 +1274,9 @@ html.matrix-gate body {
 }
 
 .morning-box {
-  border: 1px solid var(--line-strong);
+  border: 1px solid rgba(110, 231, 255, 0.22);
   padding: 10px 12px 8px;
+  background: rgba(0, 12, 20, 0.35);
 }
 
 .morning-goal {
@@ -1143,9 +1286,10 @@ html.matrix-gate body {
   resize: none;
   min-height: 52px;
   outline: none;
-  font-family: Fraunces, ui-serif, Georgia, serif;
-  font-size: 16px;
+  font-family: Rajdhani, Figtree, sans-serif;
+  font-size: 17px;
   line-height: 1.35;
+  color: #d4f6ff;
 }
 
 .morning-mark {
@@ -1157,10 +1301,15 @@ html.matrix-gate body {
   text-transform: uppercase;
   text-decoration: underline;
   text-underline-offset: 6px;
-  color: var(--ink);
+  color: #6ee7ff;
+  text-shadow: 0 0 18px rgba(110, 231, 255, 0.45);
 }
 
 @media (max-width: 860px) {
+  .jarvis {
+    margin: -18px -16px -96px;
+    padding: 18px 16px 96px;
+  }
   .today-ledger {
     grid-template-columns: 1fr;
   }

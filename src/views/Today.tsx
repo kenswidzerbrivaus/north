@@ -9,6 +9,16 @@ import { useStore } from '../store'
 import { formatRemain, useTimer } from '../timer'
 import { MorningRoutine } from './MorningRoutine'
 
+function jarvisHello(name: string) {
+  const h = new Date().getHours()
+  const sir = name.trim() || 'sir'
+  if (h < 5) return `Still online, ${sir}.`
+  if (h < 12) return `Good morning, ${sir}.`
+  if (h < 17) return `Good afternoon, ${sir}.`
+  if (h < 21) return `Good evening, ${sir}.`
+  return `Running quiet, ${sir}.`
+}
+
 export function Today({ go }: { go: (r: Route) => void }) {
   const { state, toggleTask, setHabitCount, addTask } = useStore()
   const gcal = useGoogleCalendar()
@@ -22,9 +32,7 @@ export function Today({ go }: { go: (r: Route) => void }) {
     .filter((e) => e.date === today)
     .sort((a, b) => (a.start ?? '99').localeCompare(b.start ?? '99'))
 
-  const linked = new Set(
-    events.flatMap((e) => [e.id, e.googleId].filter(Boolean) as string[]),
-  )
+  const linked = new Set(events.flatMap((e) => [e.id, e.googleId].filter(Boolean) as string[]))
   const tasks = state.tasks
     .filter((t) => {
       if (t.completed || !t.due) return false
@@ -56,36 +64,44 @@ export function Today({ go }: { go: (r: Route) => void }) {
   const habitsLeft = habits.filter((h) => !habitDone(h, state.habitLogs, today)).length
 
   return (
-    <div className="today-page">
+    <div className="jarvis">
+      <div className="jarvis-scan" aria-hidden />
       <header className="today-mast">
-        <div className="today-mast-date">
-          <p className="today-dow">{date.toLocaleDateString(undefined, { weekday: 'long' })}</p>
+        <div>
+          <p className="jarvis-sys">
+            J.A.R.V.I.S. // {gcal.connected ? 'CAL.LINKED' : 'CAL.LOCAL'} // {timer.running ? 'FOCUS.LIVE' : 'FOCUS.IDLE'}
+          </p>
+          <p className="today-dow">{jarvisHello(state.settings.name)}</p>
           <div className="today-mast-row">
             <span className="today-num">{date.getDate()}</span>
-            <span className="today-mon">{date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span>
+            <span className="today-mon">
+              {date.toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase()}
+              <br />
+              {date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }).toUpperCase()}
+            </span>
           </div>
         </div>
-        <button className="today-focus" onClick={() => go('focus')}>
-          <span className="kicker">{timer.running ? 'In session' : 'Focus'}</span>
+        <button className="today-focus hud-frame" onClick={() => go('focus')}>
+          <span className="kicker">{timer.running ? 'Reactor' : 'Standby'}</span>
           <b>{formatRemain(timer.remaining)}</b>
         </button>
       </header>
 
       <p className="today-quote">
         “{quote.text}”
-        <cite>{quote.by}</cite>
+        <cite>// {quote.by}</cite>
       </p>
 
       <MorningRoutine date={today} />
 
       <div className="today-ledger">
-        <section>
+        <section className="hud-frame">
           <button className="today-col-head" onClick={() => go('tasks')}>
-            The work <span>{work.length}</span>
+            Active objectives <span>{String(work.length).padStart(2, '0')}</span>
           </button>
           <ol className="today-order">
             {work.length === 0 ? (
-              <li className="today-empty">Nothing due. Add one below or rest.</li>
+              <li className="today-empty">No objectives queued.</li>
             ) : (
               work.map((row, i) => (
                 <li key={row.id} className="today-item">
@@ -94,7 +110,7 @@ export function Today({ go }: { go: (r: Route) => void }) {
                   {row.kind === 'task' ? (
                     <Check on={false} onClick={() => toggleTask(row.id)} />
                   ) : (
-                    <span className="dot" style={{ background: row.color, marginTop: 6 }} />
+                    <span className="dot" style={{ background: row.color ?? '#6ee7ff', marginTop: 6 }} />
                   )}
                   <button
                     className="today-item-title"
@@ -120,14 +136,14 @@ export function Today({ go }: { go: (r: Route) => void }) {
               className="input"
               value={quick}
               onChange={(e) => setQuick(e.target.value)}
-              placeholder="Add to today and press Enter"
+              placeholder="Queue objective — Enter"
             />
           </form>
         </section>
 
-        <section>
+        <section className="hud-frame">
           <button className="today-col-head" onClick={() => go('habits')}>
-            Rituals <span>{habitsLeft}</span>
+            Daily systems <span>{String(habitsLeft).padStart(2, '0')}</span>
           </button>
           <ul className="today-rituals">
             {habits.map((h) => {
@@ -139,7 +155,7 @@ export function Today({ go }: { go: (r: Route) => void }) {
                 </li>
               )
             })}
-            {habits.length === 0 ? <li className="today-empty">No rituals due.</li> : null}
+            {habits.length === 0 ? <li className="today-empty">No systems scheduled.</li> : null}
           </ul>
         </section>
       </div>

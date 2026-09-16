@@ -36,9 +36,9 @@ export function MorningRoutine({ date }: { date: string }) {
 
   return (
     <article className="morning">
-      <div className="morning-rail">The successful man</div>
+      <div className="morning-rail">J.A.R.V.I.S.</div>
       <div className="morning-body">
-        <div className="morning-banner">Morning routine</div>
+        <div className="morning-banner">Morning protocol</div>
         <div className="morning-grid">
           <div className="morning-fields">
             <section className="morning-box">
