@@ -13,7 +13,6 @@ import {
   labelState,
   labelVelocity,
   nextMilestone,
-  parseMilestoneLines,
   pendingDecisions,
   portfolioIntel,
   velocityOf,
@@ -408,9 +407,9 @@ function CreateProject({
     desiredOutcome: '',
     assumptions: '',
     killPivot: '',
-    milestones: '',
     goalId: '',
   })
+  const [steps, setSteps] = useState([{ name: '', date: '' }, { name: '', date: '' }])
   const [missing, setMissing] = useState<string[]>([])
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }))
   const bind = (k: keyof typeof form) => ({
@@ -433,7 +432,9 @@ function CreateProject({
     const objective = read('objective')
     const definitionOfDone = read('definitionOfDone')
     const successMetric = read('successMetric')
-    const pathNames = parseMilestoneLines(read('milestones'))
+    const pathSteps = steps
+      .map((s) => ({ name: s.name.trim(), plannedEnd: parseDeadline(s.date) }))
+      .filter((s) => s.name)
     const blank = [
       !name && 'Project name',
       !owner && 'Accountable owner',
@@ -441,7 +442,8 @@ function CreateProject({
       !objective && 'Objective',
       !definitionOfDone && 'Definition of done',
       !successMetric && 'Success metric',
-      !pathNames.length && 'Critical path (at least one milestone)',
+      !pathSteps.length && 'Critical path (at least one milestone)',
+      pathSteps.some((s) => !s.plannedEnd) && 'Accomplishment date on every step',
     ].filter(Boolean) as string[]
     if (blank.length) {
       setMissing(blank)
@@ -483,7 +485,7 @@ function CreateProject({
       setMissing(['Active project capacity reached. Pause or complete a project first.'])
       return
     }
-    addMilestones(result, pathNames)
+    addMilestones(result, pathSteps)
     onCreate(result)
   }
   return (
@@ -536,24 +538,37 @@ function CreateProject({
           <input className="input" required autoComplete="off" {...bind('successMetric')} />
         </Field>
         <Field label="Critical path *">
-          <textarea
-            className="textarea"
-            required
-            {...bind('milestones')}
-            placeholder={'Secure Financing\nPurchase Truck\nInsurance\nDriver Onboarding\nFirst Paid Load'}
-          />
-          <span className="muted">One milestone per line. This becomes the project’s execution sequence.</span>
-          {parseMilestoneLines(form.milestones).length ? (
-            <ol className="cpath cpath-preview">
-              {parseMilestoneLines(form.milestones).map((n, i, arr) => (
-                <li key={`${n}-${i}`}>
-                  <span>{i === 0 ? '●' : '○'}</span>
-                  <strong>{n}</strong>
-                  {i < arr.length - 1 ? <div className="cpath-line">↓</div> : null}
-                </li>
-              ))}
-            </ol>
-          ) : null}
+          <span className="muted">Each step needs a name and an accomplishment date.</span>
+          <div className="cpath-editor">
+            {steps.map((step, i) => (
+              <div key={i} className="cpath-edit-row">
+                <span className="cpath-mark">{i === 0 ? '●' : '○'}</span>
+                <input
+                  className="input"
+                  placeholder={i === 0 ? 'Secure Financing' : 'Next milestone'}
+                  value={step.name}
+                  onChange={(e) => setSteps((rows) => rows.map((r, n) => (n === i ? { ...r, name: e.target.value } : r)))}
+                />
+                <input
+                  className="input"
+                  type="date"
+                  aria-label={`Accomplishment date for step ${i + 1}`}
+                  value={step.date}
+                  onChange={(e) => setSteps((rows) => rows.map((r, n) => (n === i ? { ...r, date: e.target.value } : r)))}
+                />
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => setSteps((rows) => (rows.length === 1 ? [{ name: '', date: '' }] : rows.filter((_, n) => n !== i)))}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <button type="button" className="btn-ghost" onClick={() => setSteps((rows) => [...rows, { name: '', date: '' }])}>
+            + Add step
+          </button>
         </Field>
         <Field label="Why this exists">
           <textarea className="textarea" {...bind('why')} />

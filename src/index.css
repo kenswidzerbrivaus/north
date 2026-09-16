@@ -1542,6 +1542,49 @@ html.sepho .daily-box {
   margin: 0 0 8px;
 }
 
+.cpath-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.cpath-edit-row {
+  display: grid;
+  grid-template-columns: 24px 1fr minmax(140px, 160px) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.cpath-edit-row.is-add {
+  grid-template-columns: 1fr minmax(140px, 160px);
+}
+
+.cpath-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin: 8px 0;
+  align-items: end;
+}
+
+.cpath-date {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+}
+
+.cpath-date .input {
+  width: auto;
+}
+
+@media (max-width: 720px) {
+  .cpath-edit-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 980px) {
   .proj-metrics,
   .proj-detail,

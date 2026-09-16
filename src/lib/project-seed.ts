@@ -44,6 +44,11 @@ export function seedProjectBundle(owner: string) {
   truckMs[7]!.dependsOn = [truckMs[5]!.id, truckMs[6]!.id]
   truckMs[8]!.dependsOn = [truckMs[7]!.id]
   truckMs[3]!.status = 'blocked'
+  ;['2026-09-01', '2026-09-08', '2026-09-20', '2026-10-04', '2026-10-10', '2026-10-16', '2026-10-20', '2026-10-25', '2026-10-30'].forEach((d, i) => {
+    if (!truckMs[i]) return
+    truckMs[i]!.plannedEnd = d
+    if (i < 3) truckMs[i]!.actualEnd = d
+  })
   truckMs[3]!.plannedEnd = day
 
   const sunMs = mkMs(t2, ['State Licensing', 'Patch Approval', 'First Contract'], 0)

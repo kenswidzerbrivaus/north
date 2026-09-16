@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Field, Modal } from '../components/ui'
-import { todayISO } from '../lib/dates'
+import { formatShort, todayISO } from '../lib/dates'
 import {
   bar,
   commanderBrief,
@@ -44,6 +44,7 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
   const [plan, setPlan] = useState(false)
   const [complete, setComplete] = useState(false)
   const [addMs, setAddMs] = useState('')
+  const [addDate, setAddDate] = useState('')
   const [decTitle, setDecTitle] = useState('')
   const [waitPerson, setWaitPerson] = useState('')
   const [waitWhat, setWaitWhat] = useState('')
@@ -161,7 +162,34 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                     <span className="cpath-mark">{m.status === 'complete' ? '✓' : m.status === 'current' || m.status === 'blocked' ? '●' : '○'}</span>
                     <div>
                       <strong>{m.name}</strong>
-                      <span className="muted"> {m.owner}{m.plannedEnd ? ` · ${m.plannedEnd}` : ''}{m.dependsOn.length ? ` · waits on ${m.dependsOn.length}` : ''}{!depsReady(m, ms) && m.status !== 'complete' ? ' · deps open' : ''}</span>
+                      <span className="muted"> {m.owner}{m.dependsOn.length ? ` · waits on ${m.dependsOn.length}` : ''}{!depsReady(m, ms) && m.status !== 'complete' ? ' · deps open' : ''}</span>
+                      <div className="cpath-dates">
+                        <label className="cpath-date">
+                          <span className="kicker">{m.status === 'complete' ? 'Planned' : 'Accomplish by'}</span>
+                          <input
+                            className="input"
+                            type="date"
+                            value={m.plannedEnd ?? ''}
+                            onChange={(e) => store.updateMilestone(m.id, { plannedEnd: e.target.value || undefined })}
+                          />
+                          {m.plannedEnd && m.status !== 'complete' && m.plannedEnd < todayISO() ? (
+                            <span className="health health-critical">LATE</span>
+                          ) : m.plannedEnd ? (
+                            <span className="muted">{formatShort(m.plannedEnd)}</span>
+                          ) : null}
+                        </label>
+                        {m.status === 'complete' ? (
+                          <label className="cpath-date">
+                            <span className="kicker">Accomplished</span>
+                            <input
+                              className="input"
+                              type="date"
+                              value={m.actualEnd ?? ''}
+                              onChange={(e) => store.updateMilestone(m.id, { actualEnd: e.target.value || undefined })}
+                            />
+                          </label>
+                        ) : null}
+                      </div>
                       {m.status !== 'complete' && project.state !== 'complete' ? (
                         <button className="chip" onClick={() => store.updateMilestone(m.id, { status: 'complete', actualEnd: todayISO() })}>
                           Mark complete
@@ -198,18 +226,27 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
               className="stack"
               onSubmit={(e) => {
                 e.preventDefault()
-                const names = parseMilestoneLines(addMs)
-                if (!names.length) return
-                store.addMilestones(project.id, names)
+                const parsed = parseMilestoneLines(addMs)
+                const steps = parsed.length
+                  ? parsed.map((s) => ({ name: s.name, plannedEnd: s.plannedEnd || addDate || undefined }))
+                  : addMs.trim()
+                    ? [{ name: addMs.trim(), plannedEnd: addDate || undefined }]
+                    : []
+                if (!steps.length) return
+                if (steps.some((s) => !s.plannedEnd)) {
+                  alert('Each critical path step needs an accomplishment date.')
+                  return
+                }
+                store.addMilestones(project.id, steps)
                 setAddMs('')
+                setAddDate('')
               }}
             >
-              <textarea
-                className="textarea"
-                value={addMs}
-                onChange={(e) => setAddMs(e.target.value)}
-                placeholder={path.length ? 'Add next milestone (or several, one per line)' : 'Secure Financing\nPurchase Truck\nInsurance'}
-              />
+              <div className="cpath-edit-row is-add">
+                <input className="input" value={addMs} onChange={(e) => setAddMs(e.target.value)} placeholder={path.length ? 'Next milestone' : 'Secure Financing'} />
+                <input className="input" type="date" value={addDate} onChange={(e) => setAddDate(e.target.value)} aria-label="Accomplishment date" />
+              </div>
+              <p className="muted">Paste several lines as Name — YYYY-MM-DD if you want to add a chain at once.</p>
               <button className="btn" type="submit">
                 {path.length ? 'Add to path' : 'Build critical path'}
               </button>

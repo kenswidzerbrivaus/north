@@ -1,4 +1,4 @@
-import { parseISO, todayISO } from './dates'
+import { parseDeadline, parseISO, todayISO } from './dates'
 import type {
   Project,
   ProjectBlocker,
@@ -214,11 +214,22 @@ export function bar(pct: number) {
   return '█'.repeat(n) + '░'.repeat(10 - n)
 }
 
-export function parseMilestoneLines(raw: string) {
+export function parseMilestoneLines(raw: string): { name: string; plannedEnd?: string }[] {
   return raw
     .split(/\r?\n/)
-    .map((line) => line.replace(/^\s*(?:\d+[.)]\s*|[-*•]\s*)/, '').trim())
-    .filter(Boolean)
+    .map((line) => {
+      const cleaned = line.replace(/^\s*(?:\d+[.)]\s*|[-*•]\s*)/, '').trim()
+      if (!cleaned) return null
+      const split = cleaned.match(/^(.*?)(?:\s+[—–\-|@]\s+|\s{2,})(.+)$/)
+      if (split) {
+        const date = parseDeadline(split[2] ?? '')
+        if (date) return { name: (split[1] ?? '').trim(), plannedEnd: date }
+      }
+      const tail = cleaned.match(/^(.*?)\s+(\d{4}-\d{2}-\d{2})$/)
+      if (tail) return { name: (tail[1] ?? '').trim(), plannedEnd: tail[2] }
+      return { name: cleaned }
+    })
+    .filter((row): row is { name: string; plannedEnd?: string } => Boolean(row?.name))
 }
 
 export function depsReady(m: ProjectMilestone, all: ProjectMilestone[]) {
