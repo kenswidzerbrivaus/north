@@ -921,47 +921,167 @@ html.matrix-gate body {
 .today-page {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 22px;
+  max-width: 980px;
 }
 
-.today-head {
-  margin-bottom: 0;
-}
-
-.today-glance {
-  display: grid;
-  grid-template-columns: 1.2fr 0.9fr 0.9fr;
-  gap: 8px 28px;
-  padding: 4px 2px 8px;
-}
-
-.today-glance-label {
+.today-mast {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 0;
-  background: transparent;
-  padding: 0 0 6px;
-  font-size: 11px;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  border-bottom: 3px solid var(--ink);
+  padding-bottom: 14px;
+}
+
+.today-dow {
+  margin: 0 0 4px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--ink-soft);
 }
 
-.today-glance-label span {
+.today-mast-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.today-num {
+  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-size: clamp(56px, 8vw, 84px);
+  font-weight: 560;
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+}
+
+.today-mon {
+  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-size: 22px;
+  font-style: italic;
+}
+
+.today-focus {
+  border: 0;
+  background: transparent;
+  text-align: right;
+  padding: 0;
+}
+
+.today-focus b {
+  display: block;
+  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-size: 28px;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.today-quote {
+  margin: 0;
+  max-width: 40em;
+  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-style: italic;
+  font-size: 18px;
+  color: var(--ink);
+  line-height: 1.35;
+}
+
+.today-quote cite {
+  display: block;
+  margin-top: 6px;
+  font-style: normal;
+  font-family: Figtree, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.today-ledger {
+  display: grid;
+  grid-template-columns: 1.35fr 0.65fr;
+  gap: 8px 48px;
+  border-top: 1px solid var(--ink);
+  padding-top: 16px;
+}
+
+.today-col-head {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+}
+
+.today-col-head span {
   color: var(--accent);
 }
 
-.today-glance .task-row {
-  padding: 4px 0;
+.today-order,
+.today-rituals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.today-next {
-  margin: 6px 0 0;
+.today-item {
+  display: grid;
+  grid-template-columns: 28px 64px 20px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 9px 0;
+  border-bottom: 1px dotted var(--line-strong);
+}
+
+.today-idx,
+.today-time {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--ink-soft);
+  padding-top: 2px;
+}
+
+.today-item-title {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0;
+  font-weight: 600;
+}
+
+.today-rituals li {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px dotted var(--line-strong);
+}
+
+.today-empty {
+  padding: 12px 0;
+  color: var(--ink-soft);
+}
+
+.today-add {
+  margin-top: 10px;
+}
+
+.today-add .input {
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
+  border-radius: 0;
+  background: transparent;
+  padding-left: 0;
 }
 
 .morning {
@@ -1041,8 +1161,14 @@ html.matrix-gate body {
 }
 
 @media (max-width: 860px) {
-  .today-glance {
+  .today-ledger {
     grid-template-columns: 1fr;
+  }
+  .today-mast {
+    flex-wrap: wrap;
+  }
+  .today-item {
+    grid-template-columns: 24px 52px 20px 1fr;
   }
 }
 

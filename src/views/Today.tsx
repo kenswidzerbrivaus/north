@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import { Check } from '../components/ui'
-import { Icon } from '../icons'
-import { formatLong, formatTime, greeting, todayISO } from '../lib/dates'
+import { formatTime, parseISO, todayISO } from '../lib/dates'
 import { habitDone, isHabitDue } from '../lib/habits'
+import { quoteForDate } from '../lib/quotes'
 import { mergeCalendars, useGoogleCalendar } from '../google'
 import type { Route } from '../lib/types'
 import { useStore } from '../store'
@@ -9,78 +10,139 @@ import { formatRemain, useTimer } from '../timer'
 import { MorningRoutine } from './MorningRoutine'
 
 export function Today({ go }: { go: (r: Route) => void }) {
-  const { state, toggleTask, setHabitCount } = useStore()
+  const { state, toggleTask, setHabitCount, addTask } = useStore()
   const gcal = useGoogleCalendar()
   const timer = useTimer()
   const today = todayISO()
-  const due = state.tasks
+  const date = parseISO(today)
+  const quote = quoteForDate(today)
+  const [quick, setQuick] = useState('')
+
+  const events = mergeCalendars(state.events, gcal.events)
+    .filter((e) => e.date === today)
+    .sort((a, b) => (a.start ?? '99').localeCompare(b.start ?? '99'))
+
+  const linked = new Set(
+    events.flatMap((e) => [e.id, e.googleId].filter(Boolean) as string[]),
+  )
+  const tasks = state.tasks
     .filter((t) => {
       if (t.completed || !t.due) return false
+      if (t.eventId && linked.has(t.eventId)) return false
+      if (t.googleId && linked.has(t.googleId)) return false
       if (t.googleId || t.listId === 'calendar') return t.due === today
       return t.due <= today
     })
-    .sort((a, b) => (a.due === b.due ? b.priority - a.priority : (a.due ?? '').localeCompare(b.due ?? '')))
-  const nextEvent = mergeCalendars(state.events, gcal.events)
-    .filter((e) => e.date === today)
-    .sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''))[0]
-  const habits = state.habits.filter((h) => !h.archived && isHabitDue(h, new Date()))
+    .sort((a, b) => (a.dueTime ?? '99').localeCompare(b.dueTime ?? '99'))
+
+  const work = [
+    ...events.map((e) => ({
+      id: e.id,
+      title: e.title,
+      time: e.allDay || !e.start ? undefined : e.start,
+      color: e.color,
+      kind: 'event' as const,
+    })),
+    ...tasks.map((t) => ({
+      id: t.id,
+      title: t.title,
+      time: t.dueTime,
+      color: undefined as string | undefined,
+      kind: 'task' as const,
+    })),
+  ].sort((a, b) => (a.time ?? '99').localeCompare(b.time ?? '99'))
+
+  const habits = state.habits.filter((h) => !h.archived && isHabitDue(h, date))
+  const habitsLeft = habits.filter((h) => !habitDone(h, state.habitLogs, today)).length
 
   return (
     <div className="today-page">
-      <header className="page-head today-head">
-        <div>
-          <p className="kicker">{formatLong(today)}</p>
-          <h1>{greeting(state.settings.name)}</h1>
+      <header className="today-mast">
+        <div className="today-mast-date">
+          <p className="today-dow">{date.toLocaleDateString(undefined, { weekday: 'long' })}</p>
+          <div className="today-mast-row">
+            <span className="today-num">{date.getDate()}</span>
+            <span className="today-mon">{date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span>
+          </div>
         </div>
-        <button className="btn-ghost" onClick={() => go('focus')}>
-          <Icon name="focus" size={16} />
-          {timer.running ? formatRemain(timer.remaining) : 'Focus'}
+        <button className="today-focus" onClick={() => go('focus')}>
+          <span className="kicker">{timer.running ? 'In session' : 'Focus'}</span>
+          <b>{formatRemain(timer.remaining)}</b>
         </button>
       </header>
 
+      <p className="today-quote">
+        “{quote.text}”
+        <cite>{quote.by}</cite>
+      </p>
+
       <MorningRoutine date={today} />
 
-      <section className="today-glance">
-        <div>
-          <button className="today-glance-label" onClick={() => go('tasks')}>
-            Open <span>{due.length}</span>
+      <div className="today-ledger">
+        <section>
+          <button className="today-col-head" onClick={() => go('tasks')}>
+            The work <span>{work.length}</span>
           </button>
-          {due.slice(0, 4).map((t) => (
-            <div key={t.id} className="task-row">
-              <Check on={false} onClick={() => toggleTask(t.id)} />
-              <div className="task-title">{t.title}</div>
-            </div>
-          ))}
-          {due.length === 0 ? <p className="muted">Clear.</p> : null}
-        </div>
-        <div>
-          <button className="today-glance-label" onClick={() => go('habits')}>
-            Habits
+          <ol className="today-order">
+            {work.length === 0 ? (
+              <li className="today-empty">Nothing due. Add one below or rest.</li>
+            ) : (
+              work.map((row, i) => (
+                <li key={row.id} className="today-item">
+                  <span className="today-idx">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="today-time">{row.time ? formatTime(row.time) : '—'}</span>
+                  {row.kind === 'task' ? (
+                    <Check on={false} onClick={() => toggleTask(row.id)} />
+                  ) : (
+                    <span className="dot" style={{ background: row.color, marginTop: 6 }} />
+                  )}
+                  <button
+                    className="today-item-title"
+                    onClick={() => go(row.kind === 'task' ? 'tasks' : 'calendar')}
+                  >
+                    {row.title}
+                  </button>
+                </li>
+              ))
+            )}
+          </ol>
+          <form
+            className="today-add"
+            onSubmit={(e) => {
+              e.preventDefault()
+              const title = quick.trim()
+              if (!title) return
+              addTask({ title, due: today })
+              setQuick('')
+            }}
+          >
+            <input
+              className="input"
+              value={quick}
+              onChange={(e) => setQuick(e.target.value)}
+              placeholder="Add to today and press Enter"
+            />
+          </form>
+        </section>
+
+        <section>
+          <button className="today-col-head" onClick={() => go('habits')}>
+            Rituals <span>{habitsLeft}</span>
           </button>
-          {habits.map((h) => {
-            const on = habitDone(h, state.habitLogs, today)
-            return (
-              <div key={h.id} className="task-row">
-                <Check on={on} onClick={() => setHabitCount(h.id, today, on ? 0 : h.target)} label={h.name} />
-                <div className="task-title">{h.name}</div>
-              </div>
-            )
-          })}
-        </div>
-        <div>
-          <button className="today-glance-label" onClick={() => go('calendar')}>
-            Next
-          </button>
-          {nextEvent ? (
-            <p className="today-next">
-              <span className="dot" style={{ background: nextEvent.color }} />
-              {nextEvent.allDay || !nextEvent.start ? 'All day' : formatTime(nextEvent.start)} · {nextEvent.title}
-            </p>
-          ) : (
-            <p className="muted">Nothing timed.</p>
-          )}
-        </div>
-      </section>
+          <ul className="today-rituals">
+            {habits.map((h) => {
+              const on = habitDone(h, state.habitLogs, today)
+              return (
+                <li key={h.id}>
+                  <Check on={on} onClick={() => setHabitCount(h.id, today, on ? 0 : h.target)} label={h.name} />
+                  <span className={on ? 'muted' : undefined}>{h.name}</span>
+                </li>
+              )
+            })}
+            {habits.length === 0 ? <li className="today-empty">No rituals due.</li> : null}
+          </ul>
+        </section>
+      </div>
     </div>
   )
 }
