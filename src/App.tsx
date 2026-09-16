@@ -7,6 +7,7 @@ import { isTypingTarget, useRoute } from './lib/route'
 import { ROUTES, type Route } from './lib/types'
 import { StoreProvider, useStore } from './store'
 import { TimerProvider, useTimerControls } from './timer'
+import { DayClock } from './components/DayClock'
 import { Login } from './views/Login'
 
 const Today = lazy(() => import('./views/Today').then((m) => ({ default: m.Today })))
@@ -209,6 +210,7 @@ function Shell() {
           ))}
         </nav>
         <div className="sidebar-foot">
+          <DayClock />
           <button className="search-btn" onClick={() => setCmd(true)}>
             <Icon name="search" size={16} />
             Search
@@ -225,6 +227,7 @@ function Shell() {
           <strong className="display" style={{ fontSize: 22 }}>
             Sepho
           </strong>
+          <DayClock />
           <div className="row">
             <button className="btn-icon" onClick={() => setCmd(true)} aria-label="Search">
               <Icon name="search" />

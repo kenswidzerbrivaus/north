@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Check } from '../components/ui'
 import { hhmmFromMinutes, roundDown5, stashCalGap } from '../lib/cal-gap'
 import { formatTime, minutesOf, parseISO, todayISO } from '../lib/dates'
@@ -25,56 +25,6 @@ function sephoHello(name: string) {
 function nowMinutes() {
   const n = new Date()
   return n.getHours() * 60 + n.getMinutes()
-}
-
-function nowHiRes() {
-  return performance.timeOrigin + performance.now()
-}
-
-function msUntilMidnight(from = nowHiRes()) {
-  const wall = new Date()
-  const end = new Date(wall.getFullYear(), wall.getMonth(), wall.getDate() + 1).getTime()
-  return Math.max(0, end - from)
-}
-
-function formatDayLeft(ms: number) {
-  const h = Math.floor(ms / 3_600_000)
-  const m = Math.floor((ms % 3_600_000) / 60_000)
-  const s = Math.floor((ms % 60_000) / 1000)
-  const milli = Math.floor(ms % 1000)
-  const micro = Math.floor((ms * 1000) % 1000)
-  return {
-    h,
-    m: String(m).padStart(2, '0'),
-    s: String(s).padStart(2, '0'),
-    ms: String(milli).padStart(3, '0'),
-    us: String(micro).padStart(3, '0'),
-  }
-}
-
-function DayClock() {
-  const [left, setLeft] = useState(() => msUntilMidnight())
-  useEffect(() => {
-    let raf = 0
-    const tick = () => {
-      setLeft(msUntilMidnight())
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [])
-  const t = formatDayLeft(left)
-  const hours = left / 3_600_000
-  const heat = hours < 1 ? 'is-critical' : hours < 6 ? 'is-hot' : 'is-warn'
-  return (
-    <div className={`day-clock hud-frame ${heat}`}>
-      <span className="kicker">⚠ Time remaining</span>
-      <b>
-        {t.h}H {t.m}M {t.s}S {t.ms}MS {t.us}μS
-      </b>
-      <span className="kicker">Until midnight</span>
-    </div>
-  )
 }
 
 export function Today({ go }: { go: (r: Route) => void }) {
@@ -198,7 +148,6 @@ export function Today({ go }: { go: (r: Route) => void }) {
             <span className="kicker">Execution</span>
             <b>{exec}%</b>
           </div>
-          <DayClock />
           <button className="today-focus hud-frame" onClick={() => go('focus')}>
             <span className="kicker">{timer.running ? 'Reactor' : 'Focus // Standby'}</span>
             <b>{formatRemain(timer.remaining)}</b>

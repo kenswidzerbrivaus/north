@@ -1176,9 +1176,30 @@ html.sepho .daily-box {
 
 .day-clock {
   text-align: right;
-  min-width: 16rem;
+  min-width: 0;
+  width: 100%;
   padding: 8px 12px 10px;
   border-color: rgba(255, 179, 71, 0.55);
+}
+
+.sidebar .day-clock {
+  text-align: left;
+}
+
+.sidebar .day-clock b {
+  font-size: 13px;
+  white-space: normal;
+}
+
+.top-mobile .day-clock {
+  flex: 1;
+  text-align: center;
+  padding: 6px 8px;
+}
+
+.top-mobile .day-clock b {
+  font-size: 12px;
+  white-space: normal;
 }
 
 .day-clock .kicker {
