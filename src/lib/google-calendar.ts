@@ -25,9 +25,16 @@ const TOKEN_KEY = 'north.gcal.token'
 const LINK_KEY = 'north.gcal.link'
 
 type TokenBlob = { access: string; exp: number; email: string }
-type LinkBlob = { email: string }
+type LinkBlob = { email: string; clientId?: string; linkedAt?: string }
 
 let tokenWait: Promise<TokenBlob> | null = null
+let gisClient: { requestAccessToken: (opts?: { prompt?: string }) => void } | null = null
+let gisClientId = ''
+let pendingAuth: {
+  resolve: (blob: TokenBlob) => void
+  reject: (err: Error) => void
+  clientId: string
+} | null = null
 
 type GEvent = {
   id?: string
@@ -49,7 +56,9 @@ declare global {
             scope: string
             hint?: string
             enable_granular_consent?: boolean
+            include_granted_scopes?: boolean
             callback: (resp: { access_token?: string; error?: string; expires_in?: string | number }) => void
+            error_callback?: (err: { type?: string; message?: string }) => void
           }) => { requestAccessToken: (opts?: { prompt?: string }) => void }
           revoke: (token: string, done?: () => void) => void
         }
@@ -68,22 +77,50 @@ export function readLink(): LinkBlob | null {
   }
 }
 
-export function readToken(): TokenBlob | null {
+export function isGoogleLinked() {
+  return Boolean(readLink()?.email || readStoredToken()?.access)
+}
+
+export function readStoredToken(): TokenBlob | null {
   try {
     const raw = localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as TokenBlob
-    if (!parsed.access || parsed.exp < Date.now() + 15_000) return null
+    if (!parsed.access) return null
     return parsed
   } catch {
     return null
   }
 }
 
-function writeToken(blob: TokenBlob) {
+export function readToken(): TokenBlob | null {
+  const parsed = readStoredToken()
+  if (!parsed || parsed.exp < Date.now() + 20_000) return null
+  return parsed
+}
+
+function writeLink(email: string, clientId?: string) {
+  const prev = readLink()
+  localStorage.setItem(
+    LINK_KEY,
+    JSON.stringify({
+      email: email || prev?.email || '',
+      clientId: clientId || prev?.clientId,
+      linkedAt: prev?.linkedAt || new Date().toISOString(),
+    } satisfies LinkBlob),
+  )
+}
+
+function writeToken(blob: TokenBlob, clientId?: string) {
   localStorage.setItem(TOKEN_KEY, JSON.stringify(blob))
-  localStorage.setItem(LINK_KEY, JSON.stringify({ email: blob.email }))
+  writeLink(blob.email, clientId)
   sessionStorage.removeItem(TOKEN_KEY)
+}
+
+function expireStoredToken() {
+  const t = readStoredToken()
+  if (!t) return
+  localStorage.setItem(TOKEN_KEY, JSON.stringify({ ...t, exp: 0 }))
 }
 
 export function clearToken(revoke = true) {
@@ -120,51 +157,103 @@ function loadGis(): Promise<void> {
   })
 }
 
+function failPending(err: Error) {
+  const p = pendingAuth
+  pendingAuth = null
+  p?.reject(err)
+}
+
+async function finishToken(access: string, expiresIn: number, clientId: string) {
+  const email = (await fetchEmail(access)) || readLink()?.email || readStoredToken()?.email || ''
+  const blob: TokenBlob = { access, exp: Date.now() + Math.max(60, expiresIn) * 1000, email }
+  writeToken(blob, clientId)
+  return blob
+}
+
+async function gisClientFor(clientId: string) {
+  await loadGis()
+  if (!window.google?.accounts.oauth2) throw new Error('Google sign-in is unavailable')
+  if (gisClient && gisClientId === clientId) return gisClient
+  gisClientId = clientId
+  gisClient = window.google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: SCOPE,
+    hint: readLink()?.email || readStoredToken()?.email,
+    enable_granular_consent: false,
+    include_granted_scopes: true,
+    callback: (resp) => {
+      const waiter = pendingAuth
+      pendingAuth = null
+      if (!waiter) return
+      if (resp.error || !resp.access_token) {
+        const denied = resp.error === 'access_denied'
+        waiter.reject(
+          new Error(
+            denied
+              ? 'Google blocked the app because it is still in Testing. In Google Cloud → OAuth consent screen → Test users, add kensbrivaus103@gmail.com, wait a minute, then Connect again with that same account.'
+              : resp.error === 'popup_closed_by_user'
+                ? 'GOOGLE_NEEDS_GESTURE'
+                : resp.error || 'Google permission was not granted',
+          ),
+        )
+        return
+      }
+      void finishToken(resp.access_token, Number(resp.expires_in ?? 3600), waiter.clientId).then(waiter.resolve, waiter.reject)
+    },
+    error_callback: (err) => {
+      const type = err?.type || ''
+      if (type === 'popup_closed' || type === 'popup_failed_to_open') {
+        failPending(new Error('GOOGLE_NEEDS_GESTURE'))
+        return
+      }
+      failPending(new Error(err?.message || type || 'GOOGLE_NEEDS_GESTURE'))
+    },
+  })
+  return gisClient
+}
+
 export function requestGoogleToken(clientId: string, prompt: '' | 'consent' = 'consent'): Promise<TokenBlob> {
-  return loadGis().then(
-    () =>
-      new Promise((resolve, reject) => {
-        if (!window.google?.accounts.oauth2) {
-          reject(new Error('Google sign-in is unavailable'))
-          return
-        }
-        const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: clientId,
-          scope: SCOPE,
-          hint: readLink()?.email,
-          enable_granular_consent: false,
-          callback: async (resp) => {
-            if (resp.error || !resp.access_token) {
-              const denied = resp.error === 'access_denied'
-              reject(
-                new Error(
-                  denied
-                    ? 'Google blocked the app because it is still in Testing. In Google Cloud → OAuth consent screen → Test users, add kensbrivaus103@gmail.com, wait a minute, then Connect again with that same account.'
-                    : resp.error || 'Google permission was not granted',
-                ),
-              )
-              return
-            }
-            const seconds = Number(resp.expires_in ?? 3600)
-            const email = (await fetchEmail(resp.access_token)) || readLink()?.email || ''
-            const blob = { access: resp.access_token, exp: Date.now() + seconds * 1000, email }
-            writeToken(blob)
-            resolve(blob)
-          },
-        })
-        client.requestAccessToken({ prompt })
-      }),
-  )
+  return new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(
+      () => {
+        if (pendingAuth?.resolve !== wrappedResolve) return
+        failPending(new Error(prompt ? 'Google sign-in timed out' : 'GOOGLE_NEEDS_GESTURE'))
+      },
+      prompt ? 120_000 : 8_000,
+    )
+    const wrappedResolve = (blob: TokenBlob) => {
+      window.clearTimeout(timeout)
+      resolve(blob)
+    }
+    const wrappedReject = (err: Error) => {
+      window.clearTimeout(timeout)
+      reject(err)
+    }
+    pendingAuth = { clientId, resolve: wrappedResolve, reject: wrappedReject }
+    void gisClientFor(clientId)
+      .then((client) => client.requestAccessToken({ prompt }))
+      .catch((err) => failPending(err instanceof Error ? err : new Error('Google sign-in failed to load')))
+  })
 }
 
 export function ensureGoogleToken(clientId: string, consent = false): Promise<TokenBlob> {
   const fresh = readToken()
   if (fresh && !consent) return Promise.resolve(fresh)
   if (tokenWait) return tokenWait
-  tokenWait = requestGoogleToken(clientId, consent ? 'consent' : '').finally(() => {
-    tokenWait = null
-  })
+  tokenWait = requestGoogleToken(clientId, consent ? 'consent' : '')
+    .catch((err) => {
+      if (!consent && err instanceof Error && err.message === 'GOOGLE_NEEDS_GESTURE') throw err
+      if (!consent && isGoogleLinked()) throw new Error('GOOGLE_NEEDS_GESTURE')
+      throw err
+    })
+    .finally(() => {
+      tokenWait = null
+    })
   return tokenWait
+}
+
+export function linkedClientId() {
+  return readLink()?.clientId || ''
 }
 
 async function fetchEmail(access: string) {
@@ -182,7 +271,7 @@ async function fetchEmail(access: string) {
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const token = readToken()
-  if (!token) throw new Error('Google Calendar is not connected')
+  if (!token) throw new Error(isGoogleLinked() ? 'GOOGLE_NEEDS_GESTURE' : 'Google Calendar is not connected')
   const res = await fetch(`https://www.googleapis.com/calendar/v3${path}`, {
     ...init,
     headers: {
@@ -192,6 +281,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     },
   })
   if (res.status === 401) {
+    expireStoredToken()
     throw new Error('GOOGLE_AUTH')
   }
   if (!res.ok) {

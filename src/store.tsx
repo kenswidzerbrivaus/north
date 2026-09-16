@@ -9,6 +9,7 @@ import {
 import { todayISO } from './lib/dates'
 import { nowISO, uid } from './lib/id'
 import { depsReady } from './lib/project-engine'
+import { readLink } from './lib/google-calendar'
 import { seedProjectBundle } from './lib/project-seed'
 import type {
   CalEvent,
@@ -190,6 +191,10 @@ function load(): State {
       version: 1,
       lists: parsed.lists.length ? parsed.lists : blankState().lists,
       settings: { ...defaultSettings(), ...parsed.settings },
+    }
+    if (!loaded.settings.googleClientId) {
+      const linkedId = readLink()?.clientId
+      if (linkedId) loaded.settings.googleClientId = linkedId
     }
     const needsSeed =
       !Array.isArray(parsed.projects) ||

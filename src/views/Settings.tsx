@@ -142,7 +142,7 @@ export function Settings() {
         <section className="card stack">
           <h2>Google Calendar</h2>
           {gcal.connected ? (
-            <p className="muted">Linked as {gcal.email || 'Google'}. Events from your primary calendar show up in Sepho.</p>
+            <p className="muted">Linked as {gcal.email || 'Google'}. This stays linked on this device. Sepho refreshes Google automatically, and after a quiet hour a click anywhere resumes sync.</p>
           ) : (
             <p className="muted">Link your primary Google Calendar to see those events here, and to save new Sepho events back to Google.</p>
           )}
@@ -166,7 +166,7 @@ export function Settings() {
           <div className="row">
             {gcal.connected ? (
               <>
-                <button className="btn" onClick={() => void gcal.refresh()} disabled={gcal.loading}>
+                <button className="btn" onClick={() => void gcal.refresh(undefined, true)} disabled={gcal.loading}>
                   <Icon name="google" size={16} /> {gcal.loading ? 'Syncing…' : 'Sync now'}
                 </button>
                 <button className="btn-ghost" onClick={gcal.disconnect}>
