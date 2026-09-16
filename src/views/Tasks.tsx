@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Check, Empty, Field, Modal } from '../components/ui'
 import { Icon } from '../icons'
-import { formatShort, todayISO } from '../lib/dates'
+import { formatShort, formatTime, todayISO } from '../lib/dates'
 import { PALETTE } from '../lib/types'
 import { useStore } from '../store'
 
@@ -128,7 +128,8 @@ export function Tasks() {
                   <div className="meta">
                     <span className="dot" style={{ background: listOf(t.listId)?.color }} />
                     {listOf(t.listId)?.name}
-                    {t.due ? <span>{t.due < today && !t.completed ? 'Overdue · ' : ''}{formatShort(t.due)}</span> : null}
+                    {t.due ? <span>{t.due < today && !t.completed ? 'Overdue · ' : ''}{formatShort(t.due)}{t.dueTime ? ` ${formatTime(t.dueTime)}` : ''}</span> : null}
+                    {t.eventId || t.googleId ? <span>On calendar</span> : null}
                     {t.priority ? (
                       <span className="prio" data-p={t.priority}>
                         {PRI[t.priority]}
@@ -228,7 +229,7 @@ export function Tasks() {
         </Modal>
       ) : null}
 
-      {listId !== 'all' && listId !== 'inbox' ? (
+      {listId !== 'all' && listId !== 'inbox' && listId !== 'calendar' ? (
         <p className="muted" style={{ marginTop: 18 }}>
           <button className="btn-ghost" onClick={() => { deleteList(listId); setListId('all') }}>
             Delete this list

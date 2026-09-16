@@ -14,6 +14,7 @@ import type {
   Goal,
   Habit,
   JournalEntry,
+  List,
   Note,
   Settings,
   State,
@@ -44,6 +45,7 @@ export function freshState(): State {
     version: 1,
     lists: [
       { id: 'inbox', name: 'Inbox', color: PALETTE[0] },
+      { id: 'calendar', name: 'Calendar', color: '#4285f4' },
       { id: 'work', name: 'Work', color: PALETTE[2] },
       { id: 'personal', name: 'Personal', color: PALETTE[1] },
     ],
@@ -126,6 +128,7 @@ function blankState(): State {
     version: 1,
     lists: [
       { id: 'inbox', name: 'Inbox', color: PALETTE[0] },
+      { id: 'calendar', name: 'Calendar', color: '#4285f4' },
       { id: 'work', name: 'Work', color: PALETTE[2] },
       { id: 'personal', name: 'Personal', color: PALETTE[1] },
     ],
@@ -144,18 +147,19 @@ function blankState(): State {
 function load(): State {
   try {
     const raw = localStorage.getItem(KEY)
-    if (!raw) return freshState()
+    if (!raw) return linkExisting(freshState())
     const parsed = JSON.parse(raw) as Partial<State>
     if (!Array.isArray(parsed.lists) || !Array.isArray(parsed.tasks)) return freshState()
-    return {
+    const loaded: State = {
       ...blankState(),
       ...parsed,
       version: 1,
       lists: parsed.lists.length ? parsed.lists : blankState().lists,
       settings: { ...defaultSettings(), ...parsed.settings },
     }
+    return linkExisting(loaded)
   } catch {
-    return freshState()
+    return linkExisting(freshState())
   }
 }
 
@@ -203,6 +207,8 @@ export type Store = {
   addEvent: (input: Partial<CalEvent> & { title: string; date: string }) => string
   updateEvent: (id: string, patch: Partial<CalEvent>) => void
   deleteEvent: (id: string) => void
+  syncFromCalendar: (events: CalEvent[]) => void
+  dropGoogleItems: (googleId: string) => void
   addHabit: (input: Partial<Habit> & { name: string }) => string
   updateHabit: (id: string, patch: Partial<Habit>) => void
   deleteHabit: (id: string) => void
@@ -218,6 +224,101 @@ export type Store = {
   updateSettings: (patch: Partial<Settings>) => void
   importState: (data: unknown) => void
   resetState: () => void
+}
+
+function withCalendarList(lists: List[]) {
+  if (lists.some((l) => l.id === 'calendar')) return lists
+  const inboxAt = lists.findIndex((l) => l.id === 'inbox')
+  const cal = { id: 'calendar', name: 'Calendar', color: '#4285f4' }
+  if (inboxAt < 0) return [cal, ...lists]
+  return [...lists.slice(0, inboxAt + 1), cal, ...lists.slice(inboxAt + 1)]
+}
+
+function linkedTask(tasks: Task[], event: CalEvent) {
+  return tasks.find(
+    (t) => t.eventId === event.id || (event.googleId && t.googleId === event.googleId && t.due === event.date),
+  )
+}
+
+function taskFromEvent(event: CalEvent, existing?: Task): Task {
+  const t = nowISO()
+  const dueTime = event.allDay ? undefined : event.start
+  if (
+    existing &&
+    existing.title === event.title &&
+    existing.due === event.date &&
+    existing.dueTime === dueTime &&
+    existing.eventId === event.id &&
+    existing.googleId === (event.googleId ?? existing.googleId)
+  ) {
+    return existing
+  }
+  if (existing) {
+    return {
+      ...existing,
+      title: event.title,
+      due: event.date,
+      dueTime,
+      eventId: event.id,
+      googleId: event.googleId ?? existing.googleId,
+      notes: existing.notes || event.notes,
+      updatedAt: t,
+    }
+  }
+  return {
+    id: uid(),
+    title: event.title,
+    notes: event.notes || '',
+    listId: 'calendar',
+    completed: false,
+    due: event.date,
+    dueTime,
+    priority: 0,
+    createdAt: t,
+    updatedAt: t,
+    subtasks: [],
+    eventId: event.id,
+    googleId: event.googleId,
+  }
+}
+
+function linkExisting(s: State): State {
+  let events = s.events
+  const tasks = s.tasks.map((t) => {
+    if (!t.due || t.eventId) return t
+    const eventId = uid()
+    events = [
+      {
+        id: eventId,
+        title: t.title,
+        notes: t.notes,
+        date: t.due,
+        start: t.dueTime,
+        allDay: !t.dueTime,
+        color: PALETTE[2],
+        location: '',
+      },
+      ...events,
+    ]
+    return { ...t, eventId }
+  })
+  return syncTasksFromEvents({ ...s, events, tasks })
+}
+
+function syncTasksFromEvents(s: State, extra: CalEvent[] = []): State {
+  const events = extra.length ? [...s.events, ...extra] : s.events
+  const lists = withCalendarList(s.lists)
+  let tasks = s.tasks
+  let changed = lists !== s.lists
+  for (const event of events) {
+    const existing = linkedTask(tasks, event)
+    const next = taskFromEvent(event, existing)
+    if (next === existing) continue
+    changed = true
+    tasks = existing ? tasks.map((t) => (t.id === existing.id ? next : t)) : [next, ...tasks]
+  }
+  if (!changed) return s
+  return { ...s, lists, tasks }
 }
 
 const StoreCtx = createContext<Store | null>(null)
@@ -247,7 +348,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })),
       deleteList: (id) =>
         patch((s) => {
-          if (id === 'inbox') return s
+          if (id === 'inbox' || id === 'calendar') return s
           return {
             ...s,
             lists: s.lists.filter((l) => l.id !== id),
@@ -257,31 +358,81 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addTask: (input) => {
         const id = uid()
         const t = nowISO()
-        patch((s) => ({
-          ...s,
-          tasks: [
-            {
-              notes: '',
-              listId: 'inbox',
-              completed: false,
-              priority: 0,
-              subtasks: [],
-              ...input,
-              id,
-              title: input.title.trim(),
-              createdAt: t,
-              updatedAt: t,
-            },
-            ...s.tasks,
-          ],
-        }))
+        const eventId = input.eventId ?? (input.due ? uid() : undefined)
+        patch((s) => {
+          const task: Task = {
+            notes: '',
+            listId: input.due ? 'calendar' : 'inbox',
+            completed: false,
+            priority: 0,
+            subtasks: [],
+            ...input,
+            id,
+            title: input.title.trim(),
+            eventId,
+            createdAt: t,
+            updatedAt: t,
+          }
+          let events = s.events
+          if (input.due && !input.eventId && eventId) {
+            events = [
+              {
+                id: eventId,
+                title: task.title,
+                notes: task.notes,
+                date: input.due,
+                start: input.dueTime,
+                allDay: !input.dueTime,
+                color: PALETTE[2],
+                location: '',
+              },
+              ...s.events,
+            ]
+          }
+          return { ...s, lists: withCalendarList(s.lists), events, tasks: [task, ...s.tasks] }
+        })
         return id
       },
       updateTask: (id, next) =>
-        patch((s) => ({
-          ...s,
-          tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...next, updatedAt: nowISO() } : t)),
-        })),
+        patch((s) => {
+          const prev = s.tasks.find((t) => t.id === id)
+          if (!prev) return s
+          const task: Task = { ...prev, ...next, updatedAt: nowISO() }
+          let events = s.events
+          if (task.due) {
+            if (task.eventId) {
+              events = events.map((e) =>
+                e.id === task.eventId
+                  ? {
+                      ...e,
+                      title: task.title,
+                      date: task.due!,
+                      start: task.dueTime,
+                      allDay: !task.dueTime,
+                      notes: task.notes,
+                    }
+                  : e,
+              )
+            } else {
+              const eventId = uid()
+              task.eventId = eventId
+              events = [
+                {
+                  id: eventId,
+                  title: task.title,
+                  notes: task.notes,
+                  date: task.due,
+                  start: task.dueTime,
+                  allDay: !task.dueTime,
+                  color: PALETTE[2],
+                  location: '',
+                },
+                ...events,
+              ]
+            }
+          }
+          return { ...s, events, tasks: s.tasks.map((t) => (t.id === id ? task : t)) }
+        }),
       toggleTask: (id) =>
         patch((s) => ({
           ...s,
@@ -321,29 +472,46 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })),
       addEvent: (input) => {
         const id = uid()
-        patch((s) => ({
-          ...s,
-          events: [
-            {
-              notes: '',
-              allDay: !input.start,
-              color: PALETTE[2],
-              location: '',
-              ...input,
-              id,
-              title: input.title.trim(),
-            },
-            ...s.events,
-          ],
-        }))
+        patch((s) => {
+          const event: CalEvent = {
+            notes: '',
+            allDay: !input.start,
+            color: PALETTE[2],
+            location: '',
+            ...input,
+            id,
+            title: input.title.trim(),
+          }
+          return syncTasksFromEvents({ ...s, events: [event, ...s.events] })
+        })
         return id
       },
       updateEvent: (id, next) =>
+        patch((s) => {
+          const events = s.events.map((e) => (e.id === id ? { ...e, ...next } : e))
+          return syncTasksFromEvents({ ...s, events })
+        }),
+      deleteEvent: (id) =>
+        patch((s) => {
+          const event = s.events.find((e) => e.id === id)
+          return {
+            ...s,
+            events: s.events.filter((e) => e.id !== id),
+            tasks: s.tasks.filter((t) => {
+              if (t.completed) return true
+              if (t.eventId === id) return false
+              if (event?.googleId && t.googleId === event.googleId && t.due === event.date) return false
+              return true
+            }),
+          }
+        }),
+      syncFromCalendar: (events) => patch((s) => syncTasksFromEvents(s, events)),
+      dropGoogleItems: (googleId) =>
         patch((s) => ({
           ...s,
-          events: s.events.map((e) => (e.id === id ? { ...e, ...next } : e)),
+          events: s.events.filter((e) => e.googleId !== googleId),
+          tasks: s.tasks.filter((t) => t.completed || t.googleId !== googleId),
         })),
-      deleteEvent: (id) => patch((s) => ({ ...s, events: s.events.filter((e) => e.id !== id) })),
       addHabit: (input) => {
         const id = uid()
         patch((s) => ({

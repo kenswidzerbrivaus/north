@@ -28,7 +28,7 @@ type GCal = {
 const Ctx = createContext<GCal | null>(null)
 
 export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
-  const { state } = useStore()
+  const { state, syncFromCalendar } = useStore()
   const clientId = state.settings.googleClientId.trim()
   const [email, setEmail] = useState('')
   const [events, setEvents] = useState<CalEvent[]>([])
@@ -91,6 +91,10 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
     setEmail(existing.email)
     void refresh()
   }, [clientId, refresh])
+
+  useEffect(() => {
+    if (events.length) syncFromCalendar(events)
+  }, [events, syncFromCalendar])
 
   const connect = useCallback(async () => {
     if (!clientId) {

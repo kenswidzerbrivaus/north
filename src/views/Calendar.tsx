@@ -21,7 +21,7 @@ type View = 'month' | 'week' | 'day'
 const HOURS = Array.from({ length: 16 }, (_, i) => i + 6)
 
 export function Calendar() {
-  const { state, addEvent, updateEvent, deleteEvent } = useStore()
+  const { state, addEvent, updateEvent, deleteEvent, syncFromCalendar, dropGoogleItems } = useStore()
   const gcal = useGoogleCalendar()
   const weekStartsOn = state.settings.weekStartsOn
   const [cursor, setCursor] = useState(() => new Date())
@@ -48,7 +48,8 @@ export function Calendar() {
   const dayIso = toISO(cursor)
 
   const eventsOn = (iso: string) => allEvents.filter((e) => e.date === iso)
-  const tasksOn = (iso: string) => state.tasks.filter((t) => t.due === iso && !t.completed)
+  const tasksOn = (iso: string) =>
+    state.tasks.filter((t) => t.due === iso && !t.completed && !t.eventId && !t.googleId)
 
   const save = async () => {
     if (!draft?.title?.trim() || !draft.date || busy) return
@@ -66,7 +67,8 @@ export function Calendar() {
     setBusy(true)
     try {
       if (draft.googleId && gcal.connected) {
-        await gcal.saveToGoogle(payload)
+        const saved = await gcal.saveToGoogle(payload)
+        if (saved) syncFromCalendar([saved])
       } else if (!draft.id && toGoogle && gcal.connected) {
         try {
           const saved = await gcal.saveToGoogle(payload)
@@ -163,6 +165,7 @@ export function Calendar() {
                   }
                 }
                 if (draft.id && !draft.id.startsWith('gcal:')) deleteEvent(draft.id)
+                if (draft.googleId) dropGoogleItems(draft.googleId)
                 setDraft(null)
               }}
             >

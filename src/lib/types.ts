@@ -38,6 +38,8 @@ export interface Task {
   createdAt: string
   updatedAt: string
   subtasks: Subtask[]
+  eventId?: string
+  googleId?: string
 }
 
 export interface CalEvent {
