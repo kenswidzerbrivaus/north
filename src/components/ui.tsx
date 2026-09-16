@@ -36,7 +36,7 @@ export function Modal({
             <Icon name="close" />
           </button>
         </header>
-        {children}
+        <div className="modal-body">{children}</div>
       </div>
     </div>
   )
