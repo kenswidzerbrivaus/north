@@ -45,7 +45,7 @@ export function MorningRoutine({ date }: { date: string }) {
               <p className="daily-label">Short term goal</p>
               <textarea
                 className="morning-goal"
-                rows={3}
+                rows={2}
                 placeholder="What you’re driving this season."
                 value={draft.shortTermGoal}
                 onChange={(e) => setDraft({ ...draft, shortTermGoal: e.target.value })}
