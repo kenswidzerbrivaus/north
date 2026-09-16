@@ -20,7 +20,7 @@ import { useStore } from '../store'
 
 type View = 'month' | 'week' | 'day'
 
-const HOURS = Array.from({ length: 16 }, (_, i) => i + 6)
+const HOURS = Array.from({ length: 24 }, (_, i) => i)
 
 export function Calendar() {
   const { state, addEvent, updateEvent, deleteEvent, syncFromCalendar, dropGoogleItems } = useStore()
@@ -121,7 +121,7 @@ export function Calendar() {
     setGap({ date: g.date, startMin, endMin })
     openNew(g.date, g.start, g.end)
     window.setTimeout(() => {
-      const hour = Math.max(6, Math.min(21, Math.floor(startMin / 60)))
+      const hour = Math.max(0, Math.min(23, Math.floor(startMin / 60)))
       document.querySelector(`[data-cal-hour="${hour}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
     }, 80)
     // eslint-disable-next-line react-hooks/exhaustive-deps
