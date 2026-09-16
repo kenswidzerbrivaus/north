@@ -1176,21 +1176,14 @@ html.sepho .daily-box {
 
 .day-clock {
   text-align: right;
-  min-width: 14rem;
+  min-width: 16rem;
 }
 
 .day-clock b {
-  font-size: 22px;
-  letter-spacing: 0.08em;
+  font-size: 18px;
+  letter-spacing: 0.06em;
   text-shadow: 0 0 14px rgba(110, 231, 255, 0.45);
-}
-
-.day-clock-frac {
-  display: block;
-  margin-top: 2px;
-  font-size: 13px;
-  letter-spacing: 0.12em;
-  opacity: 0.85;
+  white-space: nowrap;
 }
 
 .board-morning {

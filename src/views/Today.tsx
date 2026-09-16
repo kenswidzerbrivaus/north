@@ -68,10 +68,7 @@ function DayClock() {
     <div className="day-clock">
       <span className="kicker">Clock</span>
       <b>
-        {t.h}H {t.m}M {t.s}S
-        <span className="day-clock-frac">
-          {t.ms}MS {t.us}μS
-        </span>
+        {t.h}H {t.m}M {t.s}S {t.ms}MS {t.us}μS
       </b>
       <span className="kicker">Left in the day</span>
     </div>
