@@ -27,30 +27,52 @@ function nowMinutes() {
   return n.getHours() * 60 + n.getMinutes()
 }
 
-function msUntilMidnight(from = Date.now()) {
-  const d = new Date(from)
-  const end = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)
-  return Math.max(0, end.getTime() - from)
+function nowHiRes() {
+  return performance.timeOrigin + performance.now()
+}
+
+function msUntilMidnight(from = nowHiRes()) {
+  const wall = new Date()
+  const end = new Date(wall.getFullYear(), wall.getMonth(), wall.getDate() + 1).getTime()
+  return Math.max(0, end - from)
 }
 
 function formatDayLeft(ms: number) {
-  const total = Math.floor(ms / 1000)
-  const h = Math.floor(total / 3600)
-  const m = Math.floor((total % 3600) / 60)
-  const s = total % 60
-  return `${h}H ${String(m).padStart(2, '0')}M ${String(s).padStart(2, '0')}S`
+  const h = Math.floor(ms / 3_600_000)
+  const m = Math.floor((ms % 3_600_000) / 60_000)
+  const s = Math.floor((ms % 60_000) / 1000)
+  const milli = Math.floor(ms % 1000)
+  const micro = Math.floor((ms * 1000) % 1000)
+  return {
+    h,
+    m: String(m).padStart(2, '0'),
+    s: String(s).padStart(2, '0'),
+    ms: String(milli).padStart(3, '0'),
+    us: String(micro).padStart(3, '0'),
+  }
 }
 
 function DayClock() {
   const [left, setLeft] = useState(() => msUntilMidnight())
   useEffect(() => {
-    const id = window.setInterval(() => setLeft(msUntilMidnight()), 1000)
-    return () => window.clearInterval(id)
+    let raf = 0
+    const tick = () => {
+      setLeft(msUntilMidnight())
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
   }, [])
+  const t = formatDayLeft(left)
   return (
     <div className="day-clock">
       <span className="kicker">Clock</span>
-      <b>{formatDayLeft(left)}</b>
+      <b>
+        {t.h}H {t.m}M {t.s}S
+        <span className="day-clock-frac">
+          {t.ms}MS {t.us}μS
+        </span>
+      </b>
       <span className="kicker">Left in the day</span>
     </div>
   )
