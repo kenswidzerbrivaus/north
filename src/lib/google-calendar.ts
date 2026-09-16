@@ -22,8 +22,12 @@ const SCOPE = [
   'https://www.googleapis.com/auth/userinfo.email',
 ].join(' ')
 const TOKEN_KEY = 'north.gcal.token'
+const LINK_KEY = 'north.gcal.link'
 
 type TokenBlob = { access: string; exp: number; email: string }
+type LinkBlob = { email: string }
+
+let tokenWait: Promise<TokenBlob> | null = null
 
 type GEvent = {
   id?: string
@@ -43,6 +47,7 @@ declare global {
           initTokenClient: (cfg: {
             client_id: string
             scope: string
+            hint?: string
             enable_granular_consent?: boolean
             callback: (resp: { access_token?: string; error?: string; expires_in?: string | number }) => void
           }) => { requestAccessToken: (opts?: { prompt?: string }) => void }
@@ -53,9 +58,19 @@ declare global {
   }
 }
 
+export function readLink(): LinkBlob | null {
+  try {
+    const raw = localStorage.getItem(LINK_KEY)
+    if (!raw) return null
+    return JSON.parse(raw) as LinkBlob
+  } catch {
+    return null
+  }
+}
+
 export function readToken(): TokenBlob | null {
   try {
-    const raw = sessionStorage.getItem(TOKEN_KEY)
+    const raw = localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as TokenBlob
     if (!parsed.access || parsed.exp < Date.now() + 15_000) return null
@@ -66,12 +81,23 @@ export function readToken(): TokenBlob | null {
 }
 
 function writeToken(blob: TokenBlob) {
-  sessionStorage.setItem(TOKEN_KEY, JSON.stringify(blob))
+  localStorage.setItem(TOKEN_KEY, JSON.stringify(blob))
+  localStorage.setItem(LINK_KEY, JSON.stringify({ email: blob.email }))
+  sessionStorage.removeItem(TOKEN_KEY)
 }
 
-export function clearToken() {
-  const t = readToken()
-  if (t && window.google?.accounts.oauth2.revoke) window.google.accounts.oauth2.revoke(t.access)
+export function clearToken(revoke = true) {
+  try {
+    const raw = localStorage.getItem(TOKEN_KEY)
+    const parsed = raw ? (JSON.parse(raw) as TokenBlob) : null
+    if (revoke && parsed?.access && window.google?.accounts.oauth2.revoke) {
+      window.google.accounts.oauth2.revoke(parsed.access)
+    }
+  } catch {
+    /* ignore */
+  }
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(LINK_KEY)
   sessionStorage.removeItem(TOKEN_KEY)
 }
 
@@ -105,6 +131,7 @@ export function requestGoogleToken(clientId: string, prompt: '' | 'consent' = 'c
         const client = window.google.accounts.oauth2.initTokenClient({
           client_id: clientId,
           scope: SCOPE,
+          hint: readLink()?.email,
           enable_granular_consent: false,
           callback: async (resp) => {
             if (resp.error || !resp.access_token) {
@@ -119,7 +146,7 @@ export function requestGoogleToken(clientId: string, prompt: '' | 'consent' = 'c
               return
             }
             const seconds = Number(resp.expires_in ?? 3600)
-            const email = await fetchEmail(resp.access_token)
+            const email = (await fetchEmail(resp.access_token)) || readLink()?.email || ''
             const blob = { access: resp.access_token, exp: Date.now() + seconds * 1000, email }
             writeToken(blob)
             resolve(blob)
@@ -128,6 +155,16 @@ export function requestGoogleToken(clientId: string, prompt: '' | 'consent' = 'c
         client.requestAccessToken({ prompt })
       }),
   )
+}
+
+export function ensureGoogleToken(clientId: string, consent = false): Promise<TokenBlob> {
+  const fresh = readToken()
+  if (fresh && !consent) return Promise.resolve(fresh)
+  if (tokenWait) return tokenWait
+  tokenWait = requestGoogleToken(clientId, consent ? 'consent' : '').finally(() => {
+    tokenWait = null
+  })
+  return tokenWait
 }
 
 async function fetchEmail(access: string) {

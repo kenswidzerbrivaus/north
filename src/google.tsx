@@ -3,9 +3,10 @@ import {
   clearToken,
   createGoogleEvent,
   deleteGoogleEvent,
+  ensureGoogleToken,
   listGoogleEvents,
+  readLink,
   readToken,
-  requestGoogleToken,
   updateGoogleEvent,
 } from './lib/google-calendar'
 import { addDays } from './lib/dates'
@@ -41,37 +42,42 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
     async (around?: Date, force = false) => {
       const center = around ?? new Date()
       const key = `${center.getFullYear()}-${center.getMonth()}`
-      if (!force && rangeKey.current === key && readToken()) return
-      if (!readToken()) {
+      const linked = readLink()
+      if (!clientId || (!linked && !readToken())) {
         setConnected(false)
         setEvents([])
         return
       }
+      if (!force && rangeKey.current === key && readToken()) return
       rangeKey.current = key
       setLoading(true)
       setError('')
+      setConnected(true)
+      setEmail(linked?.email || readToken()?.email || '')
       const load = () => {
         const from = addDays(center, -40)
         const to = addDays(center, 70)
         return listGoogleEvents(from, to)
       }
       try {
+        await ensureGoogleToken(clientId)
         const items = await load()
         setEvents(items)
         setConnected(true)
-        setEmail(readToken()?.email ?? '')
+        setEmail(readToken()?.email || linked?.email || '')
+        setError('')
       } catch (err) {
         rangeKey.current = ''
         const code = err instanceof Error ? err.message : ''
         if ((code === 'GOOGLE_AUTH' || code === 'GOOGLE_SCOPES') && clientId) {
           try {
-            clearToken()
-            await requestGoogleToken(clientId, 'consent')
+            await ensureGoogleToken(clientId, false)
             rangeKey.current = key
             const items = await load()
             setEvents(items)
             setConnected(true)
-            setEmail(readToken()?.email ?? '')
+            setEmail(readToken()?.email || linked?.email || '')
+            setError('')
             return
           } catch {
             rangeKey.current = ''
@@ -79,12 +85,14 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
         }
         setError(
           code === 'GOOGLE_SCOPES'
-            ? 'Google signed you in without Calendar access. Click Connect again and allow See, edit, share, and permanently delete all the calendars you can access.'
-            : code && code !== 'GOOGLE_AUTH'
-              ? code
-              : 'Google Calendar needs to reconnect',
+            ? 'Google signed you in without Calendar access. Click Connect again and allow calendar permission.'
+            : readLink()
+              ? 'Calendar is still linked. Sepho will refresh when Google is ready — or click Connect if events look stale.'
+              : code && code !== 'GOOGLE_AUTH'
+                ? code
+                : 'Google Calendar needs to reconnect',
         )
-        setConnected(Boolean(readToken()))
+        setConnected(Boolean(readLink() || readToken()))
       } finally {
         setLoading(false)
       }
@@ -93,12 +101,32 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
   )
 
   useEffect(() => {
-    const existing = readToken()
-    if (!existing || !clientId) return
+    if (!clientId) return
+    const linked = readLink()
+    const token = readToken()
+    if (!linked && !token) return
     setConnected(true)
-    setEmail(existing.email)
-    void refresh()
+    setEmail(linked?.email || token?.email || '')
+    void refresh(undefined, true)
   }, [clientId, refresh])
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === 'visible' && (readLink() || readToken())) void refresh(undefined, true)
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [refresh])
+
+  useEffect(() => {
+    if (!clientId || !connected) return
+    const token = readToken()
+    const wait = token ? Math.max(15_000, token.exp - Date.now() - 120_000) : 15_000
+    const id = window.setTimeout(() => {
+      void ensureGoogleToken(clientId).then(() => refresh(undefined, true))
+    }, wait)
+    return () => window.clearTimeout(id)
+  }, [clientId, connected, refresh])
 
   useEffect(() => {
     if (events.length) syncFromCalendar(events)
@@ -112,8 +140,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
     setError('')
     setLoading(true)
     try {
-      clearToken()
-      const token = await requestGoogleToken(clientId, 'consent')
+      const token = await ensureGoogleToken(clientId, true)
       setConnected(true)
       setEmail(token.email)
       await refresh(undefined, true)
@@ -126,7 +153,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
   }, [clientId, refresh])
 
   const disconnect = useCallback(() => {
-    clearToken()
+    clearToken(true)
     rangeKey.current = ''
     setConnected(false)
     setEmail('')
