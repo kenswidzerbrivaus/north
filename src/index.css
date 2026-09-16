@@ -1662,12 +1662,12 @@ html.sepho .daily-box {
     grid-template-columns: 1fr;
     grid-template-areas:
       'head'
-      'morning'
       'now'
       'queue'
-      'command'
+      'morning'
       'systems'
-      'capture';
+      'capture'
+      'command';
   }
   .board-head {
     flex-wrap: wrap;
@@ -1921,19 +1921,83 @@ html.sepho .daily-box {
     display: none;
   }
   .main {
-    padding: 18px 16px 96px;
+    padding: 12px 12px calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+  .page-head {
+    margin-bottom: 14px;
+    align-items: flex-start;
   }
   .page-head h1 {
-    font-size: 28px;
+    font-size: 26px;
+  }
+  .board-head {
+    flex-direction: column;
+    padding: 12px;
+    gap: 10px;
+  }
+  .today-num {
+    font-size: 44px;
+  }
+  .today-quote {
+    font-size: 14px;
+  }
+  .board-readouts {
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .board-readouts .day-clock {
+    display: none;
+  }
+  .now-clock {
+    font-size: 32px;
+  }
+  .morning.is-compact .morning-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .morning-mark {
+    font-size: 36px;
+    text-align: left;
+  }
+  .exec-queue li {
+    grid-template-columns: 52px 18px 1fr;
+    font-size: 12px;
+  }
+  .input,
+  .textarea,
+  .select {
+    font-size: 16px;
+  }
+  .btn,
+  .btn-ghost {
+    min-height: 40px;
+  }
+  .week-grid {
+    max-height: 62vh;
+  }
+  .cal-cell {
+    min-height: 64px;
+    padding: 4px;
+  }
+  .modal {
+    width: 100%;
+    max-height: 90dvh;
+    overflow: auto;
+  }
+  .cmdk {
+    width: calc(100% - 16px);
   }
   .bottom-nav {
     display: flex;
     position: fixed;
-    inset: auto 10px 10px;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
     background: color-mix(in srgb, var(--paper) 92%, transparent);
     border: 1px solid var(--line);
-    border-radius: 18px;
-    padding: 6px;
+    border-radius: 16px;
     justify-content: space-around;
     z-index: 20;
     backdrop-filter: blur(16px);
@@ -1945,10 +2009,11 @@ html.sepho .daily-box {
     color: var(--ink-soft);
     border-radius: 12px;
     padding: 8px 0;
-    font-size: 11px;
+    font-size: 10px;
     display: grid;
     place-items: center;
     gap: 2px;
+    min-height: 48px;
   }
   .bottom-nav button[data-on='true'] {
     color: var(--accent);
@@ -1958,7 +2023,14 @@ html.sepho .daily-box {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .top-mobile .day-clock {
+    order: 3;
+    flex-basis: 100%;
+    text-align: left;
   }
 }
 

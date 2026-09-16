@@ -227,7 +227,7 @@ function Shell() {
           <strong className="display" style={{ fontSize: 22 }}>
             Sepho
           </strong>
-          {route !== 'today' ? <DayClock /> : null}
+          <DayClock />
           <div className="row">
             <button className="btn-icon" onClick={() => setCmd(true)} aria-label="Search">
               <Icon name="search" />
