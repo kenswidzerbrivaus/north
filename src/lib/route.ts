@@ -25,7 +25,11 @@ export function useRoute(): [Route, (r: Route) => void] {
 
   useEffect(() => {
     if (!location.hash) location.hash = '#/today'
-    const on = () => setRoute(parse())
+    const on = () => {
+      setRoute(parse())
+      window.scrollTo(0, 0)
+      document.querySelector('.main')?.scrollTo(0, 0)
+    }
     window.addEventListener('hashchange', on)
     return () => window.removeEventListener('hashchange', on)
   }, [])
@@ -33,6 +37,8 @@ export function useRoute(): [Route, (r: Route) => void] {
   const go = (r: Route) => {
     if (location.hash !== `#/${r}`) location.hash = `#/${r}`
     setRoute(r)
+    window.scrollTo(0, 0)
+    document.querySelector('.main')?.scrollTo(0, 0)
   }
 
   return [route, go]

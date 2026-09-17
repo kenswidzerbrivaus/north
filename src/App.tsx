@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { AuthProvider, useAuth } from './auth/auth'
 import { GoogleCalendarProvider } from './google'
 import { Icon, type IconName } from './icons'
@@ -93,9 +93,9 @@ function Shell() {
   const { running, start, pause, alert, dismissAlert } = useTimerControls()
   const [route, go] = useRoute()
   const [cmd, setCmd] = useState(false)
-  const [more, setMore] = useState(false)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
+  const tabStrip = useRef<HTMLElement>(null)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -254,6 +254,11 @@ function Shell() {
     setActive(0)
   }, [query])
 
+  useEffect(() => {
+    const el = tabStrip.current?.querySelector<HTMLElement>('button[data-on="true"]')
+    el?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
+  }, [route])
+
   const view = {
     today: <Today go={go} />,
     tasks: <Tasks />,
@@ -304,62 +309,23 @@ function Shell() {
 
       <main className="main">
         <div className="top-mobile">
-          <strong className="display" style={{ fontSize: 22 }}>
-            Sepho
-          </strong>
-          <DayClock />
-          <div className="row">
-            <button className="btn-icon" onClick={() => setCmd(true)} aria-label="Search">
-              <Icon name="search" />
-            </button>
-            <button className="btn-icon" onClick={() => setMore(true)} aria-label="More">
-              <Icon name="more" />
-            </button>
-          </div>
+          <strong className="display">Sepho</strong>
+          <DayClock compact />
+          <button className="btn-icon" onClick={() => setCmd(true)} aria-label="Search">
+            <Icon name="search" />
+          </button>
         </div>
         <Suspense fallback={<p className="muted">Loading…</p>}>{view}</Suspense>
       </main>
 
-      <nav className="bottom-nav" aria-label="Mobile">
-        {(['today', 'tasks', 'calendar', 'projects', 'focus'] as Route[]).map((id) => (
-          <button key={id} data-on={route === id} onClick={() => go(id)}>
-            <Icon name={NAV_ICON[id]} size={16} />
-            {ROUTES.find((r) => r.id === id)?.label}
+      <nav className="bottom-nav" aria-label="Mobile" ref={tabStrip}>
+        {ROUTES.map((r) => (
+          <button key={r.id} data-on={route === r.id} onClick={() => go(r.id)}>
+            <Icon name={NAV_ICON[r.id]} size={18} />
+            {r.label}
           </button>
         ))}
       </nav>
-
-      {more ? (
-        <div className="modal-backdrop" onMouseDown={() => setMore(false)}>
-          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
-            <header className="modal-head">
-              <h2>More</h2>
-              <button className="btn-icon" onClick={() => setMore(false)} aria-label="Close">
-                <Icon name="close" />
-              </button>
-            </header>
-            <div className="stack">
-              {(['projects', 'notes', 'goals', 'journal', 'settings'] as Route[]).map((id) => (
-                <button
-                  key={id}
-                  className="list-btn"
-                  data-on={route === id}
-                  onClick={() => {
-                    go(id)
-                    setMore(false)
-                  }}
-                >
-                  <Icon name={NAV_ICON[id]} />
-                  {ROUTES.find((r) => r.id === id)?.label}
-                </button>
-              ))}
-              <button className="list-btn" onClick={signOut}>
-                Sign out
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {alert ? (
         <div className="timer-alert" role="alertdialog" aria-modal="true" aria-label="Timer finished">

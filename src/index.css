@@ -1234,6 +1234,20 @@ html.sepho .daily-box {
   animation: clock-warn 1.2s ease-in-out infinite;
 }
 
+.day-clock.is-compact {
+  width: auto;
+  min-width: 0;
+  padding: 4px 8px;
+  text-align: right;
+  border: 1px solid rgba(255, 179, 71, 0.45);
+  background: rgba(4, 16, 26, 0.55);
+}
+
+.day-clock.is-compact b {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .day-clock.is-hot {
   border-color: rgba(255, 90, 40, 0.7);
   box-shadow:
@@ -2134,7 +2148,7 @@ html.sepho .daily-box {
     display: none;
   }
   .main {
-    padding: 12px 12px calc(92px + env(safe-area-inset-bottom, 0px));
+    padding: 0 12px calc(88px + env(safe-area-inset-bottom, 0px));
   }
   .page-head {
     margin-bottom: 14px;
@@ -2200,32 +2214,53 @@ html.sepho .daily-box {
   .cmdk {
     width: calc(100% - 16px);
   }
+  html.sepho .bottom-nav {
+    background: rgba(4, 16, 26, 0.94);
+    box-shadow: none;
+    border-radius: 0;
+  }
   .bottom-nav {
     display: flex;
     position: fixed;
-    left: 8px;
-    right: 8px;
-    bottom: 8px;
-    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
-    background: color-mix(in srgb, var(--paper) 92%, transparent);
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    justify-content: space-around;
-    z-index: 20;
-    backdrop-filter: blur(16px);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 6px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    background: rgba(4, 16, 26, 0.94);
+    border: 0;
+    border-top: 1px solid rgba(110, 231, 255, 0.28);
+    border-radius: 0;
+    justify-content: flex-start;
+    gap: 4px;
+    z-index: 30;
+    backdrop-filter: blur(18px);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+  }
+  .bottom-nav::-webkit-scrollbar {
+    display: none;
   }
   .bottom-nav button {
-    flex: 1;
+    flex: 0 0 auto;
     border: 0;
     background: transparent;
     color: var(--ink-soft);
-    border-radius: 12px;
-    padding: 8px 0;
+    border-radius: 10px;
+    padding: 8px 12px;
     font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
     display: grid;
     place-items: center;
-    gap: 2px;
-    min-height: 48px;
+    gap: 3px;
+    min-height: 52px;
+    min-width: 68px;
+    scroll-snap-align: center;
+    touch-action: manipulation;
   }
   .bottom-nav button[data-on='true'] {
     color: var(--accent);
@@ -2236,13 +2271,34 @@ html.sepho .daily-box {
     justify-content: space-between;
     align-items: center;
     gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 10px;
+    flex-wrap: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 25;
+    margin: 0 -12px 12px;
+    padding: max(8px, env(safe-area-inset-top, 0px)) 12px 8px;
+    background: rgba(5, 8, 14, 0.92);
+    border-bottom: 1px solid rgba(110, 231, 255, 0.22);
+    backdrop-filter: blur(16px);
+  }
+  .top-mobile .display {
+    font-size: 18px;
+    flex: 0 0 auto;
   }
   .top-mobile .day-clock {
-    order: 3;
-    flex-basis: 100%;
-    text-align: left;
+    order: 0;
+    flex: 1;
+    flex-basis: auto;
+    text-align: center;
+  }
+  .page-head h1 {
+    font-size: 22px;
+  }
+  .today-num {
+    font-size: 36px;
+  }
+  .today-quote {
+    display: none;
   }
 }
 

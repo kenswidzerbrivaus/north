@@ -25,7 +25,7 @@ function formatDayLeft(ms: number) {
   }
 }
 
-export function DayClock() {
+export function DayClock({ compact }: { compact?: boolean }) {
   const [left, setLeft] = useState(() => msUntilMidnight())
   useEffect(() => {
     let raf = 0
@@ -39,6 +39,15 @@ export function DayClock() {
   const t = formatDayLeft(left)
   const hours = left / 3_600_000
   const heat = hours < 1 ? 'is-critical' : hours < 6 ? 'is-hot' : 'is-warn'
+  if (compact) {
+    return (
+      <div className={`day-clock is-compact ${heat}`} title="Time remaining today">
+        <b>
+          {t.h}H {t.m}M {t.s}S
+        </b>
+      </div>
+    )
+  }
   return (
     <div className={`day-clock hud-frame ${heat}`}>
       <span className="kicker">⚠ Time remaining</span>
