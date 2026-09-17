@@ -256,6 +256,7 @@ export interface ProjectActivity {
 
 export interface State {
   version: 1
+  savedAt?: number
   lists: List[]
   tasks: Task[]
   events: CalEvent[]

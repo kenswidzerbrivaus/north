@@ -170,6 +170,7 @@ function blankState(): State {
     journal: [],
     sessions: [],
     settings: defaultSettings(),
+    savedAt: 0,
     projects: [],
     milestones: [],
     workstreams: [],
@@ -216,6 +217,17 @@ function load(): State {
 
 let persistTimer = 0
 let pending: State | null = null
+let latestState: State | null = null
+const persistListeners = new Set<(state: State) => void>()
+
+export function peekState() {
+  return latestState
+}
+
+export function onPersist(fn: (state: State) => void) {
+  persistListeners.add(fn)
+  return () => persistListeners.delete(fn)
+}
 
 function flushPersist() {
   if (persistTimer) {
@@ -223,12 +235,14 @@ function flushPersist() {
     persistTimer = 0
   }
   if (!pending) return
+  const snap = pending
+  pending = null
   try {
-    localStorage.setItem(KEY, JSON.stringify(pending))
+    localStorage.setItem(KEY, JSON.stringify(snap))
   } catch {
     /* quota */
   }
-  pending = null
+  persistListeners.forEach((fn) => fn(snap))
 }
 
 function persist(state: State) {
@@ -274,6 +288,7 @@ export type Store = {
   logSession: (session: Omit<FocusSession, 'id'>) => void
   updateSettings: (patch: Partial<Settings>) => void
   importState: (data: unknown) => void
+  hydrateFromCloud: (data: State, savedAt: number) => void
   resetState: () => void
   addProject: (input: Partial<Project> & { name: string; owner: string; deadline: string; objective: string; definitionOfDone: string; successMetric: string }, opts?: { overrideCapacity?: boolean }) => string | { error: 'capacity' }
   updateProject: (id: string, patch: Partial<Project>) => void
@@ -411,12 +426,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>(() => load())
   const stateRef = useRef(state)
   stateRef.current = state
+  latestState = state
 
-  const patch = useCallback((fn: (s: State) => State) => {
+  const patch = useCallback((fn: (s: State) => State, silent = false) => {
     setState((prev) => {
       const next = fn(prev)
-      persist(next)
-      return next
+      const stamped = silent ? next : { ...next, savedAt: Date.now() }
+      latestState = stamped
+      persist(stamped)
+      return stamped
     })
   }, [])
 
@@ -723,6 +741,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           version: 1,
           settings: { ...defaultSettings(), ...d.settings },
         }))
+      },
+      hydrateFromCloud: (data, savedAt) => {
+        const clientId = stateRef.current.settings.googleClientId
+        patch(() => {
+          const next: State = {
+            ...blankState(),
+            ...data,
+            version: 1,
+            savedAt,
+            lists: data.lists?.length ? data.lists : blankState().lists,
+            settings: {
+              ...defaultSettings(),
+              ...data.settings,
+              googleClientId: data.settings?.googleClientId || clientId,
+            },
+          }
+          return linkExisting(next)
+        }, true)
       },
       resetState: () => patch(() => freshState()),
       addProject: (input, opts) => {

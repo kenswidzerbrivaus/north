@@ -140,11 +140,14 @@ export function Settings() {
         </section>
 
         <section className="card stack">
-          <h2>Google Calendar</h2>
+          <h2>Google & device sync</h2>
           {gcal.connected ? (
-            <p className="muted">Linked as {gcal.email || 'Google'}. This stays linked on this device. Sepho refreshes Google automatically, and after a quiet hour a click anywhere resumes sync.</p>
+            <p className="muted">
+              Linked as {gcal.email || 'Google'}. Tasks, projects, notes, journal, and calendar now follow this Google account across phone and computer.
+              {gcal.cloudAt ? ` Last synced ${new Date(gcal.cloudAt).toLocaleTimeString()}.` : ''}
+            </p>
           ) : (
-            <p className="muted">Link your primary Google Calendar to see those events here, and to save new Sepho events back to Google.</p>
+            <p className="muted">Connect the same Google account on this device to pull in work you already entered on the other one.</p>
           )}
           <Field label="Google OAuth client ID">
             <input
@@ -166,7 +169,7 @@ export function Settings() {
           <div className="row">
             {gcal.connected ? (
               <>
-                <button className="btn" onClick={() => void gcal.refresh(undefined, true)} disabled={gcal.loading}>
+                <button className="btn" onClick={() => void gcal.refresh(undefined, true).then(() => gcal.syncCloud())} disabled={gcal.loading}>
                   <Icon name="google" size={16} /> {gcal.loading ? 'Syncing…' : 'Sync now'}
                 </button>
                 <button className="btn-ghost" onClick={gcal.disconnect}>
@@ -175,11 +178,12 @@ export function Settings() {
               </>
             ) : (
               <button className="btn" onClick={() => void gcal.connect()} disabled={!s.googleClientId || gcal.loading}>
-                <Icon name="google" size={16} /> Connect Google Calendar
+                <Icon name="google" size={16} /> Connect Google
               </button>
             )}
           </div>
           {gcal.error ? <p className="gate-error">{gcal.error}</p> : null}
+          {gcal.cloudMsg ? <p className="muted">{gcal.cloudMsg}</p> : null}
           <button className="btn-ghost" onClick={() => setShowGoogleHelp((v) => !v)}>
             {showGoogleHelp ? 'Hide setup steps' : 'How to get a client ID'}
           </button>

@@ -20,6 +20,7 @@ const SCOPE = [
   'https://www.googleapis.com/auth/calendar',
   'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/drive.appdata',
 ].join(' ')
 const TOKEN_KEY = 'north.gcal.token'
 const LINK_KEY = 'north.gcal.link'

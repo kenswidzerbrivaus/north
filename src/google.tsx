@@ -11,9 +11,10 @@ import {
   readToken,
   updateGoogleEvent,
 } from './lib/google-calendar'
+import { clearCloudFileId, pullCloudState, pushCloudState } from './lib/cloud-sync'
 import { addDays } from './lib/dates'
 import type { CalEvent } from './lib/types'
-import { useStore } from './store'
+import { onPersist, peekState, useStore } from './store'
 
 type GCal = {
   connected: boolean
@@ -24,6 +25,9 @@ type GCal = {
   connect: () => Promise<void>
   disconnect: () => void
   refresh: (around?: Date, force?: boolean) => Promise<void>
+  syncCloud: () => Promise<void>
+  cloudAt: number
+  cloudMsg: string
   saveToGoogle: (event: Omit<CalEvent, 'id' | 'color'> & { id?: string; color?: string; googleId?: string }) => Promise<CalEvent | null>
   removeFromGoogle: (googleId: string) => Promise<void>
 }
@@ -31,7 +35,7 @@ type GCal = {
 const Ctx = createContext<GCal | null>(null)
 
 export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
-  const { state, syncFromCalendar, updateSettings } = useStore()
+  const { state, syncFromCalendar, updateSettings, hydrateFromCloud } = useStore()
   const clientId = state.settings.googleClientId.trim() || linkedClientId()
   const [email, setEmail] = useState(() => readLink()?.email || '')
   const [events, setEvents] = useState<CalEvent[]>([])
@@ -41,6 +45,9 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
   const rangeKey = useRef('')
   const aroundRef = useRef<Date>(new Date())
   const loadingRef = useRef(false)
+  const [cloudAt, setCloudAt] = useState(0)
+  const [cloudMsg, setCloudMsg] = useState('')
+  const pushing = useRef(false)
 
   const markLinked = useCallback(() => {
     const linked = readLink()
@@ -164,9 +171,76 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
     }
   }, [clientId, connected, markLinked, refresh])
 
+  const syncCloud = useCallback(async () => {
+    if (!clientId || !isGoogleLinked()) return
+    try {
+      await ensureGoogleToken(clientId)
+      const remote = await pullCloudState()
+      const local = peekState()
+      const localAt = local?.savedAt ?? 0
+      if (remote && remote.savedAt > localAt) {
+        hydrateFromCloud(remote.state, remote.savedAt)
+        setCloudMsg('Loaded from Google')
+      } else if (local) {
+        const stamped = { ...local, savedAt: local.savedAt || Date.now() }
+        if (!local.savedAt) hydrateFromCloud(stamped, stamped.savedAt ?? Date.now())
+        await pushCloudState(stamped)
+        setCloudMsg('Saved to Google')
+      }
+      setCloudAt(Date.now())
+    } catch (err) {
+      const code = err instanceof Error ? err.message : ''
+      if (code === 'GOOGLE_SCOPES') {
+        setCloudMsg('Click Connect Google again and allow Drive access so phone and computer stay in sync.')
+      } else if (code === 'GOOGLE_NEEDS_GESTURE' || code === 'GOOGLE_AUTH') {
+        setCloudMsg('Click Sync Google to resume device sync.')
+      } else {
+        setCloudMsg(code || 'Cloud sync failed')
+      }
+    }
+  }, [clientId, hydrateFromCloud])
+
   useEffect(() => {
     if (events.length) syncFromCalendar(events)
   }, [events, syncFromCalendar])
+
+  useEffect(() => {
+    if (!clientId || !connected) return
+    void syncCloud()
+  }, [clientId, connected, syncCloud])
+
+  useEffect(() => {
+    if (!clientId || !connected) return
+    const push = (s: Parameters<Parameters<typeof onPersist>[0]>[0]) => {
+      if (pushing.current || !readToken()) return
+      pushing.current = true
+      void pushCloudState(s)
+        .then(() => {
+          setCloudAt(Date.now())
+          setCloudMsg('Saved to Google')
+        })
+        .catch(() => {
+          setCloudMsg('Waiting to sync…')
+        })
+        .finally(() => {
+          pushing.current = false
+        })
+    }
+    let timer = 0
+    const stop = onPersist((s) => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => push(s), 1600)
+    })
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void syncCloud()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      stop()
+      window.clearTimeout(timer)
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [clientId, connected, syncCloud])
 
   const connect = useCallback(async () => {
     if (!clientId) {
@@ -181,6 +255,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       setConnected(true)
       setEmail(token.email)
       await refresh(undefined, true)
+      await syncCloud()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Google sign-in was cancelled')
       setConnected(isGoogleLinked())
@@ -188,7 +263,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       loadingRef.current = false
       setLoading(false)
     }
-  }, [clientId, refresh])
+  }, [clientId, refresh, syncCloud])
 
   const disconnect = useCallback(() => {
     clearToken(true)
@@ -197,6 +272,9 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
     setEmail('')
     setEvents([])
     setError('')
+    setCloudAt(0)
+    setCloudMsg('')
+    clearCloudFileId()
   }, [])
 
   const saveToGoogle = useCallback(
@@ -230,8 +308,11 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       refresh,
       saveToGoogle,
       removeFromGoogle,
+      syncCloud,
+      cloudAt,
+      cloudMsg,
     }),
-    [connect, connected, disconnect, email, error, events, loading, refresh, removeFromGoogle, saveToGoogle],
+    [cloudAt, cloudMsg, connect, connected, disconnect, email, error, events, loading, refresh, removeFromGoogle, saveToGoogle, syncCloud],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
