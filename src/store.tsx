@@ -745,12 +745,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       hydrateFromCloud: (data, savedAt) => {
         const clientId = stateRef.current.settings.googleClientId
         patch(() => {
+          const blank = blankState()
           const next: State = {
-            ...blankState(),
+            ...blank,
             ...data,
             version: 1,
             savedAt,
-            lists: data.lists?.length ? data.lists : blankState().lists,
+            lists: data.lists?.length ? data.lists : blank.lists,
+            tasks: data.tasks ?? blank.tasks,
+            events: data.events ?? blank.events,
+            habits: data.habits ?? blank.habits,
+            habitLogs: data.habitLogs ?? blank.habitLogs,
+            notes: data.notes ?? blank.notes,
+            goals: data.goals ?? blank.goals,
+            journal: data.journal ?? blank.journal,
+            sessions: data.sessions ?? blank.sessions,
+            projects: data.projects ?? blank.projects,
+            milestones: data.milestones ?? blank.milestones,
+            workstreams: data.workstreams ?? blank.workstreams,
+            projectDecisions: data.projectDecisions ?? blank.projectDecisions,
+            blockers: data.blockers ?? blank.blockers,
+            waitingOnItems: data.waitingOnItems ?? blank.waitingOnItems,
+            projectActivity: data.projectActivity ?? blank.projectActivity,
             settings: {
               ...defaultSettings(),
               ...data.settings,

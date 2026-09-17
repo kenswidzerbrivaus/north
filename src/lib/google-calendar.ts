@@ -394,7 +394,7 @@ export function fromGoogleEvent(item: GEvent): CalEvent[] {
   ]
 }
 
-function toGoogleBody(event: Pick<CalEvent, 'title' | 'notes' | 'date' | 'start' | 'end' | 'allDay' | 'location'>) {
+export function toGoogleBody(event: Pick<CalEvent, 'title' | 'notes' | 'date' | 'start' | 'end' | 'allDay' | 'location'>) {
   const body: GEvent = {
     summary: event.title,
     description: event.notes || undefined,
@@ -409,10 +409,12 @@ function toGoogleBody(event: Pick<CalEvent, 'title' | 'notes' | 'date' | 'start'
   }
   let endDate = date
   let endTime = event.end ? normalizeTime(event.end) : null
-  if (!endTime || timeMinutes(endTime) <= timeMinutes(startTime)) {
+  if (!endTime || endTime === startTime) {
     const next = addMinutes(date, startTime, 60)
     endDate = next.date
     endTime = next.time
+  } else if (timeMinutes(endTime) < timeMinutes(startTime)) {
+    endDate = toISO(addDays(parseISO(date), 1))
   }
   body.start = localDateTime(date, startTime)
   body.end = localDateTime(endDate, endTime)

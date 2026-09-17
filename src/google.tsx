@@ -12,6 +12,7 @@ import {
   updateGoogleEvent,
 } from './lib/google-calendar'
 import { clearCloudFileId, pullCloudState, pushCloudState } from './lib/cloud-sync'
+import { cloudAction } from './lib/sync-policy'
 import { addDays } from './lib/dates'
 import type { CalEvent } from './lib/types'
 import { onPersist, peekState, useStore } from './store'
@@ -35,7 +36,7 @@ type GCal = {
 const Ctx = createContext<GCal | null>(null)
 
 export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
-  const { state, syncFromCalendar, updateSettings, hydrateFromCloud } = useStore()
+  const { state, syncFromCalendar, hydrateFromCloud } = useStore()
   const clientId = state.settings.googleClientId.trim() || linkedClientId()
   const [email, setEmail] = useState(() => readLink()?.email || '')
   const [events, setEvents] = useState<CalEvent[]>([])
@@ -135,12 +136,6 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
   )
 
   useEffect(() => {
-    if (!state.settings.googleClientId.trim() && linkedClientId()) {
-      updateSettings({ googleClientId: linkedClientId() })
-    }
-  }, [state.settings.googleClientId, updateSettings])
-
-  useEffect(() => {
     if (!isGoogleLinked()) return
     markLinked()
     void refresh(undefined, true)
@@ -177,15 +172,17 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       await ensureGoogleToken(clientId)
       const remote = await pullCloudState()
       const local = peekState()
-      const localAt = local?.savedAt ?? 0
-      if (remote && remote.savedAt > localAt) {
+      const action = cloudAction(local?.savedAt ?? 0, remote ? remote.savedAt : null)
+      if (action === 'pull' && remote) {
         hydrateFromCloud(remote.state, remote.savedAt)
         setCloudMsg('Loaded from Google')
-      } else if (local) {
+      } else if (action === 'push' && local) {
         const stamped = { ...local, savedAt: local.savedAt || Date.now() }
         if (!local.savedAt) hydrateFromCloud(stamped, stamped.savedAt ?? Date.now())
         await pushCloudState(stamped)
         setCloudMsg('Saved to Google')
+      } else {
+        setCloudMsg('In sync')
       }
       setCloudAt(Date.now())
     } catch (err) {

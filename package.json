@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build && cp dist/index.html dist/404.html",
     "lint": "oxlint",
+    "test": "npx --yes tsx --test src/lib/bug-tests.ts",
     "preview": "vite preview"
   },
   "dependencies": {
