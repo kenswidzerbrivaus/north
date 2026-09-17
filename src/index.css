@@ -1045,8 +1045,7 @@ html.sepho .stat b {
 }
 
 html.sepho .sidebar,
-html.sepho .main,
-html.sepho .bottom-nav {
+html.sepho .main {
   position: relative;
   z-index: 1;
 }
@@ -2141,13 +2140,26 @@ html.sepho .daily-box {
 }
 
 @media (max-width: 860px) {
+  html.sepho,
+  html.sepho body,
+  html.sepho #root {
+    height: 100dvh;
+    overflow: hidden;
+  }
   .shell {
     grid-template-columns: 1fr;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
   }
   .sidebar {
     display: none;
   }
   .main {
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding: 0 12px calc(88px + env(safe-area-inset-bottom, 0px));
   }
   .page-head {
@@ -2214,17 +2226,14 @@ html.sepho .daily-box {
   .cmdk {
     width: calc(100% - 16px);
   }
-  html.sepho .bottom-nav {
-    background: rgba(4, 16, 26, 0.94);
-    box-shadow: none;
-    border-radius: 0;
-  }
+  html.sepho .bottom-nav,
   .bottom-nav {
     display: flex;
     position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
+    z-index: 40;
     padding: 6px 10px calc(8px + env(safe-area-inset-bottom, 0px));
     background: rgba(4, 16, 26, 0.94);
     border: 0;
@@ -2232,8 +2241,10 @@ html.sepho .daily-box {
     border-radius: 0;
     justify-content: flex-start;
     gap: 4px;
-    z-index: 30;
+    width: 100%;
     backdrop-filter: blur(18px);
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
