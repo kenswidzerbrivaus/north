@@ -42,8 +42,8 @@ type GEvent = {
   description?: string
   location?: string
   colorId?: string
-  start?: { date?: string; dateTime?: string }
-  end?: { date?: string; dateTime?: string }
+  start?: { date?: string | null; dateTime?: string | null; timeZone?: string | null }
+  end?: { date?: string | null; dateTime?: string | null; timeZone?: string | null }
 }
 
 declare global {
@@ -298,19 +298,64 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
         'Enable the Google Calendar API, then Connect again: https://console.cloud.google.com/apis/library/calendar-json.googleapis.com?project=969056584851',
       )
     }
-    throw new Error(text.slice(0, 180) || `Google Calendar error ${res.status}`)
+    throw new Error(googleErrorMessage(text, res.status))
   }
   if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
+}
+
+function googleErrorMessage(text: string, status: number) {
+  try {
+    const parsed = JSON.parse(text) as { error?: { message?: string } }
+    if (parsed.error?.message) return parsed.error.message
+  } catch {
+    /* not json */
+  }
+  return text.slice(0, 180) || `Google Calendar error ${status}`
 }
 
 function hhmm(d: Date) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+function normalizeTime(time: string) {
+  const m = time.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/)
+  if (!m) return null
+  const h = Number(m[1])
+  const min = Number(m[2])
+  const sec = Number(m[3] ?? 0)
+  if (h > 23 || min > 59 || sec > 59) return null
+  return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+}
+
+function timeMinutes(time: string) {
+  const n = normalizeTime(time)
+  if (!n) return 0
+  const [h, m] = n.split(':').map(Number)
+  return (h ?? 0) * 60 + (m ?? 0)
+}
+
+function addMinutes(date: string, time: string, add: number) {
+  const start = timeMinutes(time) + add
+  if (start >= 24 * 60) {
+    return { date: toISO(addDays(parseISO(date), 1)), time: minutesToClock(start - 24 * 60) }
+  }
+  if (start < 0) {
+    return { date: toISO(addDays(parseISO(date), -1)), time: minutesToClock(start + 24 * 60) }
+  }
+  return { date, time: minutesToClock(start) }
+}
+
+function minutesToClock(total: number) {
+  const h = Math.floor(total / 60)
+  const m = total % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`
+}
+
 function localDateTime(date: string, time: string) {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-  return { dateTime: `${date}T${time}:00`, timeZone: tz }
+  const norm = normalizeTime(time) ?? '00:00:00'
+  return { dateTime: `${date}T${norm}`, timeZone: tz, date: null as string | null }
 }
 
 export function fromGoogleEvent(item: GEvent): CalEvent[] {
@@ -354,13 +399,22 @@ function toGoogleBody(event: Pick<CalEvent, 'title' | 'notes' | 'date' | 'start'
     description: event.notes || undefined,
     location: event.location || undefined,
   }
-  if (event.allDay || !event.start) {
-    body.start = { date: event.date }
-    body.end = { date: toISO(addDays(parseISO(event.date), 1)) }
-  } else {
-    body.start = localDateTime(event.date, event.start)
-    body.end = localDateTime(event.date, event.end || event.start)
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(event.date) ? event.date : toISO(parseISO(event.date))
+  const startTime = event.start ? normalizeTime(event.start) : null
+  if (event.allDay || !startTime) {
+    body.start = { date, dateTime: null, timeZone: null }
+    body.end = { date: toISO(addDays(parseISO(date), 1)), dateTime: null, timeZone: null }
+    return body
   }
+  let endDate = date
+  let endTime = event.end ? normalizeTime(event.end) : null
+  if (!endTime || timeMinutes(endTime) <= timeMinutes(startTime)) {
+    const next = addMinutes(date, startTime, 60)
+    endDate = next.date
+    endTime = next.time
+  }
+  body.start = localDateTime(date, startTime)
+  body.end = localDateTime(endDate, endTime)
   return body
 }
 

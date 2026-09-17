@@ -74,12 +74,14 @@ export function Calendar() {
 
   const save = async () => {
     if (!draft?.title?.trim() || !draft.date || busy) return
+    const start = draft.start?.trim() || undefined
+    const end = draft.end?.trim() || undefined
     const payload = {
       title: draft.title.trim(),
       date: draft.date,
-      start: draft.start,
-      end: draft.end,
-      allDay: Boolean(draft.allDay || !draft.start),
+      start,
+      end,
+      allDay: Boolean(draft.allDay || !start),
       color: draft.color ?? nextEventColor(allEvents.map((e) => e.color)),
       notes: draft.notes ?? '',
       location: draft.location ?? '',
