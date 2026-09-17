@@ -53,7 +53,7 @@ export function Login() {
             <path d="M16 3 L18.4 13.6 L29 16 L18.4 18.4 L16 29 L13.6 18.4 L3 16 L13.6 13.6 Z" fill="#39ff14" />
           </svg>
           <div>
-            <h1>North</h1>
+            <h1>Sepho</h1>
             <small>Private workspace</small>
           </div>
         </div>

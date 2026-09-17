@@ -1,7 +1,7 @@
 {
-  "name": "North",
-  "short_name": "North",
-  "description": "A calm workspace for tasks, calendar, habits, and focus.",
+  "name": "Sepho",
+  "short_name": "Sepho",
+  "description": "Executive command system.",
   "start_url": "https://kenswidzerbrivaus.com/",
   "display": "standalone",
   "background_color": "#efe8db",
