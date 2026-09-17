@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -408,6 +409,8 @@ const StoreCtx = createContext<Store | null>(null)
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>(() => load())
+  const stateRef = useRef(state)
+  stateRef.current = state
 
   const patch = useCallback((fn: (s: State) => State) => {
     setState((prev) => {
@@ -723,16 +726,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
       resetState: () => patch(() => freshState()),
       addProject: (input, opts) => {
+        const current = stateRef.current
+        const activeCount = current.projects.filter((p) => p.state === 'active').length
+        const limit = current.settings.activeProjectLimit ?? 10
+        const lifecycle = input.state ?? 'active'
+        if (lifecycle === 'active' && activeCount >= limit && !opts?.overrideCapacity) {
+          return { error: 'capacity' }
+        }
         const id = uid()
-        let blocked: 'capacity' | null = null
         patch((s) => {
-          const activeCount = s.projects.filter((p) => p.state === 'active').length
-          const limit = s.settings.activeProjectLimit ?? 10
-          const state = input.state ?? 'active'
-          if (state === 'active' && activeCount >= limit && !opts?.overrideCapacity) {
-            blocked = 'capacity'
-            return s
-          }
           const t = nowISO()
           const project: Project = {
             company: '',
@@ -742,7 +744,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             desiredOutcome: '',
             assumptions: '',
             killPivot: '',
-            state,
+            state: lifecycle,
             priority: 2,
             createdAt: t,
             updatedAt: t,
@@ -764,7 +766,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             ],
           }
         })
-        return blocked ? { error: 'capacity' } : id
+        return id
       },
       updateProject: (id, next) =>
         patch((s) => ({
@@ -894,10 +896,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       resolveDecision: (id, status, decision) =>
         patch((s) => {
           const prev = s.projectDecisions.find((d) => d.id === id)
+          const closed = status === 'approved' || status === 'rejected' || status === 'resolved' || status === 'delegated'
           return {
             ...s,
             projectDecisions: s.projectDecisions.map((d) =>
-              d.id === id ? { ...d, status, decision, decidedAt: nowISO() } : d,
+              d.id === id ? { ...d, status, decision, decidedAt: closed ? nowISO() : d.decidedAt } : d,
             ),
             projectActivity: prev
               ? [{ id: uid(), projectId: prev.projectId, type: 'decision', description: `Decision ${status}: ${prev.title}.`, createdAt: nowISO() }, ...s.projectActivity]

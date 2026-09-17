@@ -141,19 +141,29 @@ export function clearToken(revoke = true) {
 function loadGis(): Promise<void> {
   if (window.google?.accounts?.oauth2) return Promise.resolve()
   return new Promise((resolve, reject) => {
-    const existing = document.querySelector('script[data-gis]')
-    if (existing) {
-      existing.addEventListener('load', () => resolve())
-      existing.addEventListener('error', () => reject(new Error('Google sign-in failed to load')))
-      return
+    const start = Date.now()
+    const wait = () => {
+      if (window.google?.accounts?.oauth2) {
+        resolve()
+        return
+      }
+      if (Date.now() - start > 12_000) {
+        reject(new Error('Google sign-in failed to load'))
+        return
+      }
+      window.setTimeout(wait, 40)
     }
-    const s = document.createElement('script')
-    s.src = 'https://accounts.google.com/gsi/client'
-    s.async = true
-    s.dataset.gis = 'true'
-    s.onload = () => resolve()
-    s.onerror = () => reject(new Error('Google sign-in failed to load'))
-    document.head.appendChild(s)
+    let el = document.querySelector<HTMLScriptElement>('script[src*="accounts.google.com/gsi/client"]')
+    if (!el) {
+      el = document.createElement('script')
+      el.src = 'https://accounts.google.com/gsi/client'
+      el.async = true
+      el.dataset.gis = 'true'
+      el.onerror = () => reject(new Error('Google sign-in failed to load'))
+      document.head.appendChild(el)
+    }
+    el.addEventListener('load', wait, { once: true })
+    wait()
   })
 }
 
@@ -239,16 +249,10 @@ export function requestGoogleToken(clientId: string, prompt: '' | 'consent' = 'c
 export function ensureGoogleToken(clientId: string, consent = false): Promise<TokenBlob> {
   const fresh = readToken()
   if (fresh && !consent) return Promise.resolve(fresh)
-  if (tokenWait) return tokenWait
-  tokenWait = requestGoogleToken(clientId, consent ? 'consent' : '')
-    .catch((err) => {
-      if (!consent && err instanceof Error && err.message === 'GOOGLE_NEEDS_GESTURE') throw err
-      if (!consent && isGoogleLinked()) throw new Error('GOOGLE_NEEDS_GESTURE')
-      throw err
-    })
-    .finally(() => {
-      tokenWait = null
-    })
+  if (tokenWait && !consent) return tokenWait
+  tokenWait = requestGoogleToken(clientId, consent ? 'consent' : '').finally(() => {
+    tokenWait = null
+  })
   return tokenWait
 }
 

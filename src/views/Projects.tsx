@@ -114,6 +114,11 @@ export function Projects() {
     }).text
   })()
 
+  useEffect(() => {
+    if (!openId || !state.projects.length) return
+    if (!state.projects.some((p) => p.id === openId)) location.hash = '#/projects'
+  }, [openId, state.projects])
+
   if (openId) {
     const p = state.projects.find((x) => x.id === openId)
     if (p) return <ProjectDetail project={p} onBack={() => { location.hash = '#/projects' }} />
@@ -555,6 +560,7 @@ function CreateProject({
                   aria-label={`Accomplishment date for step ${i + 1}`}
                   value={step.date}
                   onChange={(e) => setSteps((rows) => rows.map((r, n) => (n === i ? { ...r, date: e.target.value } : r)))}
+                  onInput={(e) => setSteps((rows) => rows.map((r, n) => (n === i ? { ...r, date: e.currentTarget.value } : r)))}
                 />
                 <button
                   type="button"

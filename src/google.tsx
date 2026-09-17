@@ -81,6 +81,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
         await ensureGoogleToken(clientId)
         const items = await load()
         setEvents(items)
+        syncFromCalendar(items)
         markLinked()
         setError('')
       } catch (err) {
@@ -92,6 +93,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
             rangeKey.current = key
             const items = await load()
             setEvents(items)
+            syncFromCalendar(items)
             markLinked()
             setError('')
             return
@@ -105,23 +107,24 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
             }
           }
         }
-        if (code === 'GOOGLE_NEEDS_GESTURE' || isGoogleLinked()) {
+        if (code === 'GOOGLE_NEEDS_GESTURE') {
           markLinked()
-          setError(
-            code === 'GOOGLE_SCOPES'
-              ? 'Google signed you in without Calendar access. Click Connect again and allow calendar permission.'
-              : 'Calendar is still linked. Click Sync Google to resume.',
-          )
+          setError('Calendar is still linked. Click Sync Google to resume.')
+          return
+        }
+        if (code === 'GOOGLE_SCOPES') {
+          markLinked()
+          setError('Google signed you in without Calendar access. Click Connect again and allow calendar permission.')
           return
         }
         setError(code && code !== 'GOOGLE_AUTH' ? code : 'Google Calendar needs to reconnect')
-        setConnected(false)
+        if (!isGoogleLinked()) setConnected(false)
       } finally {
         loadingRef.current = false
         setLoading(false)
       }
     },
-    [clientId, markLinked],
+    [clientId, markLinked, syncFromCalendar],
   )
 
   useEffect(() => {
@@ -147,33 +150,19 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!clientId || !isGoogleLinked()) return
     const tick = () => {
-      if (!isGoogleLinked()) return
-      void ensureGoogleToken(clientId)
-        .then(() => refresh(undefined, true))
-        .catch(() => markLinked())
+      if (!readToken()) return
+      void refresh(undefined, true).catch(() => markLinked())
     }
     const token = readToken()
-    const untilExpiry = token ? Math.max(20_000, token.exp - Date.now() - 90_000) : 20_000
+    if (!token) return
+    const untilExpiry = Math.max(30_000, token.exp - Date.now() - 90_000)
     const once = window.setTimeout(tick, untilExpiry)
-    const loop = window.setInterval(tick, 12 * 60_000)
+    const loop = window.setInterval(tick, 15 * 60_000)
     return () => {
       window.clearTimeout(once)
       window.clearInterval(loop)
     }
   }, [clientId, connected, markLinked, refresh])
-
-  useEffect(() => {
-    const resume = () => {
-      if (!clientId || !isGoogleLinked() || readToken() || loadingRef.current) return
-      void refresh(undefined, true)
-    }
-    document.addEventListener('pointerdown', resume, true)
-    document.addEventListener('keydown', resume, true)
-    return () => {
-      document.removeEventListener('pointerdown', resume, true)
-      document.removeEventListener('keydown', resume, true)
-    }
-  }, [clientId, refresh])
 
   useEffect(() => {
     if (events.length) syncFromCalendar(events)
@@ -185,6 +174,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       return
     }
     setError('')
+    loadingRef.current = true
     setLoading(true)
     try {
       const token = await ensureGoogleToken(clientId, true)
@@ -195,6 +185,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       setError(err instanceof Error ? err.message : 'Google sign-in was cancelled')
       setConnected(isGoogleLinked())
     } finally {
+      loadingRef.current = false
       setLoading(false)
     }
   }, [clientId, refresh])
