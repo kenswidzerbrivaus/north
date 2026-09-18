@@ -9,6 +9,7 @@ import { StoreProvider, useStore } from './store'
 import { TimerProvider, useTimerControls } from './timer'
 import { DayClock } from './components/DayClock'
 import { Login } from './views/Login'
+import { TravisHud } from './travis'
 
 const Today = lazy(() => import('./views/Today').then((m) => ({ default: m.Today })))
 const Tasks = lazy(() => import('./views/Tasks').then((m) => ({ default: m.Tasks })))
@@ -319,6 +320,7 @@ function Shell() {
         </div>
         <Suspense fallback={<p className="muted">Loading…</p>}>{view}</Suspense>
       </main>
+      <TravisHud />
 
       <nav className="bottom-nav" aria-label="Mobile" ref={tabStrip}>
         {ROUTES.map((r) => (

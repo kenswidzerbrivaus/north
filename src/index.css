@@ -2335,3 +2335,70 @@ html.sepho .daily-box {
     font-size: 48px;
   }
 }
+
+.travis {
+  position: fixed;
+  right: 18px;
+  bottom: 22px;
+  z-index: 50;
+}
+
+.travis-orb {
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(110, 231, 255, 0.55);
+  background: rgba(4, 16, 26, 0.92);
+  color: #6ee7ff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  position: relative;
+  box-shadow: 0 0 18px rgba(0, 180, 255, 0.25);
+}
+
+.travis-orb .kicker {
+  margin: 0;
+  letter-spacing: 0.2em;
+}
+
+.travis-ring {
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(110, 231, 255, 0.25);
+  pointer-events: none;
+}
+
+.travis.is-live .travis-orb {
+  box-shadow: 0 0 28px rgba(0, 220, 255, 0.55);
+}
+
+.travis.is-live .travis-ring {
+  animation: travis-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes travis-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+.travis-panel {
+  position: absolute;
+  right: 0;
+  bottom: 64px;
+  width: min(380px, calc(100vw - 24px));
+  padding: 12px 14px 14px;
+}
+
+@media (max-width: 860px) {
+  .travis {
+    right: 10px;
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  }
+}

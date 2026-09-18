@@ -3,6 +3,7 @@ import { useAuth } from '../auth/auth'
 import { useGoogleCalendar } from '../google'
 import { Field } from '../components/ui'
 import { Icon } from '../icons'
+import { readXaiKey, writeXaiKey } from '../lib/travis'
 import { useStore } from '../store'
 
 export function Settings() {
@@ -12,6 +13,7 @@ export function Settings() {
   const s = state.settings
   const [msg, setMsg] = useState('')
   const [showGoogleHelp, setShowGoogleHelp] = useState(!s.googleClientId)
+  const [xai, setXai] = useState(() => readXaiKey())
 
   const exportBackup = () => {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })
@@ -85,6 +87,35 @@ export function Settings() {
               />
             </Field>
           ))}
+        </section>
+
+        <section className="card stack">
+          <h2>TRAVIS</h2>
+          <p className="muted">Sepho’s JARVIS. Press J or tap the orb. He can brief the board, open modules, log tasks, and start focus. Add an xAI key to give him Grok.</p>
+          <label className="row">
+            <input type="checkbox" checked={s.travisVoice !== false} onChange={(e) => updateSettings({ travisVoice: e.target.checked })} />
+            Voice
+          </label>
+          <Field label="xAI API key (stays on this device)">
+            <input
+              className="input"
+              type="password"
+              value={xai}
+              autoComplete="off"
+              placeholder="xai-…"
+              onChange={(e) => {
+                setXai(e.target.value)
+                writeXaiKey(e.target.value)
+              }}
+            />
+          </Field>
+          <p className="muted">
+            Get a key at{' '}
+            <a href="https://console.x.ai" target="_blank" rel="noreferrer">
+              console.x.ai
+            </a>
+            . Without a key, Travis still runs locally.
+          </p>
         </section>
 
         <section className="card stack">

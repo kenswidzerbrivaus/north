@@ -248,6 +248,7 @@ export interface Settings {
   morningRituals: [string, string, string]
   activeProjectLimit: number
   activeGoalLimit: number
+  travisVoice: boolean
 }
 
 export type ProjectLifecycle = 'backlog' | 'active' | 'blocked' | 'complete' | 'archived'

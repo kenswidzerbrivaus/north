@@ -54,6 +54,7 @@ const defaultSettings = (): Settings => ({
   morningRituals: ['Prayer', 'Self affirmation', 'Read through journal'],
   activeProjectLimit: 10,
   activeGoalLimit: 3,
+  travisVoice: true,
 })
 
 export function freshState(): State {
