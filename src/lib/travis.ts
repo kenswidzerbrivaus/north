@@ -286,8 +286,8 @@ function speakBrowser(text: string) {
     const u = new SpeechSynthesisUtterance(text)
     const voice = pickSephoVoice()
     if (voice) u.voice = voice
-    u.rate = 0.88
-    u.pitch = 1.28
+    u.rate = 1
+    u.pitch = 1
     u.volume = 1
     window.speechSynthesis.speak(u)
   }
@@ -295,30 +295,63 @@ function speakBrowser(text: string) {
   else window.speechSynthesis.addEventListener('voiceschanged', play, { once: true })
 }
 
+async function grokSpeak(text: string, key: string) {
+  const bodies = [
+    { text, voice_id: 'ara', language: 'en', output_format: 'mp3' },
+    { text, voice_id: 'eve', language: 'en', output_format: 'mp3' },
+    { text, voice: 'ara', language: 'en' },
+  ]
+  for (const body of bodies) {
+    const res = await fetch('https://api.x.ai/v1/tts', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+        Accept: 'audio/mpeg, audio/wav, audio/*, application/octet-stream',
+      },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) continue
+    const type = res.headers.get('content-type') || ''
+    if (type.includes('json')) continue
+    const buf = await res.arrayBuffer()
+    if (buf.byteLength < 200) continue
+    const blob = new Blob([buf], { type: type.includes('audio') ? type : 'audio/mpeg' })
+    const url = URL.createObjectURL(blob)
+    sephoAudio = new Audio(url)
+    sephoAudio.onended = () => URL.revokeObjectURL(url)
+    await sephoAudio.play()
+    return true
+  }
+  const speech = await fetch('https://api.x.ai/v1/audio/speech', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: 'tts-1', input: text, voice: 'nova' }),
+  })
+  if (speech.ok) {
+    const buf = await speech.arrayBuffer()
+    const blob = new Blob([buf], { type: 'audio/mpeg' })
+    const url = URL.createObjectURL(blob)
+    sephoAudio = new Audio(url)
+    sephoAudio.onended = () => URL.revokeObjectURL(url)
+    await sephoAudio.play()
+    return true
+  }
+  return false
+}
+
 export async function travisSpeak(text: string, enabled: boolean) {
-  if (!enabled || !text) return
+  if (!enabled || !text) return 'off' as const
   window.speechSynthesis?.cancel()
   sephoAudio?.pause()
   const key = readXaiKey()
   if (key) {
     try {
-      const styled = `<soft><slow>${text}</slow></soft>`
-      const res = await fetch('https://api.x.ai/v1/tts', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: styled, voice_id: 'eve', language: 'en' }),
-      })
-      if (res.ok) {
-        const blob = await res.blob()
-        const url = URL.createObjectURL(blob)
-        sephoAudio = new Audio(url)
-        sephoAudio.onended = () => URL.revokeObjectURL(url)
-        await sephoAudio.play()
-        return
-      }
+      if (await grokSpeak(text, key)) return 'human' as const
     } catch {
-      /* browser voice */
+      /* fall through */
     }
   }
   speakBrowser(text)
+  return key ? ('blocked' as const) : ('device' as const)
 }

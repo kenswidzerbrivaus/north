@@ -91,7 +91,7 @@ export function Settings() {
 
         <section className="card stack">
           <h2>Sepho</h2>
-          <p className="muted">Your operating system. Press J or tap the orb. She briefs the board, opens modules, logs tasks, and starts focus. Add an xAI key for Grok and her voice.</p>
+          <p className="muted">Your operating system. Press J or tap the orb. Paste an xAI key so she speaks with a real human voice (Grok Ara), not the phone’s robot voice.</p>
           <label className="row">
             <input type="checkbox" checked={s.travisVoice !== false} onChange={(e) => updateSettings({ travisVoice: e.target.checked })} />
             Voice
@@ -114,7 +114,7 @@ export function Settings() {
             <a href="https://console.x.ai" target="_blank" rel="noreferrer">
               console.x.ai
             </a>
-            . Without a key she still runs locally, with a female system voice.
+            . Human voice needs this key. Without it she falls back to the device voice.
           </p>
         </section>
 

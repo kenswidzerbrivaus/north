@@ -80,7 +80,10 @@ export function TravisHud() {
         }
         setLine(out.say)
         runActs(out.acts)
-        void travisSpeak(out.say, voice)
+        const kind = await travisSpeak(out.say, voice)
+        if (kind === 'blocked') {
+          setLine(`${out.say}\n\nDevice voice is on. Add a working xAI key in Settings for Sepho’s real voice.`)
+        }
       } finally {
         setBusy(false)
       }
