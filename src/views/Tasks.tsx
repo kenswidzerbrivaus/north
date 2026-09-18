@@ -212,6 +212,20 @@ export function Tasks() {
                   ))}
                 </select>
               </Field>
+              <Field label="Goal">
+                <select
+                  className="select"
+                  value={open.goalId ?? ''}
+                  onChange={(e) => updateTask(open.id, { goalId: e.target.value || undefined })}
+                >
+                  <option value="">None (prefer project link)</option>
+                  {state.goals.filter((g) => g.status === 'active' || g.status === 'paused').map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.title}
+                    </option>
+                  ))}
+                </select>
+              </Field>
               <p className="kicker" style={{ margin: '12px 0 6px' }}>
                 Subtasks
               </p>

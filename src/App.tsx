@@ -138,6 +138,8 @@ function Shell() {
           if (title?.trim()) addEvent({ title: title.trim(), date: todayISO(), allDay: true })
         } else if (route === 'projects') {
           location.hash = '#/projects?new=1'
+        } else if (route === 'goals') {
+          location.hash = '#/goals?new=1'
         }
       }
     }

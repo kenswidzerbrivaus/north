@@ -14,8 +14,14 @@ import { readLink } from './lib/google-calendar'
 import { seedProjectBundle } from './lib/project-seed'
 import type {
   CalEvent,
+  CheckpointDay,
+  EnvironmentAction,
   FocusSession,
   Goal,
+  GoalCheckpoint,
+  GoalCycle,
+  GoalMover,
+  GoalReview,
   Habit,
   JournalEntry,
   List,
@@ -47,6 +53,7 @@ const defaultSettings = (): Settings => ({
   pushToGoogle: true,
   morningRituals: ['Prayer', 'Self affirmation', 'Read through journal'],
   activeProjectLimit: 10,
+  activeGoalLimit: 3,
 })
 
 export function freshState(): State {
@@ -134,6 +141,11 @@ export function freshState(): State {
     journal: [],
     sessions: [],
     settings: defaultSettings(),
+    goalCycles: [],
+    goalCheckpoints: [],
+    goalMovers: [],
+    goalReviews: [],
+    envActions: [],
     ...proj,
   }
 }
@@ -178,6 +190,11 @@ function blankState(): State {
     blockers: [],
     waitingOnItems: [],
     projectActivity: [],
+    goalCycles: [],
+    goalCheckpoints: [],
+    goalMovers: [],
+    goalReviews: [],
+    envActions: [],
   }
 }
 
@@ -281,9 +298,18 @@ export type Store = {
   addNote: (title?: string) => string
   updateNote: (id: string, patch: Partial<Note>) => void
   deleteNote: (id: string) => void
-  addGoal: (input: Partial<Goal> & { title: string }) => string
+  addGoal: (input: Partial<Goal> & { title: string }, opts?: { overrideCapacity?: boolean }) => string | { error: 'capacity' }
   updateGoal: (id: string, patch: Partial<Goal>) => void
   deleteGoal: (id: string) => void
+  addCycle: (input: Partial<GoalCycle> & { name: string; startDate: string; endDate: string }) => string
+  updateCycle: (id: string, patch: Partial<GoalCycle>) => void
+  addCheckpoint: (input: Partial<GoalCheckpoint> & { goalId: string; day: CheckpointDay; targetDescription: string }) => string
+  updateCheckpoint: (id: string, patch: Partial<GoalCheckpoint>) => void
+  addMover: (input: Omit<GoalMover, 'id'>) => string
+  removeMover: (id: string) => void
+  addGoalReview: (input: Omit<GoalReview, 'id' | 'createdAt'> & { createdAt?: string }) => string
+  addEnvAction: (input: Omit<EnvironmentAction, 'id' | 'done'> & { done?: boolean }) => string
+  updateEnvAction: (id: string, patch: Partial<EnvironmentAction>) => void
   upsertJournal: (date: string, patch: Partial<JournalEntry>) => void
   logSession: (session: Omit<FocusSession, 'id'>) => void
   updateSettings: (patch: Partial<Settings>) => void
@@ -678,12 +704,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           notes: s.notes.map((n) => (n.id === id ? { ...n, ...next, updatedAt: nowISO() } : n)),
         })),
       deleteNote: (id) => patch((s) => ({ ...s, notes: s.notes.filter((n) => n.id !== id) })),
-      addGoal: (input) => {
+      addGoal: (input, opts) => {
         const id = uid()
+        const status = input.status ?? 'active'
+        const current = stateRef.current
+        const limit = current.settings.activeGoalLimit ?? 3
+        const active = current.goals.filter((g) => g.status === 'active' && (!input.cycleId || g.cycleId === input.cycleId)).length
+        if (status === 'active' && active >= limit && !opts?.overrideCapacity) return { error: 'capacity' }
         patch((s) => ({
           ...s,
           goals: [
-            { notes: '', progress: 0, status: 'active', ...input, id, title: input.title.trim(), createdAt: nowISO() },
+            { notes: '', progress: 0, status, owner: s.settings.name || 'Kens', ...input, id, title: input.title.trim(), createdAt: nowISO() },
             ...s.goals,
           ],
         }))
@@ -694,7 +725,72 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ...s,
           goals: s.goals.map((g) => (g.id === id ? { ...g, ...next } : g)),
         })),
-      deleteGoal: (id) => patch((s) => ({ ...s, goals: s.goals.filter((g) => g.id !== id) })),
+      deleteGoal: (id) =>
+        patch((s) => ({
+          ...s,
+          goals: s.goals.filter((g) => g.id !== id),
+          goalCheckpoints: s.goalCheckpoints.filter((c) => c.goalId !== id),
+          goalMovers: s.goalMovers.filter((m) => m.goalId !== id),
+        })),
+      addCycle: (input) => {
+        const id = uid()
+        patch((s) => ({
+          ...s,
+          goalCycles: [
+            { status: 'active', activeGoalLimit: s.settings.activeGoalLimit ?? 3, createdAt: nowISO(), ...input, id, name: input.name.trim() },
+            ...s.goalCycles.map((c) => (c.status === 'active' ? { ...c, status: 'complete' as const, completedAt: nowISO() } : c)),
+          ],
+        }))
+        return id
+      },
+      updateCycle: (id, next) =>
+        patch((s) => ({
+          ...s,
+          goalCycles: s.goalCycles.map((c) => (c.id === id ? { ...c, ...next } : c)),
+        })),
+      addCheckpoint: (input) => {
+        const id = uid()
+        patch((s) => ({
+          ...s,
+          goalCheckpoints: [...s.goalCheckpoints.filter((c) => !(c.goalId === input.goalId && c.day === input.day)), { status: 'upcoming', ...input, id }],
+        }))
+        return id
+      },
+      updateCheckpoint: (id, next) =>
+        patch((s) => ({
+          ...s,
+          goalCheckpoints: s.goalCheckpoints.map((c) => (c.id === id ? { ...c, ...next } : c)),
+        })),
+      addMover: (input) => {
+        const id = uid()
+        patch((s) => ({
+          ...s,
+          goalMovers: [...s.goalMovers, { ...input, id }],
+        }))
+        return id
+      },
+      removeMover: (id) => patch((s) => ({ ...s, goalMovers: s.goalMovers.filter((m) => m.id !== id) })),
+      addGoalReview: (input) => {
+        const id = uid()
+        patch((s) => ({
+          ...s,
+          goalReviews: [{ ...input, id, createdAt: input.createdAt ?? nowISO() }, ...s.goalReviews],
+        }))
+        return id
+      },
+      addEnvAction: (input) => {
+        const id = uid()
+        patch((s) => ({
+          ...s,
+          envActions: [...s.envActions, { done: false, ...input, id }],
+        }))
+        return id
+      },
+      updateEnvAction: (id, next) =>
+        patch((s) => ({
+          ...s,
+          envActions: s.envActions.map((a) => (a.id === id ? { ...a, ...next } : a)),
+        })),
       upsertJournal: (date, next) =>
         patch((s) => {
           const existing = s.journal.find((j) => j.date === date)
@@ -767,6 +863,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             blockers: data.blockers ?? blank.blockers,
             waitingOnItems: data.waitingOnItems ?? blank.waitingOnItems,
             projectActivity: data.projectActivity ?? blank.projectActivity,
+            goalCycles: data.goalCycles ?? blank.goalCycles,
+            goalCheckpoints: data.goalCheckpoints ?? blank.goalCheckpoints,
+            goalMovers: data.goalMovers ?? blank.goalMovers,
+            goalReviews: data.goalReviews ?? blank.goalReviews,
+            envActions: data.envActions ?? blank.envActions,
             settings: {
               ...defaultSettings(),
               ...data.settings,

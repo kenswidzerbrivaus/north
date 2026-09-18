@@ -1492,9 +1492,9 @@ html.sepho .daily-box {
   letter-spacing: 0.08em;
 }
 
-.health-on_track { color: #4fd2a5; }
+.health-on_track, .health-achieved { color: #4fd2a5; }
 .health-at_risk { color: #ffb347; }
-.health-critical, .health-blocked { color: #ff4d3a; }
+.health-critical, .health-blocked, .health-off_track { color: #ff4d3a; }
 
 .proj-detail {
   display: grid;
@@ -1553,6 +1553,20 @@ html.sepho .daily-box {
 
 .cpath-empty p {
   margin: 0 0 8px;
+}
+
+.goal-grid {
+  display: grid;
+  grid-template-columns: 88px repeat(3, 1fr);
+  gap: 8px 10px;
+  align-items: start;
+  font-size: 12px;
+}
+
+@media (max-width: 860px) {
+  .goal-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .cpath-editor {

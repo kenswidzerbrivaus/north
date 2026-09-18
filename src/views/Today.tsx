@@ -4,6 +4,7 @@ import { Check } from '../components/ui'
 import { hhmmFromMinutes, roundDown5, stashCalGap } from '../lib/cal-gap'
 import { formatTime, minutesOf, parseISO, todayISO } from '../lib/dates'
 import { habitDone, isHabitDue } from '../lib/habits'
+import { linkedGoalId } from '../lib/goal-engine'
 import { exceptions, pendingDecisions, pickNow } from '../lib/project-engine'
 import { quoteForDate } from '../lib/quotes'
 import { mergeCalendars, useGoogleCalendar } from '../google'
@@ -288,6 +289,9 @@ export function Today({ go }: { go: (r: Route) => void }) {
         {nowShow ? (
           <>
             {nowProject ? <p className="kicker">{nowProject}</p> : null}
+            {nowShow.taskId ? (
+              <GoalContext taskId={nowShow.taskId} />
+            ) : null}
             <p className="now-star">★ {nowShow.title}</p>
             {nowPick?.label ? <p className="muted">{nowPick.label}</p> : null}
             <p className="now-clock">{formatRemain(timer.remaining)}</p>
@@ -385,5 +389,21 @@ export function Today({ go }: { go: (r: Route) => void }) {
         </div>
       </section>
     </div>
+  )
+}
+
+function GoalContext({ taskId }: { taskId: string }) {
+  const { state } = useStore()
+  const task = state.tasks.find((t) => t.id === taskId)
+  const gid = linkedGoalId(state, taskId, task?.projectId)
+  const goal = gid ? state.goals.find((g) => g.id === gid) : undefined
+  const project = task?.projectId ? state.projects.find((p) => p.id === task.projectId) : undefined
+  if (!goal && !project) return null
+  return (
+    <p className="muted">
+      {goal ? `Goal: ${goal.title}` : null}
+      {goal && project ? ' · ' : null}
+      {project ? `Project: ${project.name}` : null}
+    </p>
   )
 }

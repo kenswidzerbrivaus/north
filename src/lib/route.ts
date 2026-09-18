@@ -14,6 +14,11 @@ export function projectIdFromHash() {
   return m?.[1] ? decodeURIComponent(m[1]) : null
 }
 
+export function goalIdFromHash() {
+  const m = location.hash.match(/#\/goals\/([^/?#]+)/)
+  return m?.[1] ? decodeURIComponent(m[1]) : null
+}
+
 export function hashParam(name: string) {
   const i = location.hash.indexOf('?')
   if (i < 0) return null

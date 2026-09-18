@@ -15,6 +15,7 @@ import {
   weekdayNames,
 } from '../lib/dates'
 import { takeCalGap } from '../lib/cal-gap'
+import { checkpointDate } from '../lib/goal-engine'
 import { hashParam } from '../lib/route'
 import { nextEventColor, PALETTE, type CalEvent } from '../lib/types'
 import { useStore } from '../store'
@@ -285,6 +286,13 @@ export function Calendar() {
           {cells.map((c) => {
             const evs = eventsOn(c.iso)
             const tks = tasksOn(c.iso)
+            const cycle = state.goalCycles.find((x) => x.status === 'active')
+            const mark = cycle
+              ? (c.iso === checkpointDate(cycle, 30) && 'D30') ||
+                (c.iso === checkpointDate(cycle, 60) && 'D60') ||
+                (c.iso === checkpointDate(cycle, 90) && 'D90') ||
+                (c.iso === cycle.endDate && 'Q END')
+              : null
             return (
               <button
                 key={c.iso}
@@ -292,6 +300,7 @@ export function Calendar() {
                 onClick={() => openNew(c.iso)}
               >
                 <span className="day-num">{c.date.getDate()}</span>
+                {mark ? <span className="kicker">{mark}</span> : null}
                 {evs.slice(0, 3).map((e) => (
                   <span
                     key={e.id}

@@ -8,13 +8,17 @@ import { useStore } from '../store'
 export function Notes() {
   const { state, addNote, updateNote, deleteNote } = useStore()
   const [projectId, setProjectId] = useState(() => hashParam('project'))
+  const [goalId, setGoalId] = useState(() => hashParam('goal'))
   const [id, setId] = useState<string | null>(state.notes[0]?.id ?? null)
   const note = state.notes.find((n) => n.id === id)
   const [title, setTitle] = useState(note?.title ?? '')
   const [body, setBody] = useState(note?.body ?? '')
 
   useEffect(() => {
-    const on = () => setProjectId(hashParam('project'))
+    const on = () => {
+      setProjectId(hashParam('project'))
+      setGoalId(hashParam('goal'))
+    }
     window.addEventListener('hashchange', on)
     return () => window.removeEventListener('hashchange', on)
   }, [])
@@ -33,7 +37,7 @@ export function Notes() {
   }, [body, id, note, title, updateNote])
 
   const sorted = [...state.notes]
-    .filter((n) => !projectId || n.projectId === projectId)
+    .filter((n) => (!projectId || n.projectId === projectId) && (!goalId || n.goalId === goalId))
     .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt.localeCompare(a.updatedAt))
 
   return (
@@ -48,6 +52,7 @@ export function Notes() {
           onClick={() => {
             const nid = addNote('Untitled')
             if (projectId) updateNote(nid, { projectId })
+            if (goalId) updateNote(nid, { goalId })
             setId(nid)
           }}
         >
@@ -89,6 +94,19 @@ export function Notes() {
                   {state.projects.filter((p) => p.state !== 'archived').map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="select"
+                  style={{ width: 'auto' }}
+                  value={note.goalId ?? ''}
+                  onChange={(e) => updateNote(note.id, { goalId: e.target.value || undefined })}
+                >
+                  <option value="">No goal</option>
+                  {state.goals.filter((g) => g.status !== 'done').map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.title}
                     </option>
                   ))}
                 </select>

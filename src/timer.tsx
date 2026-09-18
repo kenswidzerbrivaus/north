@@ -86,6 +86,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     const s = settingsRef.current
     const elapsed = total
     const linked = taskId ? state.tasks.find((t) => t.id === taskId) : undefined
+    const goalId = linked?.goalId || (linked?.projectId ? state.projects.find((p) => p.id === linked.projectId)?.goalId : undefined)
     logSession({
       mode,
       seconds: Math.max(elapsed, 1),
@@ -93,6 +94,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       endedAt: nowISO(),
       taskId,
       projectId: linked?.projectId,
+      goalId,
       completed: true,
     })
     const next: TimerMode =
@@ -106,7 +108,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     window.setTimeout(() => {
       completing.current = false
     }, 400)
-  }, [applyMode, logSession, mode, rounds, state.tasks, taskId, total])
+  }, [applyMode, logSession, mode, rounds, state.projects, state.tasks, taskId, total])
 
   useEffect(() => {
     if (!running) return

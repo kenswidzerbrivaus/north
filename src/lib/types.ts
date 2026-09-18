@@ -47,6 +47,7 @@ export interface Task {
   projectId?: string
   milestoneId?: string
   workstreamId?: string
+  goalId?: string
 }
 
 export interface CalEvent {
@@ -86,6 +87,45 @@ export interface Note {
   createdAt: string
   updatedAt: string
   projectId?: string
+  goalId?: string
+}
+
+export type GoalStatus = 'backlog' | 'active' | 'paused' | 'done'
+export type GoalHealth = 'on_track' | 'at_risk' | 'off_track' | 'achieved'
+export type GoalCategory =
+  | 'business'
+  | 'finances'
+  | 'physique'
+  | 'mindset'
+  | 'relationships'
+  | 'fun'
+  | 'spiritual'
+  | 'education'
+  | 'family'
+  | 'health'
+  | 'personal'
+  | 'custom'
+export type CheckpointDay = 30 | 60 | 90
+export type CheckpointStatus = 'achieved' | 'on_track' | 'at_risk' | 'missed' | 'upcoming'
+export type MoverEntity = 'project' | 'task' | 'habit' | 'milestone'
+export type GoalReviewType = 'weekly' | 'day30' | 'day60' | 'day90' | 'complete'
+export type TrajectoryMark = 'ahead' | 'on_track' | 'behind'
+
+export interface GoalCycle {
+  id: string
+  name: string
+  startDate: string
+  endDate: string
+  status: 'active' | 'complete'
+  activeGoalLimit: number
+  createdAt: string
+  completedAt?: string
+  physicalRating?: number
+  digitalRating?: number
+  physicalHelp?: string
+  physicalFriction?: string
+  digitalSteal?: string
+  digitalChange?: string
 }
 
 export interface Goal {
@@ -94,8 +134,73 @@ export interface Goal {
   notes: string
   targetDate?: string
   progress: number
-  status: 'active' | 'paused' | 'done'
+  status: GoalStatus
   createdAt: string
+  cycleId?: string
+  owner?: string
+  category?: GoalCategory
+  categoryCustom?: string
+  startDate?: string
+  whyItMatters?: string
+  whyNow?: string
+  consequence?: string
+  metricName?: string
+  baseline?: string
+  currentValue?: string
+  targetValue?: string
+  unit?: string
+  definitionOfDone?: string
+  reward?: string
+  completedAt?: string
+  outcomeActual?: string
+  lessons?: string
+}
+
+export interface GoalCheckpoint {
+  id: string
+  goalId: string
+  day: CheckpointDay
+  targetValue?: string
+  targetDescription: string
+  actualValue?: string
+  actualDescription?: string
+  status: CheckpointStatus
+  reviewNotes?: string
+}
+
+export interface GoalMover {
+  id: string
+  goalId: string
+  rank: number
+  entityType: MoverEntity
+  entityId: string
+  weekly?: boolean
+}
+
+export interface GoalReview {
+  id: string
+  goalId?: string
+  cycleId?: string
+  type: GoalReviewType
+  weekNumber?: number
+  day?: number
+  wins: string
+  misses: string
+  constraint: string
+  lessons: string
+  adjustments: string
+  createdAt: string
+}
+
+export interface EnvironmentAction {
+  id: string
+  cycleId: string
+  kind: 'physical' | 'digital'
+  action: 'remove' | 'improve'
+  description: string
+  taskId?: string
+  habitId?: string
+  done: boolean
 }
 
 export type Workout = 'cardio' | 'weights' | 'rest' | 'other'
@@ -124,6 +229,7 @@ export interface FocusSession {
   endedAt: string
   taskId?: string
   projectId?: string
+  goalId?: string
   completed: boolean
 }
 
@@ -141,6 +247,7 @@ export interface Settings {
   pushToGoogle: boolean
   morningRituals: [string, string, string]
   activeProjectLimit: number
+  activeGoalLimit: number
 }
 
 export type ProjectLifecycle = 'backlog' | 'active' | 'blocked' | 'complete' | 'archived'
@@ -274,6 +381,11 @@ export interface State {
   blockers: ProjectBlocker[]
   waitingOnItems: WaitingOn[]
   projectActivity: ProjectActivity[]
+  goalCycles: GoalCycle[]
+  goalCheckpoints: GoalCheckpoint[]
+  goalMovers: GoalMover[]
+  goalReviews: GoalReview[]
+  envActions: EnvironmentAction[]
 }
 
 export const PALETTE = [
