@@ -296,48 +296,32 @@ function speakBrowser(text: string) {
 }
 
 async function grokSpeak(text: string, key: string) {
-  const bodies = [
-    { text, voice_id: 'ara', language: 'en', output_format: 'mp3' },
-    { text, voice_id: 'eve', language: 'en', output_format: 'mp3' },
-    { text, voice: 'ara', language: 'en' },
-  ]
-  for (const body of bodies) {
-    const res = await fetch('https://api.x.ai/v1/tts', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${key}`,
-        'Content-Type': 'application/json',
-        Accept: 'audio/mpeg, audio/wav, audio/*, application/octet-stream',
-      },
-      body: JSON.stringify(body),
-    })
-    if (!res.ok) continue
-    const type = res.headers.get('content-type') || ''
-    if (type.includes('json')) continue
-    const buf = await res.arrayBuffer()
-    if (buf.byteLength < 200) continue
-    const blob = new Blob([buf], { type: type.includes('audio') ? type : 'audio/mpeg' })
-    const url = URL.createObjectURL(blob)
-    sephoAudio = new Audio(url)
-    sephoAudio.onended = () => URL.revokeObjectURL(url)
-    await sephoAudio.play()
-    return true
-  }
-  const speech = await fetch('https://api.x.ai/v1/audio/speech', {
+  const res = await fetch('https://api.x.ai/v1/tts', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'tts-1', input: text, voice: 'nova' }),
+    headers: {
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ text, voice_id: 'eve', language: 'en' }),
   })
-  if (speech.ok) {
-    const buf = await speech.arrayBuffer()
-    const blob = new Blob([buf], { type: 'audio/mpeg' })
-    const url = URL.createObjectURL(blob)
-    sephoAudio = new Audio(url)
-    sephoAudio.onended = () => URL.revokeObjectURL(url)
-    await sephoAudio.play()
-    return true
+  const type = res.headers.get('content-type') || ''
+  if (!res.ok || type.includes('json')) {
+    let detail = `TTS ${res.status}`
+    try {
+      const err = (await res.json()) as { error?: string; code?: string }
+      detail = err.error || err.code || detail
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail)
   }
-  return false
+  const buf = await res.arrayBuffer()
+  if (buf.byteLength < 200) throw new Error('TTS returned empty audio')
+  const blob = new Blob([buf], { type: type.includes('audio') ? type : 'audio/mpeg' })
+  const url = URL.createObjectURL(blob)
+  sephoAudio = new Audio(url)
+  sephoAudio.onended = () => URL.revokeObjectURL(url)
+  await sephoAudio.play()
 }
 
 export async function travisSpeak(text: string, enabled: boolean) {
@@ -347,11 +331,13 @@ export async function travisSpeak(text: string, enabled: boolean) {
   const key = readXaiKey()
   if (key) {
     try {
-      if (await grokSpeak(text, key)) return 'human' as const
-    } catch {
-      /* fall through */
+      await grokSpeak(text, key)
+      return 'human' as const
+    } catch (err) {
+      speakBrowser(text)
+      return (err instanceof Error ? err.message : 'blocked') as string
     }
   }
   speakBrowser(text)
-  return key ? ('blocked' as const) : ('device' as const)
+  return 'device' as const
 }

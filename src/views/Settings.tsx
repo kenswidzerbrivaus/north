@@ -110,11 +110,11 @@ export function Settings() {
             />
           </Field>
           <p className="muted">
-            Get a key at{' '}
+            Get a key and add credits at{' '}
             <a href="https://console.x.ai" target="_blank" rel="noreferrer">
               console.x.ai
             </a>
-            . Human voice needs this key. Without it she falls back to the device voice.
+            . Sepho uses POST /v1/tts with voice Eve. A key with no team credits will fail.
           </p>
         </section>
 

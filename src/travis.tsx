@@ -81,8 +81,10 @@ export function TravisHud() {
         setLine(out.say)
         runActs(out.acts)
         const kind = await travisSpeak(out.say, voice)
-        if (kind === 'blocked') {
-          setLine(`${out.say}\n\nDevice voice is on. Add a working xAI key in Settings for Sepho’s real voice.`)
+        if (kind !== 'human' && kind !== 'off' && kind !== 'device') {
+          setLine(`${out.say}\n\nVoice: ${kind}`)
+        } else if (kind === 'device') {
+          setLine(`${out.say}\n\nDevice voice. Paste an xAI key in Settings for Eve.`)
         }
       } finally {
         setBusy(false)
