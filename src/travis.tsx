@@ -5,40 +5,16 @@ import { grokTravis, localTravis, travisBrief, travisSpeak, type TravisAct } fro
 import { useStore } from './store'
 import { useTimer } from './timer'
 
-type Recog = {
-  start: () => void
-  stop: () => void
-  abort: () => void
-  onresult: ((ev: { results: { [i: number]: { [j: number]: { transcript: string } }; length: number } }) => void) | null
-  onend: (() => void) | null
-  onerror: (() => void) | null
-  lang: string
-  interimResults: boolean
-  continuous: boolean
-}
-
-function makeRecog(): Recog | null {
-  const C = (window as unknown as { SpeechRecognition?: new () => Recog; webkitSpeechRecognition?: new () => Recog }).SpeechRecognition
-    || (window as unknown as { webkitSpeechRecognition?: new () => Recog }).webkitSpeechRecognition
-  if (!C) return null
-  const r = new C()
-  r.lang = 'en-US'
-  r.interimResults = false
-  r.continuous = false
-  return r
-}
-
 export function TravisHud() {
   const { state, addTask, addNote, addEvent } = useStore()
   const [, go] = useRoute()
   const timer = useTimer()
   const [open, setOpen] = useState(false)
-  const [listening, setListening] = useState(false)
   const [busy, setBusy] = useState(false)
   const [line, setLine] = useState('')
   const [heard, setHeard] = useState('')
   const [input, setInput] = useState('')
-  const recog = useRef<Recog | null>(null)
+  const box = useRef<HTMLInputElement>(null)
   const voice = state.settings.travisVoice !== false
 
   const runActs = useCallback(
@@ -106,52 +82,24 @@ export function TravisHud() {
       if (e.key.toLowerCase() === 'j' && !e.metaKey && !e.ctrlKey) {
         e.preventDefault()
         setOpen(true)
-        listen()
+        window.setTimeout(() => box.current?.focus(), 0)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  const listen = () => {
-    const r = recog.current ?? makeRecog()
-    recog.current = r
-    if (!r) {
-      setOpen(true)
-      setLine('Voice is unavailable on this browser. Type a command, sir.')
-      return
-    }
-    r.onresult = (ev) => {
-      const t = ev.results[ev.results.length - 1]?.[0]?.transcript ?? ''
-      void handle(t)
-    }
-    r.onend = () => setListening(false)
-    r.onerror = () => setListening(false)
-    try {
-      r.start()
-      setListening(true)
-      setOpen(true)
-      setLine('Listening.')
-    } catch {
-      setListening(false)
-    }
-  }
-
   return (
-    <div className={`travis ${open ? 'is-open' : ''} ${listening ? 'is-live' : ''}`}>
+    <div className={`travis ${open ? 'is-open' : ''} ${busy ? 'is-live' : ''}`}>
       <button
         className="travis-orb"
         aria-label="Sepho"
         onClick={() => {
-          if (open && !listening) listen()
-          else if (!open) {
-            setOpen(true)
-            listen()
-          } else {
-            recog.current?.stop()
-            setListening(false)
-            setOpen(false)
-          }
+          setOpen((v) => {
+            const next = !v
+            if (next) window.setTimeout(() => box.current?.focus(), 0)
+            return next
+          })
         }}
       >
         <span className="travis-ring" />
@@ -161,7 +109,7 @@ export function TravisHud() {
         <div className="travis-panel hud-frame">
           <p className="board-label">Sepho // Online</p>
           {heard ? <p className="muted">You: {heard}</p> : null}
-          <p className="board-brief">{busy ? 'Working…' : line || 'Online. Press J or speak.'}</p>
+          <p className="board-brief">{busy ? 'Working…' : line || 'Online. Type a command.'}</p>
           <form
             onSubmit={(e) => {
               e.preventDefault()
@@ -172,6 +120,7 @@ export function TravisHud() {
             }}
           >
             <input
+              ref={box}
               className="input"
               value={input}
               onChange={(e) => setInput(e.target.value)}

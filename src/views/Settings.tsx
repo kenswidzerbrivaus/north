@@ -91,7 +91,7 @@ export function Settings() {
 
         <section className="card stack">
           <h2>Sepho</h2>
-          <p className="muted">Your operating system. Press J or tap the orb. Paste an xAI key so she speaks with a real human voice (Grok Ara), not the phone’s robot voice.</p>
+          <p className="muted">Your operating system. Press J or tap the orb, then type a command. Paste an xAI key so replies use Eve’s voice.</p>
           <label className="row">
             <input type="checkbox" checked={s.travisVoice !== false} onChange={(e) => updateSettings({ travisVoice: e.target.checked })} />
             Voice
