@@ -90,8 +90,8 @@ export function Settings() {
         </section>
 
         <section className="card stack">
-          <h2>TRAVIS</h2>
-          <p className="muted">Sepho’s JARVIS. Press J or tap the orb. He can brief the board, open modules, log tasks, and start focus. Add an xAI key to give him Grok.</p>
+          <h2>Sepho</h2>
+          <p className="muted">Your operating system. Press J or tap the orb. She briefs the board, opens modules, logs tasks, and starts focus. Add an xAI key for Grok and her voice.</p>
           <label className="row">
             <input type="checkbox" checked={s.travisVoice !== false} onChange={(e) => updateSettings({ travisVoice: e.target.checked })} />
             Voice
@@ -114,7 +114,7 @@ export function Settings() {
             <a href="https://console.x.ai" target="_blank" rel="noreferrer">
               console.x.ai
             </a>
-            . Without a key, Travis still runs locally.
+            . Without a key she still runs locally, with a female system voice.
           </p>
         </section>
 

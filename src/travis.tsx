@@ -80,7 +80,7 @@ export function TravisHud() {
         }
         setLine(out.say)
         runActs(out.acts)
-        travisSpeak(out.say, voice)
+        void travisSpeak(out.say, voice)
       } finally {
         setBusy(false)
       }
@@ -136,7 +136,7 @@ export function TravisHud() {
     <div className={`travis ${open ? 'is-open' : ''} ${listening ? 'is-live' : ''}`}>
       <button
         className="travis-orb"
-        aria-label="TRAVIS"
+        aria-label="Sepho"
         onClick={() => {
           if (open && !listening) listen()
           else if (!open) {
@@ -150,11 +150,11 @@ export function TravisHud() {
         }}
       >
         <span className="travis-ring" />
-        <span className="kicker">TV</span>
+        <span className="kicker">S</span>
       </button>
       {open ? (
         <div className="travis-panel hud-frame">
-          <p className="board-label">Sepho // Travis</p>
+          <p className="board-label">Sepho // Online</p>
           {heard ? <p className="muted">You: {heard}</p> : null}
           <p className="board-brief">{busy ? 'Working…' : line || 'Online. Press J or speak.'}</p>
           <form
@@ -170,7 +170,7 @@ export function TravisHud() {
               className="input"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Command Travis…"
+              placeholder="Command Sepho…"
             />
           </form>
         </div>

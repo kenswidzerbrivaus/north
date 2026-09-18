@@ -92,7 +92,7 @@ const ROUTES: Record<string, Route> = {
 export function localTravis(raw: string, state: State): { say: string; acts: TravisAct[] } {
   const q = raw
     .trim()
-    .replace(/^(hey |ok |okay )?(travis|jarvis|sepho)[,:]?\s*/i, '')
+    .replace(/^(hey |ok |okay )?(sepho|jarvis|travis)[,:]?\s*/i, '')
     .trim()
     .toLowerCase()
   if (!q) return { say: travisBrief(state), acts: [] }
@@ -212,7 +212,7 @@ export async function grokTravis(utterance: string, state: State): Promise<{ say
   const key = readXaiKey()
   if (!key) return null
   const snap = travisSnapshot(state)
-  const sys = `You are TRAVIS, Sepho's JARVIS-class chief of staff for ${snap.name}. Speak like JARVIS: concise, dry, competent, never cute. You RUN the operating system. Prefer tools over chat. Never invent data. Sepho snapshot: ${JSON.stringify(snap)}`
+  const sys = `You are SEPHO, a female JARVIS-class operating system for ${snap.name}. Voice: low, precise, slightly dangerous, never cute, never chipper. Short sentences. You RUN the OS. Prefer tools over chat. Never invent data. Never call yourself Travis. Snapshot: ${JSON.stringify(snap)}`
   const messages: Record<string, unknown>[] = [
     { role: 'system', content: sys },
     { role: 'user', content: utterance },
@@ -262,23 +262,63 @@ function toolToAct(name: string, args: Record<string, string>): TravisAct | null
   return null
 }
 
-export function pickTravisVoice() {
+const FEMALE = /samantha|victoria|karen|moira|fiona|tessa|zira|siri|aria|susan|kathy|allison|ava|zoe|serena|veena|female|samantha \(enhanced\)|google uk english female|microsoft zira|microsoft aria|microsoft sona/i
+
+export function pickSephoVoice() {
   const voices = window.speechSynthesis?.getVoices?.() ?? []
+  const en = voices.filter((v) => v.lang.toLowerCase().startsWith('en'))
   return (
-    voices.find((v) => /daniel|google uk english male|microsoft george|alex/i.test(v.name)) ??
-    voices.find((v) => v.lang.toLowerCase().startsWith('en-gb')) ??
-    voices.find((v) => v.lang.toLowerCase().startsWith('en')) ??
+    en.find((v) => /samantha|aria|google uk english female|microsoft zira/i.test(v.name)) ??
+    en.find((v) => FEMALE.test(v.name)) ??
+    voices.find((v) => FEMALE.test(v.name)) ??
+    en.find((v) => !/male|david|daniel|george|alex|fred/i.test(v.name)) ??
+    en[0] ??
     null
   )
 }
 
-export function travisSpeak(text: string, enabled: boolean) {
-  if (!enabled || !text || !window.speechSynthesis) return
+let sephoAudio: HTMLAudioElement | null = null
+
+function speakBrowser(text: string) {
+  if (!window.speechSynthesis) return
   window.speechSynthesis.cancel()
-  const u = new SpeechSynthesisUtterance(text)
-  const voice = pickTravisVoice()
-  if (voice) u.voice = voice
-  u.rate = 1.04
-  u.pitch = 0.9
-  window.speechSynthesis.speak(u)
+  const play = () => {
+    const u = new SpeechSynthesisUtterance(text)
+    const voice = pickSephoVoice()
+    if (voice) u.voice = voice
+    u.rate = 0.88
+    u.pitch = 1.28
+    u.volume = 1
+    window.speechSynthesis.speak(u)
+  }
+  if (window.speechSynthesis.getVoices().length) play()
+  else window.speechSynthesis.addEventListener('voiceschanged', play, { once: true })
+}
+
+export async function travisSpeak(text: string, enabled: boolean) {
+  if (!enabled || !text) return
+  window.speechSynthesis?.cancel()
+  sephoAudio?.pause()
+  const key = readXaiKey()
+  if (key) {
+    try {
+      const styled = `<soft><slow>${text}</slow></soft>`
+      const res = await fetch('https://api.x.ai/v1/tts', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: styled, voice_id: 'eve', language: 'en' }),
+      })
+      if (res.ok) {
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        sephoAudio = new Audio(url)
+        sephoAudio.onended = () => URL.revokeObjectURL(url)
+        await sephoAudio.play()
+        return
+      }
+    } catch {
+      /* browser voice */
+    }
+  }
+  speakBrowser(text)
 }
