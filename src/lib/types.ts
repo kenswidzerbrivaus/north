@@ -151,6 +151,7 @@ export interface Goal {
   unit?: string
   definitionOfDone?: string
   reward?: string
+  northStarLink?: string
   completedAt?: string
   outcomeActual?: string
   lessons?: string
@@ -249,6 +250,9 @@ export interface Settings {
   activeProjectLimit: number
   activeGoalLimit: number
   travisVoice: boolean
+  northStar: string
+  northStarHorizon: string
+  northStarMetric: string
 }
 
 export type ProjectLifecycle = 'backlog' | 'active' | 'blocked' | 'complete' | 'archived'

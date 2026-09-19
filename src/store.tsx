@@ -55,6 +55,9 @@ const defaultSettings = (): Settings => ({
   activeProjectLimit: 10,
   activeGoalLimit: 3,
   travisVoice: true,
+  northStar: '',
+  northStarHorizon: '',
+  northStarMetric: '',
 })
 
 export function freshState(): State {

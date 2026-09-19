@@ -27,6 +27,7 @@ type Draft = {
   day90: string
   day90v: string
   reward: string
+  northStarLink: string
   movers: { label: string; type: MoverEntity; entityId: string }[]
   projectIds: string[]
 }
@@ -54,6 +55,7 @@ const empty = (owner: string, start: string, end: string): Draft => ({
   day90: '',
   day90v: '',
   reward: '',
+  northStarLink: '',
   movers: [{ label: '', type: 'project', entityId: '' }],
   projectIds: [],
 })
@@ -112,6 +114,7 @@ export function GoalWizard({
         unit: draft.unit,
         definitionOfDone: draft.definitionOfDone,
         reward: draft.reward,
+        northStarLink: draft.northStarLink,
         notes: draft.whyItMatters,
         status,
       },
@@ -217,6 +220,9 @@ export function GoalWizard({
             </Field>
             <Field label="What happens if this is not achieved?">
               <textarea className="textarea" value={draft.consequence} onChange={(e) => set({ consequence: e.target.value })} />
+            </Field>
+            <Field label="How does this move the north star? (optional)">
+              <textarea className="textarea" value={draft.northStarLink} onChange={(e) => set({ northStarLink: e.target.value })} placeholder="Build transportation infrastructure for Brivaus Group." />
             </Field>
           </>
         ) : null}

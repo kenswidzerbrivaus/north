@@ -16,6 +16,7 @@ import {
 import { formatShort, todayISO } from '../lib/dates'
 import { healthOf, labelHealth } from '../lib/project-engine'
 import type { Goal, GoalCycle } from '../lib/types'
+import { NorthStar } from '../components/NorthStar'
 import { useStore } from '../store'
 
 export function GoalDetail({ goal, cycle, onBack }: { goal: Goal; cycle?: GoalCycle; onBack: () => void }) {
@@ -62,6 +63,7 @@ export function GoalDetail({ goal, cycle, onBack }: { goal: Goal; cycle?: GoalCy
 
   return (
     <div>
+      <NorthStar cycle={cycle} />
       <button className="btn-ghost" onClick={onBack}>
         ← Goals
       </button>
@@ -92,6 +94,11 @@ export function GoalDetail({ goal, cycle, onBack }: { goal: Goal; cycle?: GoalCy
           <section className="hud-frame" style={{ padding: 16 }}>
             <p className="board-label">The outcome</p>
             <p>{goal.definitionOfDone || goal.notes || goal.title}</p>
+            {goal.northStarLink?.trim() ? (
+              <p className="north-star-link muted">
+                <span className="kicker">North star</span> {goal.northStarLink}
+              </p>
+            ) : null}
             <p className="muted">
               {goal.metricName || 'Progress'} · current {goal.currentValue ?? '—'} / target {goal.targetValue ?? '—'} {goal.unit}
             </p>
@@ -305,6 +312,7 @@ export function GoalDetail({ goal, cycle, onBack }: { goal: Goal; cycle?: GoalCy
 
       {review ? (
         <Modal title={review === 'complete' ? 'Close goal' : review === 'weekly' ? 'Weekly review' : `${review} review`} onClose={() => setReview(null)}>
+          <NorthStar cycle={cycle} />
           {review !== 'weekly' && review !== 'complete' ? (
             <p className="muted">
               Planned {cps.find((c) => c.day === (review === 'day30' ? 30 : 60))?.targetDescription} · Current {goal.currentValue ?? '—'}

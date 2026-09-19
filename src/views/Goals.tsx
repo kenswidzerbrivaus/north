@@ -16,6 +16,7 @@ import { formatShort, todayISO } from '../lib/dates'
 import { goalIdFromHash } from '../lib/route'
 import type { Goal } from '../lib/types'
 import { useStore } from '../store'
+import { NorthStar } from '../components/NorthStar'
 import { GoalDetail } from './GoalDetail'
 import { GoalWizard } from './GoalWizard'
 
@@ -96,6 +97,7 @@ export function Goals() {
 
   return (
     <div>
+      <NorthStar cycle={cycle} />
       <header className="page-head">
         <div>
           <p className="kicker">Goals // 90-day command</p>
@@ -365,6 +367,7 @@ export function Goals() {
 
       {review90 && cycle ? (
         <Modal title="90-day review" onClose={() => setReview90(false)} wide>
+          <NorthStar cycle={cycle} />
           {cards.concat(
             cycleGoals.filter((g) => g.status === 'done').map((g) => ({
               g,
@@ -414,6 +417,11 @@ function GoalCard({ g, cps, projects, health, progress, index }: { g: Goal; cps:
       </div>
       <h3>{g.title}</h3>
       <p className="kicker">{labelCategory(g)}</p>
+      {g.northStarLink?.trim() ? (
+        <p className="north-star-link muted">
+          <span className="kicker">North star</span> {g.northStarLink}
+        </p>
+      ) : null}
       <p className="muted">
         {g.metricName || 'Target'} {g.targetValue ?? ''} {g.unit} · current {g.currentValue ?? '—'}
         {g.targetDate ? ` · ${formatShort(g.targetDate)}` : ''}
