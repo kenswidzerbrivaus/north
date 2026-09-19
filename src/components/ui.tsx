@@ -6,11 +6,13 @@ export function Modal({
   onClose,
   children,
   wide,
+  persist,
 }: {
   title: string
   onClose: () => void
   children: ReactNode
   wide?: boolean
+  persist?: boolean
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -21,7 +23,7 @@ export function Modal({
   }, [onClose])
 
   return (
-    <div className="modal-backdrop" onMouseDown={onClose}>
+    <div className="modal-backdrop" onMouseDown={persist ? undefined : onClose}>
       <div
         className="modal"
         role="dialog"

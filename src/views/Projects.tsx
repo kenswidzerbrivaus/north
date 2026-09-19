@@ -504,7 +504,7 @@ function CreateProject({
     onCreate(result)
   }
   return (
-    <Modal title="New project" onClose={onClose} wide>
+    <Modal title="New project" onClose={onClose} wide persist>
       <form className="stack" onSubmit={save}>
         <p className="muted">Draft autosaves as you type. Leaving this page will not wipe it.</p>
         {missing.length ? (

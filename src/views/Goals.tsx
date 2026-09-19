@@ -16,6 +16,7 @@ import { formatShort, todayISO } from '../lib/dates'
 import { goalIdFromHash } from '../lib/route'
 import type { Goal } from '../lib/types'
 import { useStore } from '../store'
+import { loadDraft } from '../lib/drafts'
 import { NorthStar } from '../components/NorthStar'
 import { GoalDetail } from './GoalDetail'
 import { GoalWizard } from './GoalWizard'
@@ -119,7 +120,7 @@ export function Goals() {
             + 90-day command
           </button>
           <button className="btn" onClick={openCreate} disabled={!cycle}>
-            + New goal
+            {loadDraft('goal') ? 'Resume goal draft' : '+ New goal'}
           </button>
         </div>
       </header>

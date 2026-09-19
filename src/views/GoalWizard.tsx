@@ -90,6 +90,7 @@ export function GoalWizard({
     const t = window.setTimeout(() => saveDraft('goal', { step, draft }), 200)
     return () => window.clearTimeout(t)
   }, [draft, step])
+  useEffect(() => () => saveDraft('goal', { step, draft }), [draft, step])
 
   const qc = qualityCheck({
     title: draft.title,
@@ -160,7 +161,7 @@ export function GoalWizard({
   }
 
   return (
-    <Modal title={`New goal // Step ${step} of 8`} onClose={onClose} wide>
+    <Modal title={`New goal // Step ${step} of 8`} onClose={onClose} wide persist>
       <div className="stack">
         <p className="muted">Draft autosaves as you type. Leaving this page will not wipe it.</p>
         {step === 1 ? (
