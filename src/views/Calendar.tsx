@@ -15,6 +15,7 @@ import {
   weekdayNames,
 } from '../lib/dates'
 import { takeCalGap } from '../lib/cal-gap'
+import { layoutTimedEvents, minutesToStamp } from '../lib/cal-layout'
 import { checkpointDate } from '../lib/goal-engine'
 import { hashParam } from '../lib/route'
 import { nextEventColor, PALETTE, type CalEvent } from '../lib/types'
@@ -23,6 +24,7 @@ import { useStore } from '../store'
 type View = 'month' | 'week' | 'day'
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
+const HOUR_PX = 56
 
 export function Calendar() {
   const { state, addEvent, updateEvent, deleteEvent, syncFromCalendar, dropGoogleItems } = useStore()
@@ -120,12 +122,13 @@ export function Calendar() {
 
   const openNew = (date: string, start?: string, end?: string) => {
     setToGoogle(state.settings.pushToGoogle && gcal.connected)
+    const timed = Boolean(start)
     setDraft({
       title: '',
       date,
       start,
-      end,
-      allDay: !start,
+      end: timed ? end || minutesToStamp(minutesOf(start!) + 60) : undefined,
+      allDay: !timed,
       color: nextEventColor(allEvents.map((e) => e.color)),
       notes: '',
       location: '',
@@ -234,7 +237,7 @@ export function Calendar() {
     <div>
       <header className="page-head">
         <div>
-          <p className="kicker">{projectId ? `Project // ${state.projects.find((p) => p.id === projectId)?.name ?? 'filter'}` : 'Time on a page'}</p>
+          <p className="kicker">{projectId ? `Project // ${state.projects.find((p) => p.id === projectId)?.name ?? 'filter'}` : 'Time-block schedule'}</p>
           <h1>{view === 'day' ? cursor.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : monthName(cursor)}</h1>
         </div>
         <div className="row">
@@ -350,91 +353,118 @@ function WeekGrid({
   onEvent: (e: CalEvent) => void
   gap: { date: string; startMin: number; endMin: number } | null
 }) {
-  const isos = days.map(toISO)
   return (
-    <div className="week-grid" style={{ gridTemplateColumns: `64px repeat(${days.length}, 1fr)` }}>
-      <div className="gutter">All day</div>
-      {days.map((d) => {
-        const iso = toISO(d)
-        const all = events.filter((e) => e.date === iso && (e.allDay || !e.start))
-        return (
-          <div key={iso} className="gutter" style={{ minHeight: 44 }} onClick={() => onSlot(iso)}>
-            <div className="kicker">{d.toLocaleDateString(undefined, { weekday: 'short' })} {d.getDate()}</div>
-            {all.map((e) => (
-              <button key={e.id} className="pill" style={{ ['--c' as string]: e.color, display: 'block', marginTop: 4 }} onClick={(ev) => { ev.stopPropagation(); onEvent(e) }}>
-                {e.title}
-              </button>
-            ))}
-          </div>
-        )
-      })}
-      {HOURS.map((h) => (
-        <HourRow key={h} hour={h} isos={isos} events={events} onSlot={onSlot} onEvent={onEvent} gap={gap} />
-      ))}
-    </div>
-  )
-}
-
-function HourRow({
-  hour,
-  isos,
-  events,
-  onSlot,
-  onEvent,
-  gap,
-}: {
-  hour: number
-  isos: string[]
-  events: CalEvent[]
-  onSlot: (iso: string, start?: string, end?: string) => void
-  onEvent: (e: CalEvent) => void
-  gap: { date: string; startMin: number; endMin: number } | null
-}) {
-  const label = `${hour % 12 || 12} ${hour < 12 ? 'AM' : 'PM'}`
-  const stamp = `${String(hour).padStart(2, '0')}:00`
-  const hourStart = hour * 60
-  const hourEnd = hourStart + 60
-  return (
-    <>
-      <div className="gutter" data-cal-hour={hour}>
-        {label}
-      </div>
-      {isos.map((iso) => {
-        const timed = events.filter((e) => e.date === iso && e.start && Math.floor(minutesOf(e.start) / 60) === hour)
-        const inGap = Boolean(gap && iso === gap.date && hourStart < gap.endMin && hourEnd > gap.startMin)
-        return (
-          <button
-            key={iso + hour}
-            className={`hour-cell${inGap ? ' is-gap' : ''}`}
-            data-cal-hour={hour}
-            onClick={() => onSlot(iso, stamp)}
-          >
-            {timed.map((e) => {
-              const start = minutesOf(e.start!) - hour * 60
-              const end = e.end ? minutesOf(e.end) : minutesOf(e.start!) + 60
-              const height = Math.max(18, ((end - hour * 60 - start) / 60) * 48)
-              return (
-                <span
+    <div className="week-board">
+      <div className="week-allday" style={{ gridTemplateColumns: `64px repeat(${days.length}, 1fr)` }}>
+        <div className="gutter">All day</div>
+        {days.map((d) => {
+          const iso = toISO(d)
+          const all = events.filter((e) => e.date === iso && (e.allDay || !e.start))
+          return (
+            <div key={iso} className="gutter week-allday-cell" onClick={() => onSlot(iso)}>
+              <div className="kicker">
+                {d.toLocaleDateString(undefined, { weekday: 'short' })} {d.getDate()}
+              </div>
+              {all.map((e) => (
+                <button
                   key={e.id}
-                  className="event-block"
-                  style={{
-                    top: (start / 60) * 48,
-                    height,
-                    ['--c' as string]: e.color,
-                  }}
+                  className="pill"
+                  style={{ ['--c' as string]: e.color, display: 'block', marginTop: 4 }}
                   onClick={(ev) => {
                     ev.stopPropagation()
                     onEvent(e)
                   }}
                 >
                   {e.title}
-                  <div className="muted">{formatTime(e.start!)}</div>
-                </span>
-              )
-            })}
+                </button>
+              ))}
+            </div>
+          )
+        })}
+      </div>
+      <div className="week-grid" style={{ gridTemplateColumns: `64px repeat(${days.length}, 1fr)` }}>
+        <div className="week-hours">
+          {HOURS.map((h) => (
+            <div key={h} className="gutter week-hour-label" data-cal-hour={h} style={{ height: HOUR_PX }}>
+              {`${h % 12 || 12} ${h < 12 ? 'AM' : 'PM'}`}
+            </div>
+          ))}
+        </div>
+        {days.map((d) => (
+          <DayColumn
+            key={toISO(d)}
+            iso={toISO(d)}
+            events={events.filter((e) => e.date === toISO(d))}
+            onSlot={onSlot}
+            onEvent={onEvent}
+            gap={gap}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DayColumn({
+  iso,
+  events,
+  onSlot,
+  onEvent,
+  gap,
+}: {
+  iso: string
+  events: CalEvent[]
+  onSlot: (iso: string, start?: string, end?: string) => void
+  onEvent: (e: CalEvent) => void
+  gap: { date: string; startMin: number; endMin: number } | null
+}) {
+  const blocks = layoutTimedEvents(events)
+  const inGap = (min: number) => Boolean(gap && iso === gap.date && min >= gap.startMin && min < gap.endMin)
+  return (
+    <div
+      className="day-col"
+      style={{ height: HOURS.length * HOUR_PX }}
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('.event-block')) return
+        const rect = e.currentTarget.getBoundingClientRect()
+        const y = e.clientY - rect.top
+        const snapped = Math.max(0, Math.min(24 * 60 - 30, Math.floor(y / (HOUR_PX / 2)) * 30))
+        onSlot(iso, minutesToStamp(snapped), minutesToStamp(snapped + 60))
+      }}
+    >
+      {HOURS.map((h) => (
+        <div key={h} className={`hour-line${inGap(h * 60) ? ' is-gap' : ''}`} style={{ height: HOUR_PX }} />
+      ))}
+      {blocks.map((b) => {
+        const top = (b.start / 60) * HOUR_PX
+        const height = Math.max(22, ((b.end - b.start) / 60) * HOUR_PX - 2)
+        const width = `calc(${100 / b.cols}% - 4px)`
+        const left = `calc(${(b.col / b.cols) * 100}% + 2px)`
+        return (
+          <button
+            key={b.event.id}
+            type="button"
+            className="event-block"
+            style={{
+              top,
+              height,
+              left,
+              width,
+              zIndex: 2 + b.col,
+              ['--c' as string]: b.event.color,
+            }}
+            onClick={(ev) => {
+              ev.stopPropagation()
+              onEvent(b.event)
+            }}
+          >
+            <strong>{b.event.title}</strong>
+            <span className="muted">
+              {formatTime(minutesToStamp(b.start))} – {formatTime(minutesToStamp(b.end))}
+            </span>
           </button>
         )
       })}
-    </>
+    </div>
   )
 }

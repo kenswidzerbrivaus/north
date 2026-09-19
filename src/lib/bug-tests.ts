@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { layoutTimedEvents } from './cal-layout'
 import { parseDeadline } from './dates'
 import { fromGoogleEvent, toGoogleBody } from './google-calendar'
 import { daysLeft, depsReady, parseMilestoneLines } from './project-engine'
@@ -113,4 +114,26 @@ test('critical path: depsReady', () => {
 test('daysLeft is calendar-day based', () => {
   assert.equal(daysLeft('2026-09-20', '2026-09-17'), 3)
   assert.equal(daysLeft('2026-09-17', '2026-09-17'), 0)
+})
+
+test('calendar overlapping blocks get side-by-side columns', () => {
+  const ev = (id: string, start: string, end: string) => ({
+    id,
+    title: id,
+    notes: '',
+    date: '2026-09-19',
+    start,
+    end,
+    allDay: false,
+    color: '#0af',
+    location: '',
+  })
+  const laid = layoutTimedEvents([ev('a', '09:00', '10:00'), ev('b', '09:30', '10:30'), ev('c', '11:00', '12:00')])
+  const a = laid.find((x) => x.event.id === 'a')!
+  const b = laid.find((x) => x.event.id === 'b')!
+  const c = laid.find((x) => x.event.id === 'c')!
+  assert.equal(a.cols, 2)
+  assert.equal(b.cols, 2)
+  assert.notEqual(a.col, b.col)
+  assert.equal(c.cols, 1)
 })
