@@ -509,7 +509,7 @@ function DayColumn({
         if ((e.target as HTMLElement).closest('.event-block')) return
         const rect = e.currentTarget.getBoundingClientRect()
         const y = e.clientY - rect.top
-        const snapped = Math.max(0, Math.min(24 * 60 - 30, Math.floor(y / (HOUR_PX / 2)) * 30))
+        const snapped = snapStart(y, HOUR_PX, 60)
         onSlot(iso, minutesToStamp(snapped), minutesToStamp(snapped + 60))
       }}
     >
