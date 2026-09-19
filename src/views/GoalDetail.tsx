@@ -13,7 +13,8 @@ import {
   strategistBrief,
   trajectoryOf,
 } from '../lib/goal-engine'
-import { formatShort, todayISO } from '../lib/dates'
+import { minutesToStamp } from '../lib/cal-layout'
+import { addDays, formatShort, minutesOf, parseISO, toISO, todayISO } from '../lib/dates'
 import { healthOf, labelHealth } from '../lib/project-engine'
 import type { Goal, GoalCycle, NorthStar as Star } from '../lib/types'
 import { NorthStar } from '../components/NorthStar'
@@ -41,6 +42,15 @@ export function GoalDetail({ goal, cycle, star, onBack }: { goal: Goal; cycle?: 
   const [pick, setPick] = useState<string[]>(weekly.map((m) => m.entityId))
   const [rv, setRv] = useState({ wins: '', misses: '', constraint: '', lessons: '', adjustments: '', actual: '' })
   const [ask, setAsk] = useState('')
+  const [calOpen, setCalOpen] = useState(false)
+  const dailyGuess = Number(`${goal.targetValue ?? ''} ${goal.metricName ?? ''}`.match(/(\d+)\s*times?\s*(daily|a\s*day)/i)?.[1] || 1)
+  const [cal, setCal] = useState({
+    date: todayISO(),
+    start: '06:00',
+    perDay: String(Math.min(5, Math.max(1, dailyGuess || 1))),
+    repeat: false,
+    until: goal.targetDate || cycle?.endDate || todayISO(),
+  })
 
   const brief = strategistBrief({ goal, cycle, checkpoints: cps, projects, movers })
   const phase = clock ? (clock.day <= 30 ? 'foundation' : clock.day <= 60 ? 'momentum' : 'finish') : 'foundation'
@@ -115,6 +125,9 @@ export function GoalDetail({ goal, cycle, star, onBack }: { goal: Goal; cycle?: 
               <input className="input" value={metric} onChange={(e) => setMetric(e.target.value)} placeholder="Update current metric" />
               <button className="btn" type="submit">
                 Log
+              </button>
+              <button type="button" className="btn-ghost" onClick={() => setCalOpen(true)}>
+                Add to calendar
               </button>
             </form>
             <button className="btn-ghost" onClick={() => setWhyOpen((v) => !v)}>
@@ -270,6 +283,63 @@ export function GoalDetail({ goal, cycle, star, onBack }: { goal: Goal; cycle?: 
           ) : null}
         </aside>
       </div>
+
+      {calOpen ? (
+        <Modal title="Add outcome to calendar" onClose={() => setCalOpen(false)}>
+          <p className="muted">Places time blocks for this outcome. You can drag them on Calendar after.</p>
+          <Field label="First date">
+            <input className="input" type="date" value={cal.date} onChange={(e) => setCal({ ...cal, date: e.target.value })} />
+          </Field>
+          <Field label="First block start">
+            <input className="input" type="time" value={cal.start} onChange={(e) => setCal({ ...cal, start: e.target.value })} />
+          </Field>
+          <Field label="Blocks per day">
+            <input className="input" inputMode="numeric" value={cal.perDay} onChange={(e) => setCal({ ...cal, perDay: e.target.value })} />
+          </Field>
+          <label className="row">
+            <input type="checkbox" checked={cal.repeat} onChange={(e) => setCal({ ...cal, repeat: e.target.checked })} />
+            Repeat daily until
+          </label>
+          {cal.repeat ? (
+            <Field label="Until">
+              <input className="input" type="date" value={cal.until} onChange={(e) => setCal({ ...cal, until: e.target.value })} />
+            </Field>
+          ) : null}
+          <button
+            className="btn"
+            onClick={() => {
+              const per = Math.max(1, Math.min(5, Number(cal.perDay) || 1))
+              const start0 = minutesOf(cal.start || '06:00')
+              const gap = per === 1 ? 0 : 6 * 60
+              const last = cal.repeat ? cal.until || cal.date : cal.date
+              let day = cal.date
+              let n = 0
+              const note = [goal.definitionOfDone || goal.notes, goal.targetValue, goal.northStarLink].filter(Boolean).join('\n')
+              while (day <= last && n < 90) {
+                for (let i = 0; i < per; i++) {
+                  const s = start0 + i * gap
+                  if (s + 30 >= 24 * 60) continue
+                  store.addEvent({
+                    title: goal.title,
+                    date: day,
+                    start: minutesToStamp(s),
+                    end: minutesToStamp(s + 30),
+                    allDay: false,
+                    notes: note,
+                  })
+                }
+                if (!cal.repeat) break
+                n += 1
+                day = toISO(addDays(parseISO(day), 1))
+              }
+              setCalOpen(false)
+              location.hash = '#/calendar'
+            }}
+          >
+            Place on calendar
+          </button>
+        </Modal>
+      ) : null}
 
       {plan ? (
         <Modal title="Plan week" onClose={() => setPlan(false)}>
