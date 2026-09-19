@@ -673,6 +673,20 @@ form.row .input {
   flex-direction: column;
   gap: 1px;
   line-height: 1.2;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.event-block.is-dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.event-block.is-ghost {
+  pointer-events: none;
+  opacity: 0.85;
+  border-style: dashed;
 }
 
 .event-block strong {

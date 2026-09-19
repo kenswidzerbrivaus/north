@@ -54,3 +54,9 @@ export function minutesToStamp(total: number) {
   const m = t % 60
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
+
+export function snapStart(pxFromTop: number, hourPx: number, duration: number) {
+  const raw = Math.floor(pxFromTop / (hourPx / 2)) * 30
+  const maxStart = Math.max(0, 24 * 60 - Math.max(30, duration))
+  return Math.max(0, Math.min(maxStart, raw))
+}
