@@ -70,9 +70,9 @@ export function MorningRoutine({ date, compact }: { date: string; compact?: bool
             </section>
           </div>
           <p className="morning-mark">
-            Win the
+            No zero
             <br />
-            morning.
+            days.
           </p>
         </div>
       </div>
