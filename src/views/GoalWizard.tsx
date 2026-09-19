@@ -166,7 +166,12 @@ export function GoalWizard({
         {step === 1 ? (
           <>
             <p className="kicker">Define the goal</p>
-            <p className="muted">What do you want to achieve in the next 90 days?</p>
+            <p className="muted">
+              What do you want to achieve in the next 90 days?
+              {state.northStars.find((n) => n.id === state.goalCycles.find((c) => c.id === cycleId)?.northStarId)
+                ? ` This command reports to: ${state.northStars.find((n) => n.id === state.goalCycles.find((c) => c.id === cycleId)?.northStarId)?.title}`
+                : ''}
+            </p>
             <Field label="Goal title *">
               <input className="input" value={draft.title} onChange={(e) => set({ title: e.target.value })} autoFocus />
             </Field>

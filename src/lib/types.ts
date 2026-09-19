@@ -111,12 +111,21 @@ export type MoverEntity = 'project' | 'task' | 'habit' | 'milestone'
 export type GoalReviewType = 'weekly' | 'day30' | 'day60' | 'day90' | 'complete'
 export type TrajectoryMark = 'ahead' | 'on_track' | 'behind'
 
+export interface NorthStar {
+  id: string
+  title: string
+  horizon: string
+  metric: string
+  createdAt: string
+}
+
 export interface GoalCycle {
   id: string
   name: string
   startDate: string
   endDate: string
   status: 'active' | 'complete'
+  northStarId?: string
   activeGoalLimit: number
   createdAt: string
   completedAt?: string
@@ -391,6 +400,7 @@ export interface State {
   goalMovers: GoalMover[]
   goalReviews: GoalReview[]
   envActions: EnvironmentAction[]
+  northStars: NorthStar[]
 }
 
 export const PALETTE = [

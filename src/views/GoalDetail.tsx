@@ -15,11 +15,11 @@ import {
 } from '../lib/goal-engine'
 import { formatShort, todayISO } from '../lib/dates'
 import { healthOf, labelHealth } from '../lib/project-engine'
-import type { Goal, GoalCycle } from '../lib/types'
+import type { Goal, GoalCycle, NorthStar as Star } from '../lib/types'
 import { NorthStar } from '../components/NorthStar'
 import { useStore } from '../store'
 
-export function GoalDetail({ goal, cycle, onBack }: { goal: Goal; cycle?: GoalCycle; onBack: () => void }) {
+export function GoalDetail({ goal, cycle, star, onBack }: { goal: Goal; cycle?: GoalCycle; star?: Star; onBack: () => void }) {
   const store = useStore()
   const { state } = store
   const cps = state.goalCheckpoints.filter((c) => c.goalId === goal.id).sort((a, b) => a.day - b.day)
@@ -63,7 +63,7 @@ export function GoalDetail({ goal, cycle, onBack }: { goal: Goal; cycle?: GoalCy
 
   return (
     <div>
-      <NorthStar cycle={cycle} />
+      <NorthStar star={star ?? (cycle?.northStarId ? store.state.northStars.find((n) => n.id === cycle.northStarId) : undefined)} cycle={cycle} />
       <button className="btn-ghost" onClick={onBack}>
         ← Goals
       </button>
@@ -312,7 +312,7 @@ export function GoalDetail({ goal, cycle, onBack }: { goal: Goal; cycle?: GoalCy
 
       {review ? (
         <Modal title={review === 'complete' ? 'Close goal' : review === 'weekly' ? 'Weekly review' : `${review} review`} onClose={() => setReview(null)}>
-          <NorthStar cycle={cycle} />
+          <NorthStar star={star ?? (cycle?.northStarId ? store.state.northStars.find((n) => n.id === cycle.northStarId) : undefined)} cycle={cycle} />
           {review !== 'weekly' && review !== 'complete' ? (
             <p className="muted">
               Planned {cps.find((c) => c.day === (review === 'day30' ? 30 : 60))?.targetDescription} · Current {goal.currentValue ?? '—'}

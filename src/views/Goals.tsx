@@ -32,6 +32,7 @@ export function Goals() {
   const [cycleForm, setCycleForm] = useState(false)
   const [envDraft, setEnvDraft] = useState({ physical: '', digital: '', ratingP: '7', ratingD: '6' })
   const [review90, setReview90] = useState(false)
+  const [starId, setStarId] = useState(() => state.northStars[0]?.id ?? '')
 
   useEffect(() => {
     const on = () => {
@@ -43,14 +44,15 @@ export function Goals() {
   }, [])
 
   useEffect(() => {
-    if (state.goalCycles.length) return
-    const range = defaultCycleRange(todayISO())
-    const id = addCycle(range)
-    const live = state.goals.filter((g) => g.status === 'active' || g.status === 'paused' || g.status === 'done')
-    live.forEach((g, i) => updateGoal(g.id, { cycleId: id, status: i < 3 && g.status !== 'done' ? g.status : g.status === 'done' ? 'done' : 'backlog' }))
-  }, [addCycle, state.goalCycles.length, state.goals, updateGoal])
+    if (starId && state.northStars.some((n) => n.id === starId)) return
+    if (state.northStars[0]) setStarId(state.northStars[0].id)
+  }, [starId, state.northStars])
 
-  const cycle = state.goalCycles.find((c) => c.status === 'active') ?? state.goalCycles[0]
+  const star = state.northStars.find((n) => n.id === starId) ?? state.northStars[0]
+  const cycle =
+    state.goalCycles.find((c) => c.status === 'active' && star && c.northStarId === star.id) ??
+    state.goalCycles.find((c) => star && c.northStarId === star.id) ??
+    (!star ? state.goalCycles.find((c) => c.status === 'active') : undefined)
   const clock = cycle ? cycleDay(cycle) : null
   const cycleGoals = state.goals.filter((g) => !cycle || g.cycleId === cycle.id)
   const active = cycleGoals.filter((g) => g.status === 'active')
@@ -87,6 +89,7 @@ export function Goals() {
         <GoalDetail
           goal={g}
           cycle={state.goalCycles.find((c) => c.id === g.cycleId) ?? cycle}
+          star={state.northStars.find((n) => n.id === (state.goalCycles.find((c) => c.id === g.cycleId) ?? cycle)?.northStarId) ?? star}
           onBack={() => {
             location.hash = '#/goals'
           }}
@@ -97,11 +100,11 @@ export function Goals() {
 
   return (
     <div>
-      <NorthStar cycle={cycle} />
+      <NorthStar star={star} cycle={cycle} onSelect={setStarId} />
       <header className="page-head">
         <div>
           <p className="kicker">Goals // 90-day command</p>
-          <h1>{cycle?.name ?? 'Goals'}</h1>
+          <h1>{cycle?.name ?? (star ? `Under ${star.title}` : 'Goals')}</h1>
           {clock ? (
             <p className="muted">
               Day {clock.day} / {clock.total} · {clock.left} days left
@@ -112,7 +115,10 @@ export function Goals() {
           <button className="btn-ghost" onClick={() => setEnvOpen(true)} disabled={!cycle}>
             Environment
           </button>
-          <button className="btn" onClick={openCreate}>
+          <button className="btn-ghost" onClick={() => setCycleForm(true)}>
+            + 90-day command
+          </button>
+          <button className="btn" onClick={openCreate} disabled={!cycle}>
             + New goal
           </button>
         </div>
@@ -139,11 +145,28 @@ export function Goals() {
 
       <div className="proj-cc">
         <div>
-          {tab === 'current' && !cards.length ? (
+          {tab === 'current' && !star ? (
+            <div className="hud-frame empty">
+              <p className="kicker">North star required</p>
+              <h3>No long-term goal yet</h3>
+              <p className="muted">Create a North Star first. Every 90-day command must sit under one.</p>
+            </div>
+          ) : null}
+          {tab === 'current' && star && !cycle ? (
+            <div className="hud-frame empty">
+              <p className="kicker">Under this north star</p>
+              <h3>No 90-day command</h3>
+              <p className="muted">Start a 90-day cycle and attach it to this north star.</p>
+              <button className="btn" onClick={() => setCycleForm(true)}>
+                Start 90-day command
+              </button>
+            </div>
+          ) : null}
+          {tab === 'current' && star && cycle && !cards.length ? (
             <div className="hud-frame empty">
               <p className="kicker">90-day system online</p>
               <h3>No active goals</h3>
-              <p className="muted">Define an outcome. Projects and tasks will drive it.</p>
+              <p className="muted">Define an outcome under {star.title}. Projects and tasks will drive it.</p>
               <button className="btn" onClick={openCreate}>
                 Create first goal
               </button>
@@ -246,7 +269,7 @@ export function Goals() {
             </p>
           </section>
           <button className="btn-ghost" onClick={() => setCycleForm(true)}>
-            New 90-day cycle
+            New 90-day command
           </button>
         </aside>
       </div>
@@ -357,9 +380,11 @@ export function Goals() {
 
       {cycleForm ? (
         <CycleForm
+          defaultStarId={star?.id ?? ''}
           onClose={() => setCycleForm(false)}
-          onCreate={(name, start, end) => {
-            addCycle({ name, startDate: start, endDate: end })
+          onCreate={(name, start, end, northStarId) => {
+            addCycle({ name, startDate: start, endDate: end, northStarId })
+            setStarId(northStarId)
             setCycleForm(false)
           }}
         />
@@ -367,7 +392,7 @@ export function Goals() {
 
       {review90 && cycle ? (
         <Modal title="90-day review" onClose={() => setReview90(false)} wide>
-          <NorthStar cycle={cycle} />
+          <NorthStar star={star} cycle={cycle} onSelect={setStarId} />
           {cards.concat(
             cycleGoals.filter((g) => g.status === 'done').map((g) => ({
               g,
@@ -387,9 +412,8 @@ export function Goals() {
           <button
             className="btn"
             onClick={() => {
-              const range = defaultCycleRange(todayISO())
-              addCycle(range)
               setReview90(false)
+              setCycleForm(true)
             }}
           >
             Start next 90-day cycle
@@ -465,14 +489,40 @@ function RowCheck({ day, cards, cycle }: { day: 30 | 60 | 90; cards: { g: Goal; 
   )
 }
 
-function CycleForm({ onClose, onCreate }: { onClose: () => void; onCreate: (name: string, start: string, end: string) => void }) {
+function CycleForm({
+  defaultStarId,
+  onClose,
+  onCreate,
+}: {
+  defaultStarId: string
+  onClose: () => void
+  onCreate: (name: string, start: string, end: string, northStarId: string) => void
+}) {
+  const { state, addNorthStar } = useStore()
   const range = defaultCycleRange(todayISO())
   const [name, setName] = useState(range.name)
   const [start, setStart] = useState(range.startDate)
   const [end, setEnd] = useState(range.endDate)
+  const [northStarId, setNorthStarId] = useState(defaultStarId)
+  const [newStar, setNewStar] = useState('')
+  const [err, setErr] = useState('')
   return (
-    <Modal title="New 90-day cycle" onClose={onClose}>
-      <Field label="Name">
+    <Modal title="New 90-day command" onClose={onClose}>
+      <p className="muted">This command must sit under a north star. Short-term work without a long-term parent is not allowed.</p>
+      <Field label="North star *">
+        <select className="select" value={northStarId} onChange={(e) => setNorthStarId(e.target.value)}>
+          <option value="">Select north star…</option>
+          {state.northStars.map((n) => (
+            <option key={n.id} value={n.id}>
+              {n.title}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Or create a north star">
+        <input className="input" value={newStar} onChange={(e) => setNewStar(e.target.value)} placeholder="Build the Brivaus Group into…" />
+      </Field>
+      <Field label="Command name">
         <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
       <Field label="Start">
@@ -481,8 +531,20 @@ function CycleForm({ onClose, onCreate }: { onClose: () => void; onCreate: (name
       <Field label="End">
         <input className="input" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
       </Field>
-      <button className="btn" onClick={() => onCreate(name.trim() || range.name, start, end)}>
-        Start cycle
+      {err ? <p className="gate-error">{err}</p> : null}
+      <button
+        className="btn"
+        onClick={() => {
+          let star = northStarId
+          if (!star && newStar.trim()) star = addNorthStar({ title: newStar.trim() })
+          if (!star) {
+            setErr('Select or create a north star.')
+            return
+          }
+          onCreate(name.trim() || range.name, start, end, star)
+        }}
+      >
+        Start 90-day command
       </button>
     </Modal>
   )

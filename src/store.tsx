@@ -21,6 +21,7 @@ import type {
   GoalCheckpoint,
   GoalCycle,
   GoalMover,
+  NorthStar,
   GoalReview,
   Habit,
   JournalEntry,
@@ -150,6 +151,7 @@ export function freshState(): State {
     goalMovers: [],
     goalReviews: [],
     envActions: [],
+    northStars: [],
     ...proj,
   }
 }
@@ -199,6 +201,7 @@ function blankState(): State {
     goalMovers: [],
     goalReviews: [],
     envActions: [],
+    northStars: [],
   }
 }
 
@@ -224,6 +227,20 @@ function load(): State {
       (parsed.projects.length === 0 &&
         !(parsed.milestones && parsed.milestones.length) &&
         !(parsed.projectActivity && parsed.projectActivity.length))
+    if (!Array.isArray(loaded.northStars)) loaded.northStars = []
+    if (!loaded.northStars.length && loaded.settings.northStar?.trim()) {
+      const nid = uid()
+      loaded.northStars = [
+        {
+          id: nid,
+          title: loaded.settings.northStar.trim(),
+          horizon: loaded.settings.northStarHorizon ?? '',
+          metric: loaded.settings.northStarMetric ?? '',
+          createdAt: nowISO(),
+        },
+      ]
+      loaded.goalCycles = loaded.goalCycles.map((c) => (c.northStarId ? c : { ...c, northStarId: nid }))
+    }
     if (needsSeed) {
       const seed = packSeed(loaded.settings.name || 'Kens')
       const { seedTasks, ...rest } = seed
@@ -305,8 +322,10 @@ export type Store = {
   addGoal: (input: Partial<Goal> & { title: string }, opts?: { overrideCapacity?: boolean }) => string | { error: 'capacity' }
   updateGoal: (id: string, patch: Partial<Goal>) => void
   deleteGoal: (id: string) => void
-  addCycle: (input: Partial<GoalCycle> & { name: string; startDate: string; endDate: string }) => string
+  addCycle: (input: Partial<GoalCycle> & { name: string; startDate: string; endDate: string; northStarId: string }) => string
   updateCycle: (id: string, patch: Partial<GoalCycle>) => void
+  addNorthStar: (input: { title: string; horizon?: string; metric?: string }) => string
+  updateNorthStar: (id: string, patch: Partial<NorthStar>) => void
   addCheckpoint: (input: Partial<GoalCheckpoint> & { goalId: string; day: CheckpointDay; targetDescription: string }) => string
   updateCheckpoint: (id: string, patch: Partial<GoalCheckpoint>) => void
   addMover: (input: Omit<GoalMover, 'id'>) => string
@@ -738,11 +757,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })),
       addCycle: (input) => {
         const id = uid()
+        const starId = input.northStarId
         patch((s) => ({
           ...s,
           goalCycles: [
-            { status: 'active', activeGoalLimit: s.settings.activeGoalLimit ?? 3, createdAt: nowISO(), ...input, id, name: input.name.trim() },
-            ...s.goalCycles.map((c) => (c.status === 'active' ? { ...c, status: 'complete' as const, completedAt: nowISO() } : c)),
+            { status: 'active', activeGoalLimit: s.settings.activeGoalLimit ?? 3, createdAt: nowISO(), ...input, id, name: input.name.trim(), northStarId: starId },
+            ...s.goalCycles.map((c) =>
+              c.status === 'active' && c.northStarId === starId ? { ...c, status: 'complete' as const, completedAt: nowISO() } : c,
+            ),
           ],
         }))
         return id
@@ -751,6 +773,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         patch((s) => ({
           ...s,
           goalCycles: s.goalCycles.map((c) => (c.id === id ? { ...c, ...next } : c)),
+        })),
+      addNorthStar: (input) => {
+        const id = uid()
+        patch((s) => ({
+          ...s,
+          northStars: [{ id, title: input.title.trim(), horizon: input.horizon?.trim() ?? '', metric: input.metric?.trim() ?? '', createdAt: nowISO() }, ...s.northStars],
+          goalCycles: s.northStars.length
+            ? s.goalCycles
+            : s.goalCycles.map((c) => (c.northStarId ? c : { ...c, northStarId: id })),
+        }))
+        return id
+      },
+      updateNorthStar: (id, next) =>
+        patch((s) => ({
+          ...s,
+          northStars: s.northStars.map((n) => (n.id === id ? { ...n, ...next } : n)),
         })),
       addCheckpoint: (input) => {
         const id = uid()
@@ -872,6 +910,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             goalMovers: data.goalMovers ?? blank.goalMovers,
             goalReviews: data.goalReviews ?? blank.goalReviews,
             envActions: data.envActions ?? blank.envActions,
+            northStars: data.northStars ?? blank.northStars,
             settings: {
               ...defaultSettings(),
               ...data.settings,
