@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Field, Modal } from '../components/ui'
 import { parseDeadline } from '../lib/dates'
+import { clearDraft, loadDraft, saveDraft } from '../lib/drafts'
 import { projectIdFromHash } from '../lib/route'
 import {
   bar,
@@ -398,24 +399,32 @@ function CreateProject({
   goals: { id: string; title: string }[]
   overrideCapacity?: boolean
 }) {
-  const [form, setForm] = useState({
-    name: '',
-    company: '',
-    owner: ownerDefault,
-    deadline: '',
-    objective: '',
-    definitionOfDone: '',
-    successMetric: '',
-    why: '',
-    constraints: '',
-    problem: '',
-    desiredOutcome: '',
-    assumptions: '',
-    killPivot: '',
-    goalId: '',
+  const [form, setForm] = useState(() => {
+    const blank = {
+      name: '',
+      company: '',
+      owner: ownerDefault,
+      deadline: '',
+      objective: '',
+      definitionOfDone: '',
+      successMetric: '',
+      why: '',
+      constraints: '',
+      problem: '',
+      desiredOutcome: '',
+      assumptions: '',
+      killPivot: '',
+      goalId: '',
+    }
+    const saved = loadDraft<{ form: typeof blank }>('project')?.form
+    return saved ? { ...blank, ...saved, owner: saved.owner || ownerDefault } : blank
   })
-  const [steps, setSteps] = useState([{ name: '', date: '' }, { name: '', date: '' }])
+  const [steps, setSteps] = useState(() => loadDraft<{ steps: { name: string; date: string }[] }>('project')?.steps ?? [{ name: '', date: '' }, { name: '', date: '' }])
   const [missing, setMissing] = useState<string[]>([])
+  useEffect(() => {
+    const t = window.setTimeout(() => saveDraft('project', { form, steps }), 200)
+    return () => window.clearTimeout(t)
+  }, [form, steps])
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }))
   const bind = (k: keyof typeof form) => ({
     name: k,
@@ -491,11 +500,13 @@ function CreateProject({
       return
     }
     addMilestones(result, pathSteps)
+    clearDraft('project')
     onCreate(result)
   }
   return (
     <Modal title="New project" onClose={onClose} wide>
       <form className="stack" onSubmit={save}>
+        <p className="muted">Draft autosaves as you type. Leaving this page will not wipe it.</p>
         {missing.length ? (
           <p className="gate-error" role="alert">
             Still needed: {missing.join(', ')}

@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Field, Modal } from '../components/ui'
+import { clearDraft, loadDraft, saveDraft } from '../lib/drafts'
 import { GOAL_CATEGORIES, qualityCheck } from '../lib/goal-engine'
 import type { GoalCategory, MoverEntity } from '../lib/types'
 import { useStore } from '../store'
@@ -76,10 +77,19 @@ export function GoalWizard({
   onCreated: (id: string) => void
 }) {
   const { state, addGoal, addCheckpoint, addMover, updateProject, addTask, addHabit } = useStore()
-  const [step, setStep] = useState(1)
-  const [draft, setDraft] = useState(() => empty(state.settings.name || 'Kens', startDate, endDate))
+  const [step, setStep] = useState(() => loadDraft<{ step: number }>('goal')?.step ?? 1)
+  const [draft, setDraft] = useState(() => {
+    const blank = empty(state.settings.name || 'Kens', startDate, endDate)
+    const saved = loadDraft<{ draft: Draft }>('goal')?.draft
+    return saved ? { ...blank, ...saved } : blank
+  })
   const [help, setHelp] = useState('')
   const set = (p: Partial<Draft>) => setDraft((d) => ({ ...d, ...p }))
+
+  useEffect(() => {
+    const t = window.setTimeout(() => saveDraft('goal', { step, draft }), 200)
+    return () => window.clearTimeout(t)
+  }, [draft, step])
 
   const qc = qualityCheck({
     title: draft.title,
@@ -127,6 +137,7 @@ export function GoalWizard({
     addCheckpoint({ goalId: result, day: 30, targetDescription: draft.day30, targetValue: draft.day30v })
     addCheckpoint({ goalId: result, day: 60, targetDescription: draft.day60, targetValue: draft.day60v })
     addCheckpoint({ goalId: result, day: 90, targetDescription: draft.day90, targetValue: draft.day90v || draft.targetValue })
+    clearDraft('goal')
     draft.projectIds.forEach((pid) => updateProject(pid, { goalId: result }))
     draft.movers
       .filter((m) => m.label.trim() || m.entityId)
@@ -151,6 +162,7 @@ export function GoalWizard({
   return (
     <Modal title={`New goal // Step ${step} of 8`} onClose={onClose} wide>
       <div className="stack">
+        <p className="muted">Draft autosaves as you type. Leaving this page will not wipe it.</p>
         {step === 1 ? (
           <>
             <p className="kicker">Define the goal</p>
