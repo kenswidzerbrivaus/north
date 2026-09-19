@@ -116,6 +116,7 @@ export interface NorthStar {
   title: string
   horizon: string
   metric: string
+  color: string
   createdAt: string
 }
 
@@ -432,6 +433,13 @@ export function nextEventColor(used: string[], colors: string[] = PALETTE) {
   const counts = colors.map((c) => used.filter((u) => u.toLowerCase() === c.toLowerCase()).length)
   const min = Math.min(...counts)
   return colors[counts.findIndex((n) => n === min)] ?? colors[0] ?? '#4285f4'
+}
+
+export const STAR_PALETTE = ['#6ee7ff', '#ffb347', '#ff6ad5', '#7dffb3', '#9ecbff', '#ff8a6b', '#f5d76e', '#c4a0ff']
+
+export function nextStarColor(used: string[]) {
+  const taken = new Set(used.map((c) => c.toLowerCase()))
+  return STAR_PALETTE.find((c) => !taken.has(c.toLowerCase())) ?? nextEventColor(used, STAR_PALETTE)
 }
 
 export const ROUTES: { id: Route; label: string; hint: string }[] = [

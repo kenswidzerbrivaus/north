@@ -36,7 +36,7 @@ import type {
   Task,
   WaitingOn,
 } from './lib/types'
-import { colorFromKey, nextEventColor, PALETTE } from './lib/types'
+import { colorFromKey, nextEventColor, nextStarColor, PALETTE } from './lib/types'
 
 const KEY = 'north.v1'
 
@@ -228,6 +228,11 @@ function load(): State {
         !(parsed.milestones && parsed.milestones.length) &&
         !(parsed.projectActivity && parsed.projectActivity.length))
     if (!Array.isArray(loaded.northStars)) loaded.northStars = []
+    loaded.northStars = loaded.northStars.map((n, i) => {
+      if (n.color) return n
+      const used = loaded.northStars.slice(0, i).map((x) => x.color).filter(Boolean)
+      return { ...n, color: nextStarColor(used) }
+    })
     if (!loaded.northStars.length && loaded.settings.northStar?.trim()) {
       const nid = uid()
       loaded.northStars = [
@@ -236,6 +241,7 @@ function load(): State {
           title: loaded.settings.northStar.trim(),
           horizon: loaded.settings.northStarHorizon ?? '',
           metric: loaded.settings.northStarMetric ?? '',
+          color: nextStarColor([]),
           createdAt: nowISO(),
         },
       ]
@@ -778,7 +784,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const id = uid()
         patch((s) => ({
           ...s,
-          northStars: [{ id, title: input.title.trim(), horizon: input.horizon?.trim() ?? '', metric: input.metric?.trim() ?? '', createdAt: nowISO() }, ...s.northStars],
+          northStars: [
+            {
+              id,
+              title: input.title.trim(),
+              horizon: input.horizon?.trim() ?? '',
+              metric: input.metric?.trim() ?? '',
+              color: nextStarColor(s.northStars.map((n) => n.color).filter(Boolean)),
+              createdAt: nowISO(),
+            },
+            ...s.northStars,
+          ],
           goalCycles: s.northStars.length
             ? s.goalCycles
             : s.goalCycles.map((c) => (c.northStarId ? c : { ...c, northStarId: id })),

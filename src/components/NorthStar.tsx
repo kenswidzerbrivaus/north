@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Field } from './ui'
+import { STAR_PALETTE } from '../lib/types'
 import type { GoalCycle, NorthStar as Star } from '../lib/types'
 import { useStore } from '../store'
 
@@ -23,7 +24,7 @@ export function NorthStar({
   })
 
   return (
-    <section className="hud-frame north-star">
+    <section className="hud-frame north-star" style={{ ['--ns' as string]: star?.color || '#6ee7ff' }}>
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <p className="board-label">North star // Long-term goal</p>
         <div className="row">
@@ -84,6 +85,28 @@ export function NorthStar({
               <input className="input" value={draft.metric} onChange={(e) => setDraft({ ...draft, metric: e.target.value })} placeholder="Holding company enterprise value" />
             </Field>
           </div>
+          {star && !creating ? (
+            <div>
+              <p className="kicker">Color — unique per north star</p>
+              <div className="north-star-swatches">
+                {STAR_PALETTE.map((c) => {
+                  const taken = stars.some((n) => n.id !== star.id && n.color?.toLowerCase() === c.toLowerCase())
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      className="north-star-swatch"
+                      data-on={star.color === c}
+                      disabled={taken}
+                      style={{ background: c, ['--ns' as string]: c }}
+                      aria-label={c}
+                      onClick={() => updateNorthStar(star.id, { color: c })}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
           {creating ? (
             <button
               type="button"

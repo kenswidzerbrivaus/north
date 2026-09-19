@@ -1613,27 +1613,70 @@ html.sepho .daily-box {
 }
 
 .north-star {
-  padding: 12px 14px;
-  margin-bottom: 12px;
-  border-color: rgba(110, 231, 255, 0.55);
-  box-shadow: 0 0 18px rgba(0, 180, 255, 0.12);
+  --ns: #6ee7ff;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border: 1px solid var(--ns);
+  background: color-mix(in srgb, var(--ns) 14%, rgba(4, 16, 26, 0.92));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ns) 35%, transparent),
+    0 0 28px color-mix(in srgb, var(--ns) 28%, transparent),
+    inset 0 0 48px color-mix(in srgb, var(--ns) 10%, transparent);
+}
+
+.north-star .board-label {
+  color: var(--ns);
+  letter-spacing: 0.16em;
 }
 
 .north-star-line {
-  margin: 6px 0 4px;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  margin: 8px 0 6px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: #6ee7ff;
-  text-shadow: 0 0 14px rgba(110, 231, 255, 0.35);
+  color: var(--ns);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--ns) 55%, transparent);
   line-height: 1.25;
+}
+
+.north-star-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.north-star-swatch {
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 0;
+  cursor: pointer;
+}
+
+.north-star-swatch[data-on='true'] {
+  box-shadow: 0 0 0 2px #05080e, 0 0 0 4px var(--ns);
+}
+
+.north-star-swatch:disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
 }
 
 .north-star-cycle {
   margin: 10px 0 0;
   padding-top: 8px;
-  border-top: 1px solid rgba(110, 231, 255, 0.22);
+  border-top: 1px solid color-mix(in srgb, var(--ns) 40%, transparent);
+}
+
+html.sepho .north-star {
+  background: color-mix(in srgb, var(--ns) 14%, rgba(4, 16, 26, 0.92));
+  border-color: var(--ns);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ns) 35%, transparent),
+    0 0 28px color-mix(in srgb, var(--ns) 28%, transparent),
+    inset 0 0 48px color-mix(in srgb, var(--ns) 10%, transparent);
 }
 
 .north-star-link {
