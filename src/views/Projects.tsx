@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Field, Modal } from '../components/ui'
 import { parseDeadline } from '../lib/dates'
 import { clearDraft, loadDraft, saveDraft } from '../lib/drafts'
-import { projectIdFromHash } from '../lib/route'
+import { hashParam, projectIdFromHash } from '../lib/route'
 import {
   bar,
   commanderBrief,
@@ -417,7 +417,9 @@ function CreateProject({
       goalId: '',
     }
     const saved = loadDraft<{ form: typeof blank }>('project')?.form
-    return saved ? { ...blank, ...saved, owner: saved.owner || ownerDefault } : blank
+    const fromGoal = hashParam('goal') || ''
+    const merged = saved ? { ...blank, ...saved, owner: saved.owner || ownerDefault } : blank
+    return { ...merged, goalId: fromGoal || merged.goalId }
   })
   const [steps, setSteps] = useState(() => loadDraft<{ steps: { name: string; date: string }[] }>('project')?.steps ?? [{ name: '', date: '' }, { name: '', date: '' }])
   const [missing, setMissing] = useState<string[]>([])

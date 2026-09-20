@@ -42,6 +42,8 @@ export function GoalDetail({ goal, cycle, star, onBack }: { goal: Goal; cycle?: 
   const [pick, setPick] = useState<string[]>([])
   const [planTitle, setPlanTitle] = useState('')
   const [planErr, setPlanErr] = useState('')
+  const [linkOpen, setLinkOpen] = useState(false)
+  const [linkPick, setLinkPick] = useState<string[]>([])
   const [rv, setRv] = useState({ wins: '', misses: '', constraint: '', lessons: '', adjustments: '', actual: '' })
   const [ask, setAsk] = useState('')
   const [logged, setLogged] = useState('')
@@ -215,8 +217,24 @@ export function GoalDetail({ goal, cycle, star, onBack }: { goal: Goal; cycle?: 
           </section>
 
           <section className="hud-frame" style={{ padding: 16 }}>
-            <p className="board-label">Projects driving this goal</p>
-            {projects.length === 0 ? <p className="today-empty">No projects linked. Open Projects and attach this goal.</p> : null}
+            <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
+              <p className="board-label">Projects driving this goal</p>
+              <div className="row">
+                <button
+                  className="btn-ghost"
+                  onClick={() => {
+                    setLinkPick([])
+                    setLinkOpen(true)
+                  }}
+                >
+                  Link project
+                </button>
+                <button className="btn-ghost" onClick={() => { location.hash = `#/projects?new=1&goal=${encodeURIComponent(goal.id)}` }}>
+                  Create project
+                </button>
+              </div>
+            </div>
+            {projects.length === 0 ? <p className="today-empty">No projects linked yet.</p> : null}
             {projects.map((p) => {
               const h = healthOf(
                 p,
@@ -225,9 +243,17 @@ export function GoalDetail({ goal, cycle, star, onBack }: { goal: Goal; cycle?: 
                 state.projectDecisions.filter((d) => d.projectId === p.id),
               )
               return (
-                <button key={p.id} className="board-line" onClick={() => { location.hash = `#/projects/${p.id}` }}>
-                  {p.name} · {labelHealth(h)}
-                </button>
+                <div key={p.id} className="row" style={{ justifyContent: 'space-between' }}>
+                  <button className="board-line" onClick={() => { location.hash = `#/projects/${p.id}` }}>
+                    {p.name} · {labelHealth(h)}
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    onClick={() => store.updateProject(p.id, { goalId: undefined })}
+                  >
+                    Unlink
+                  </button>
+                </div>
               )
             })}
           </section>
@@ -362,6 +388,38 @@ export function GoalDetail({ goal, cycle, star, onBack }: { goal: Goal; cycle?: 
             }}
           >
             Place on calendar
+          </button>
+        </Modal>
+      ) : null}
+
+      {linkOpen ? (
+        <Modal title="Link projects" onClose={() => setLinkOpen(false)}>
+          <p className="muted">Attach existing projects to this goal. Same project record — not a copy.</p>
+          {state.projects.filter((p) => p.state !== 'archived' && p.goalId !== goal.id).length === 0 ? (
+            <p className="today-empty">No other projects to link. Create one instead.</p>
+          ) : null}
+          {state.projects
+            .filter((p) => p.state !== 'archived' && p.goalId !== goal.id)
+            .map((p) => (
+              <label key={p.id} className="row">
+                <input
+                  type="checkbox"
+                  checked={linkPick.includes(p.id)}
+                  onChange={(e) => setLinkPick((ids) => (e.target.checked ? [...ids, p.id] : ids.filter((x) => x !== p.id)))}
+                />
+                {p.name}
+                {p.goalId ? <span className="muted"> · other goal</span> : null}
+              </label>
+            ))}
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              linkPick.forEach((id) => store.updateProject(id, { goalId: goal.id }))
+              setLinkOpen(false)
+            }}
+          >
+            Link selected
           </button>
         </Modal>
       ) : null}
