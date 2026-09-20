@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { DateField } from '../components/DateField'
 import { Field, Modal } from '../components/ui'
 import { bar } from '../lib/project-engine'
 import {
@@ -339,7 +340,7 @@ export function GoalDetail({ goal, cycle, star, onBack }: { goal: Goal; cycle?: 
         <Modal title="Add outcome to calendar" onClose={() => setCalOpen(false)}>
           <p className="muted">Places time blocks for this outcome. You can drag them on Calendar after.</p>
           <Field label="First date">
-            <input className="input" type="date" value={cal.date} onChange={(e) => setCal({ ...cal, date: e.target.value })} />
+            <DateField value={cal.date} onChange={(date) => setCal({ ...cal, date })} />
           </Field>
           <Field label="First block start">
             <input className="input" type="time" value={cal.start} onChange={(e) => setCal({ ...cal, start: e.target.value })} />
@@ -353,7 +354,7 @@ export function GoalDetail({ goal, cycle, star, onBack }: { goal: Goal; cycle?: 
           </label>
           {cal.repeat ? (
             <Field label="Until">
-              <input className="input" type="date" value={cal.until} onChange={(e) => setCal({ ...cal, until: e.target.value })} />
+              <DateField value={cal.until} onChange={(until) => setCal({ ...cal, until })} />
             </Field>
           ) : null}
           <button

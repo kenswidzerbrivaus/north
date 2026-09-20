@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { DateField } from '../components/DateField'
 import { Field, Modal } from '../components/ui'
 import { clearDraft, loadDraft, saveDraft } from '../lib/drafts'
 import { GOAL_CATEGORIES, qualityCheck } from '../lib/goal-engine'
@@ -218,10 +219,10 @@ export function GoalWizard({
             ) : null}
             <div className="grid-2">
               <Field label="Start">
-                <input className="input" type="date" value={draft.startDate} onChange={(e) => set({ startDate: e.target.value })} />
+                <DateField value={draft.startDate} onChange={(startDate) => set({ startDate })} />
               </Field>
               <Field label="Target date *">
-                <input className="input" type="date" value={draft.targetDate} onChange={(e) => set({ targetDate: e.target.value })} />
+                <DateField value={draft.targetDate} onChange={(targetDate) => set({ targetDate })} />
               </Field>
             </div>
           </>

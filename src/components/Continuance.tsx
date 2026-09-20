@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { DateField } from './DateField'
 import { Field, Modal } from './ui'
 import { minutesToStamp } from '../lib/cal-layout'
 import { addDays, minutesOf, parseISO, toISO, todayISO } from '../lib/dates'
@@ -81,7 +82,7 @@ export function Continuance({
         <>
           <p className="muted">Current task will be completed. Place the next occurrence:</p>
           <Field label="Date">
-            <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <DateField value={date} onChange={setDate} />
           </Field>
           <Field label="Time">
             <input className="input" type="time" value={time} onChange={(e) => setTime(e.target.value)} />

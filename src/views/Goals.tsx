@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { DateField } from '../components/DateField'
 import { Field, Modal } from '../components/ui'
 import { bar } from '../lib/project-engine'
 import {
@@ -676,10 +677,10 @@ function CycleForm({
         <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
       <Field label="Start">
-        <input className="input" type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+        <DateField value={start} onChange={setStart} />
       </Field>
       <Field label="End">
-        <input className="input" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+        <DateField value={end} onChange={setEnd} />
       </Field>
       {err ? <p className="gate-error">{err}</p> : null}
       <button

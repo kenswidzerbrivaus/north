@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { DateField } from '../components/DateField'
 import { Field, Modal } from '../components/ui'
 import { formatShort, todayISO } from '../lib/dates'
 import {
@@ -166,11 +167,10 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                       <div className="cpath-dates">
                         <label className="cpath-date">
                           <span className="kicker">{m.status === 'complete' ? 'Planned' : 'Accomplish by'}</span>
-                          <input
-                            className="input"
-                            type="date"
+                          <DateField
                             value={m.plannedEnd ?? ''}
-                            onChange={(e) => store.updateMilestone(m.id, { plannedEnd: e.target.value || undefined })}
+                            onChange={(v) => store.updateMilestone(m.id, { plannedEnd: v || undefined })}
+                            aria-label="Accomplish by"
                           />
                           {m.plannedEnd && m.status !== 'complete' && m.plannedEnd < todayISO() ? (
                             <span className="health health-critical">LATE</span>
@@ -181,11 +181,10 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                         {m.status === 'complete' ? (
                           <label className="cpath-date">
                             <span className="kicker">Accomplished</span>
-                            <input
-                              className="input"
-                              type="date"
+                            <DateField
                               value={m.actualEnd ?? ''}
-                              onChange={(e) => store.updateMilestone(m.id, { actualEnd: e.target.value || undefined })}
+                              onChange={(v) => store.updateMilestone(m.id, { actualEnd: v || undefined })}
+                              aria-label="Accomplished"
                             />
                           </label>
                         ) : null}
@@ -244,7 +243,7 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
             >
               <div className="cpath-edit-row is-add">
                 <input className="input" value={addMs} onChange={(e) => setAddMs(e.target.value)} placeholder={path.length ? 'Next milestone' : 'Secure Financing'} />
-                <input className="input" type="date" value={addDate} onChange={(e) => setAddDate(e.target.value)} aria-label="Accomplishment date" />
+                <DateField value={addDate} onChange={setAddDate} aria-label="Accomplishment date" />
               </div>
               <p className="muted">Paste several lines as Name — YYYY-MM-DD if you want to add a chain at once.</p>
               <button className="btn" type="submit">

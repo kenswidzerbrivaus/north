@@ -1189,6 +1189,12 @@ html.sepho .select {
   color-scheme: dark;
 }
 
+/* Native date/time pickers inherit dark color-scheme and paint the OS calendar black. */
+html.sepho .input[type='date'],
+html.sepho .input[type='time'] {
+  color-scheme: light;
+}
+
 html.sepho .input:focus,
 html.sepho .textarea:focus,
 html.sepho .select:focus {
@@ -1757,9 +1763,88 @@ html.sepho .north-star {
   margin: 10px 0;
 }
 
+.date-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.date-field .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.date-field-cal {
+  flex-shrink: 0;
+}
+
+.date-pop {
+  position: fixed;
+  z-index: 80;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 10px;
+}
+
+.date-pop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.date-pop-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.date-pop-dow {
+  text-align: center;
+  font-size: 11px;
+  color: var(--ink-soft);
+  padding: 4px 0;
+}
+
+.date-pop-day {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 0;
+  color: var(--ink);
+}
+
+.date-pop-day[data-in='false'] {
+  opacity: 0.35;
+}
+
+.date-pop-day[data-on='true'] {
+  background: var(--accent);
+  color: #041018;
+}
+
+.date-pop-day[data-today='true']:not([data-on='true']) {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.date-pop-foot {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+html.sepho .date-pop {
+  background: rgba(6, 18, 28, 0.97);
+  border-color: rgba(110, 231, 255, 0.4);
+}
+
 .cpath-edit-row {
   display: grid;
-  grid-template-columns: 24px 1fr minmax(140px, 160px) auto;
+  grid-template-columns: 24px minmax(0, 1fr) minmax(168px, 210px) auto;
   gap: 8px;
   align-items: center;
 }

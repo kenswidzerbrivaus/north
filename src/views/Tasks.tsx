@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Continuance } from '../components/Continuance'
+import { DateField } from '../components/DateField'
 import { Check, Empty, Field, Modal } from '../components/ui'
 import { Icon } from '../icons'
 import { formatShort, formatTime, todayISO } from '../lib/dates'
@@ -197,7 +198,7 @@ export function Tasks() {
                   </select>
                 </Field>
                 <Field label="Due date">
-                  <input className="input" type="date" value={open.due ?? ''} onChange={(e) => updateTask(open.id, { due: e.target.value || undefined })} />
+                  <DateField value={open.due ?? ''} onChange={(due) => updateTask(open.id, { due: due || undefined })} />
                 </Field>
                 <Field label="Time">
                   <input className="input" type="time" value={open.dueTime ?? ''} onChange={(e) => updateTask(open.id, { dueTime: e.target.value || undefined })} />

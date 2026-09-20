@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { mergeCalendars, useGoogleCalendar } from '../google'
+import { DateField } from '../components/DateField'
 import { ColorDots, Field, Modal } from '../components/ui'
 import { Icon } from '../icons'
 import {
@@ -183,7 +184,7 @@ export function Calendar() {
           <input className="input" value={draft.title ?? ''} onChange={(e) => setDraft({ ...draft, title: e.target.value })} autoFocus />
         </Field>
         <Field label="Date">
-          <input className="input" type="date" value={draft.date ?? ''} onChange={(e) => setDraft({ ...draft, date: e.target.value })} />
+          <DateField value={draft.date ?? ''} onChange={(date) => setDraft({ ...draft, date })} />
         </Field>
         <label className="row">
           <input

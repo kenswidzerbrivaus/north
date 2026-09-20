@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { DateField } from '../components/DateField'
 import { Field, Modal } from '../components/ui'
 import { parseDeadline } from '../lib/dates'
 import { clearDraft, loadDraft, saveDraft } from '../lib/drafts'
@@ -526,25 +527,7 @@ function CreateProject({
           </Field>
         </div>
         <Field label="Deadline *">
-          <input
-            className="input"
-            type="date"
-            value={/^\d{4}-\d{2}-\d{2}$/.test(form.deadline) ? form.deadline : ''}
-            onChange={(e) => set('deadline', e.target.value)}
-            onInput={(e) => set('deadline', e.currentTarget.value)}
-          />
-          <input
-            className="input"
-            name="deadline"
-            type="text"
-            autoComplete="off"
-            placeholder="or type 2026-10-30"
-            value={form.deadline}
-            onChange={(e) => set('deadline', parseDeadline(e.target.value) || e.target.value)}
-            onInput={(e) => set('deadline', parseDeadline(e.currentTarget.value) || e.currentTarget.value)}
-            aria-label="Deadline as text"
-            style={{ marginTop: 6 }}
-          />
+          <DateField name="deadline" value={form.deadline} onChange={(v) => set('deadline', v)} aria-label="Deadline" />
         </Field>
         <Field label="Objective *">
           <textarea className="textarea" required {...bind('objective')} />
@@ -567,13 +550,10 @@ function CreateProject({
                   value={step.name}
                   onChange={(e) => setSteps((rows) => rows.map((r, n) => (n === i ? { ...r, name: e.target.value } : r)))}
                 />
-                <input
-                  className="input"
-                  type="date"
+                <DateField
                   aria-label={`Accomplishment date for step ${i + 1}`}
                   value={step.date}
-                  onChange={(e) => setSteps((rows) => rows.map((r, n) => (n === i ? { ...r, date: e.target.value } : r)))}
-                  onInput={(e) => setSteps((rows) => rows.map((r, n) => (n === i ? { ...r, date: e.currentTarget.value } : r)))}
+                  onChange={(date) => setSteps((rows) => rows.map((r, n) => (n === i ? { ...r, date } : r)))}
                 />
                 <button
                   type="button"
