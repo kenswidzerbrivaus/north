@@ -32,7 +32,7 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const HOUR_PX = 56
 
 export function Calendar() {
-  const { state, addEvent, updateEvent, updateTask, deleteEvent, syncFromCalendar, dropGoogleItems } = useStore()
+  const { state, addEvent, addTask, updateEvent, updateTask, deleteEvent, syncFromCalendar, dropGoogleItems } = useStore()
   const gcal = useGoogleCalendar()
   const weekStartsOn = state.settings.weekStartsOn
   const [cursor, setCursor] = useState(() => new Date())
@@ -110,7 +110,7 @@ export function Calendar() {
   const tasksOn = (iso: string) =>
     state.tasks.filter((t) => t.due === iso && !t.completed && !t.eventId && !t.googleId)
 
-  const save = async () => {
+  const save = async (opts?: { daily?: boolean }) => {
     if (!draft?.title?.trim() || !draft.date || busy) return
     const start = stampTime(draft.start)
     const end = stampTime(draft.end)
@@ -188,6 +188,18 @@ export function Calendar() {
         }
       } else if (!localId && !payload.googleId) {
         addEvent(payload)
+      }
+      if (opts?.daily && !task) {
+        const eventId = mirror?.id || localId || draft.id
+        addTask({
+          title: payload.title,
+          notes: payload.notes,
+          due: payload.date,
+          dueTime: payload.allDay ? undefined : payload.start,
+          eventId,
+          googleId: payload.googleId,
+          listId: 'calendar',
+        })
       }
       setDraft(null)
     } catch (err) {
@@ -307,9 +319,26 @@ export function Calendar() {
           ) : (
             <span />
           )}
-          <button className="btn" onClick={() => void save()} disabled={busy}>
-            {busy ? 'Saving…' : 'Save'}
-          </button>
+          <div className="row">
+            {draft.id &&
+            !matchLinkedTask(state.tasks, {
+              id: draft.id,
+              title: draft.title ?? '',
+              notes: draft.notes ?? '',
+              date: draft.date ?? '',
+              allDay: Boolean(draft.allDay),
+              color: draft.color ?? '',
+              location: draft.location ?? '',
+              googleId: draft.googleId,
+            }) ? (
+              <button className="btn-ghost" type="button" onClick={() => void save({ daily: true })} disabled={busy}>
+                Add to daily system
+              </button>
+            ) : null}
+            <button className="btn" type="button" onClick={() => void save()} disabled={busy}>
+              {busy ? 'Saving…' : 'Save'}
+            </button>
+          </div>
         </div>
       </div>
     </Modal>
