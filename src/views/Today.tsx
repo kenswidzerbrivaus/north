@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { DayClock } from '../components/DayClock'
+import { Continuance } from '../components/Continuance'
 import { Check } from '../components/ui'
 import { hhmmFromMinutes, roundDown5, stashCalGap } from '../lib/cal-gap'
 import { formatTime, minutesOf, parseISO, todayISO } from '../lib/dates'
@@ -31,7 +32,8 @@ function nowMinutes() {
 }
 
 export function Today({ go }: { go: (r: Route) => void }) {
-  const { state, toggleTask, updateTask, setHabitCount, addTask, addNote, addEvent, resolveDecision, resolveWaiting } = useStore()
+  const { state, updateTask, setHabitCount, addTask, addNote, addEvent, resolveDecision, resolveWaiting } = useStore()
+  const [cont, setCont] = useState<string | null>(null)
   const gcal = useGoogleCalendar()
   const timer = useTimer()
   const today = todayISO()
@@ -307,7 +309,7 @@ export function Today({ go }: { go: (r: Route) => void }) {
               </button>
               <button
                 className="btn-ghost"
-                onClick={() => nowShow.taskId && toggleTask(nowShow.taskId)}
+                onClick={() => nowShow.taskId && setCont(nowShow.taskId)}
                 disabled={!nowShow.taskId}
               >
                 Done
@@ -388,6 +390,9 @@ export function Today({ go }: { go: (r: Route) => void }) {
           ))}
         </div>
       </section>
+      {cont && state.tasks.find((t) => t.id === cont) ? (
+        <Continuance task={state.tasks.find((t) => t.id === cont)!} onClose={() => setCont(null)} />
+      ) : null}
     </div>
   )
 }

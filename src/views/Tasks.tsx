@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Continuance } from '../components/Continuance'
 import { Check, Empty, Field, Modal } from '../components/ui'
 import { Icon } from '../icons'
 import { formatShort, formatTime, todayISO } from '../lib/dates'
@@ -20,6 +21,7 @@ export function Tasks() {
   const [newList, setNewList] = useState(false)
   const [listName, setListName] = useState('')
   const [projectId, setProjectId] = useState(() => new URLSearchParams(location.hash.split('?')[1] ?? '').get('project'))
+  const [cont, setCont] = useState<string | null>(null)
 
   useEffect(() => {
     const on = () => setProjectId(new URLSearchParams(location.hash.split('?')[1] ?? '').get('project'))
@@ -139,7 +141,13 @@ export function Tasks() {
                 }}
               >
                 <span onClick={(e) => e.stopPropagation()}>
-                  <Check on={t.completed} onClick={() => toggleTask(t.id)} />
+                  <Check
+                    on={t.completed}
+                    onClick={() => {
+                      if (t.completed) toggleTask(t.id)
+                      else setCont(t.id)
+                    }}
+                  />
                 </span>
                 <div>
                   <div className="task-title">{t.title}</div>
@@ -255,6 +263,10 @@ export function Tasks() {
           ) : null}
         </div>
       </div>
+
+      {cont && state.tasks.find((t) => t.id === cont) ? (
+        <Continuance task={state.tasks.find((t) => t.id === cont)!} onClose={() => setCont(null)} />
+      ) : null}
 
       {newList ? (
         <Modal title="New list" onClose={() => setNewList(false)}>
