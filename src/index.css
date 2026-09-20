@@ -695,6 +695,26 @@ form.row .input {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.event-block.is-compact {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px;
+}
+
+.event-block.is-compact strong {
+  flex: 1 1 auto;
+}
+
+.event-block.is-compact .muted {
+  flex: 0 0 auto;
+  font-size: 10px;
+  white-space: nowrap;
 }
 
 .event-block.is-done,

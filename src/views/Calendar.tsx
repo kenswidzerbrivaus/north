@@ -614,15 +614,17 @@ function DayColumn({
       ))}
       {blocks.map((b) => {
         const moving = drag?.event.id === b.event.id && drag.dragging
-        const top = ((moving && drag.iso === iso ? drag.start : b.start) / 60) * HOUR_PX
-        const height = Math.max(22, ((b.end - b.start) / 60) * HOUR_PX - 2)
+        const startMin = moving && drag.iso === iso ? drag.start : b.start
+        const top = (startMin / 60) * HOUR_PX
+        const height = Math.max(20, ((b.end - b.start) / 60) * HOUR_PX - 2)
+        const compact = height < 40
         const width = `calc(${100 / b.cols}% - 4px)`
         const left = `calc(${(b.col / b.cols) * 100}% + 2px)`
         return (
           <button
             key={b.event.id}
             type="button"
-            className={`event-block${moving ? ' is-dragging' : ''}${isDone(b.event) ? ' is-done' : ''}`}
+            className={`event-block${compact ? ' is-compact' : ''}${moving ? ' is-dragging' : ''}${isDone(b.event) ? ' is-done' : ''}`}
             style={{
               top,
               height,
@@ -636,8 +638,9 @@ function DayColumn({
           >
             <strong>{b.event.title}</strong>
             <span className="muted">
-              {formatTime(minutesToStamp(moving && drag.iso === iso ? drag.start : b.start))} –{' '}
-              {formatTime(minutesToStamp((moving && drag.iso === iso ? drag.start : b.start) + (b.end - b.start)))}
+              {compact
+                ? formatTime(minutesToStamp(startMin))
+                : `${formatTime(minutesToStamp(startMin))} – ${formatTime(minutesToStamp(startMin + (b.end - b.start)))}`}
             </span>
           </button>
         )
