@@ -261,6 +261,15 @@ export function linkedClientId() {
   return readLink()?.clientId || ''
 }
 
+export function friendlyGoogleError(err: unknown) {
+  const m = err instanceof Error ? err.message : String(err ?? '')
+  if (m === 'GOOGLE_NEEDS_GESTURE' || m === 'GOOGLE_AUTH') {
+    return 'Saved in Sepho. Tap Sync Google to reconnect, then it will push to Google.'
+  }
+  if (m === 'GOOGLE_SCOPES') return 'Google is missing Calendar permission. Tap Connect Google and allow calendar access.'
+  return m || 'Google Calendar error'
+}
+
 async function fetchEmail(access: string) {
   try {
     const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {

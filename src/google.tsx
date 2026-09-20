@@ -276,13 +276,15 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
 
   const saveToGoogle = useCallback(
     async (event: Omit<CalEvent, 'id' | 'color'> & { id?: string; color?: string; googleId?: string }) => {
+      if (!clientId) throw new Error('GOOGLE_NEEDS_GESTURE')
+      await ensureGoogleToken(clientId, false).catch(() => ensureGoogleToken(clientId, true))
       const saved = event.googleId
         ? await updateGoogleEvent(event.googleId, { ...event, title: event.title, date: event.date })
         : await createGoogleEvent(event)
       await refresh(undefined, true)
       return saved
     },
-    [refresh],
+    [clientId, refresh],
   )
 
   const removeFromGoogle = useCallback(

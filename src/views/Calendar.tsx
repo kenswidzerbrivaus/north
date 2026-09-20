@@ -17,6 +17,7 @@ import {
 import { takeCalGap } from '../lib/cal-gap'
 import { layoutTimedEvents, minutesToStamp, snapStart } from '../lib/cal-layout'
 import { checkpointDate } from '../lib/goal-engine'
+import { friendlyGoogleError } from '../lib/google-calendar'
 import { hashParam } from '../lib/route'
 import { nextEventColor, PALETTE, type CalEvent } from '../lib/types'
 import { useStore } from '../store'
@@ -101,22 +102,25 @@ export function Calendar() {
         try {
           const saved = await gcal.saveToGoogle(payload)
           addEvent({ ...payload, googleId: saved?.googleId })
-        } catch (err) {
+        } catch {
           addEvent(payload)
-          throw err
         }
       } else if (draft.id) {
         updateEvent(draft.id, payload)
         if (toGoogle && gcal.connected && !draft.googleId) {
-          const saved = await gcal.saveToGoogle(payload)
-          if (saved?.googleId) updateEvent(draft.id, { googleId: saved.googleId })
+          try {
+            const saved = await gcal.saveToGoogle(payload)
+            if (saved?.googleId) updateEvent(draft.id, { googleId: saved.googleId })
+          } catch {
+            /* kept local */
+          }
         }
       } else {
         addEvent(payload)
       }
       setDraft(null)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Could not save the event')
+      alert(friendlyGoogleError(err))
     } finally {
       setBusy(false)
     }
@@ -339,8 +343,8 @@ export function Calendar() {
             const task = state.tasks.find((t) => t.eventId === e.id || (e.googleId && t.googleId === e.googleId))
             if (task) updateTask(task.id, { due: date, dueTime: start })
             if (e.googleId && gcal.connected) {
-              void gcal.saveToGoogle({ ...e, date, start, end, allDay: false }).catch((err) => {
-                alert(err instanceof Error ? err.message : 'Could not update Google Calendar')
+              void gcal.saveToGoogle({ ...e, date, start, end, allDay: false }).catch(() => {
+                /* local move already applied */
               })
             }
           }}
