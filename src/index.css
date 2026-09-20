@@ -1692,6 +1692,23 @@ html.sepho .north-star {
   font-size: 12px;
 }
 
+button.north-star-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+button.north-star-card:hover,
+button.north-star-card:focus-visible {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ns) 55%, transparent),
+    0 0 36px color-mix(in srgb, var(--ns) 40%, transparent),
+    inset 0 0 48px color-mix(in srgb, var(--ns) 14%, transparent);
+}
+
 @media (max-width: 860px) {
   .goal-grid {
     grid-template-columns: 1fr;

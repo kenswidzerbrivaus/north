@@ -8,40 +8,61 @@ export function NorthStar({
   star,
   cycle,
   onSelect,
+  variant = 'command',
+  onOpen,
+  forceCreate = false,
 }: {
   star?: Star
   cycle?: GoalCycle
   onSelect?: (id: string) => void
+  variant?: 'card' | 'command'
+  onOpen?: () => void
+  forceCreate?: boolean
 }) {
   const { state, addNorthStar, updateNorthStar } = useStore()
   const stars = state.northStars
-  const [edit, setEdit] = useState(!stars.length)
-  const [creating, setCreating] = useState(false)
+  const [edit, setEdit] = useState(forceCreate || !stars.length)
+  const [creating, setCreating] = useState(forceCreate || !stars.length)
   const [draft, setDraft] = useState({
     title: star?.title ?? '',
     horizon: star?.horizon ?? '',
     metric: star?.metric ?? '',
   })
 
+  if (variant === 'card' && star) {
+    return (
+      <button
+        type="button"
+        className="hud-frame north-star north-star-card"
+        style={{ ['--ns' as string]: star.color || '#6ee7ff' }}
+        onClick={onOpen}
+      >
+        <p className="board-label">North star // Long-term goal</p>
+        <p className="north-star-line">{star.title.trim() || 'Untitled'}</p>
+        {star.horizon.trim() || star.metric.trim() ? (
+          <p className="muted">
+            {star.horizon.trim() ? (
+              <>
+                <span className="kicker">Time horizon</span> {star.horizon}
+              </>
+            ) : null}
+            {star.horizon.trim() && star.metric.trim() ? ' · ' : null}
+            {star.metric.trim() || null}
+          </p>
+        ) : null}
+        <p className="north-star-cycle">
+          <span className="kicker">90-day command</span>{' '}
+          {cycle ? cycle.name : 'None yet — open to start one'}
+        </p>
+      </button>
+    )
+  }
+
   return (
     <section className="hud-frame north-star" style={{ ['--ns' as string]: star?.color || '#6ee7ff' }}>
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <p className="board-label">North star // Long-term goal</p>
         <div className="row">
-          {stars.length ? (
-            <select
-              className="select"
-              style={{ width: 'auto' }}
-              value={star?.id ?? ''}
-              onChange={(e) => onSelect?.(e.target.value)}
-            >
-              {stars.map((n) => (
-                <option key={n.id} value={n.id}>
-                  {n.title.slice(0, 48) || 'Untitled'}
-                </option>
-              ))}
-            </select>
-          ) : null}
           <button
             type="button"
             className="btn-ghost"

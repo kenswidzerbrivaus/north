@@ -13,7 +13,7 @@ import {
   strategistBrief,
 } from '../lib/goal-engine'
 import { formatShort, todayISO } from '../lib/dates'
-import { goalIdFromHash } from '../lib/route'
+import { goalIdFromHash, hashParam } from '../lib/route'
 import type { Goal } from '../lib/types'
 import { useStore } from '../store'
 import { loadDraft } from '../lib/drafts'
@@ -33,21 +33,23 @@ export function Goals() {
   const [cycleForm, setCycleForm] = useState(false)
   const [envDraft, setEnvDraft] = useState({ physical: '', digital: '', ratingP: '7', ratingD: '6' })
   const [review90, setReview90] = useState(false)
-  const [starId, setStarId] = useState(() => state.northStars[0]?.id ?? '')
+  const [starId, setStarId] = useState(() => hashParam('star') || '')
+  const [addingStar, setAddingStar] = useState(false)
 
   useEffect(() => {
     const on = () => {
       setOpenId(goalIdFromHash())
       setCreating(location.hash.includes('new=1'))
+      setStarId(hashParam('star') || '')
     }
     window.addEventListener('hashchange', on)
     return () => window.removeEventListener('hashchange', on)
   }, [])
 
-  useEffect(() => {
-    if (starId && state.northStars.some((n) => n.id === starId)) return
-    if (state.northStars[0]) setStarId(state.northStars[0].id)
-  }, [starId, state.northStars])
+  const openStar = (id: string) => {
+    setStarId(id)
+    location.hash = `#/goals?star=${encodeURIComponent(id)}`
+  }
 
   const star = state.northStars.find((n) => n.id === starId) ?? state.northStars[0]
   const cycle =
@@ -92,16 +94,85 @@ export function Goals() {
           cycle={state.goalCycles.find((c) => c.id === g.cycleId) ?? cycle}
           star={state.northStars.find((n) => n.id === (state.goalCycles.find((c) => c.id === g.cycleId) ?? cycle)?.northStarId) ?? star}
           onBack={() => {
-            location.hash = '#/goals'
+            const sid = state.goalCycles.find((c) => c.id === g.cycleId)?.northStarId
+            location.hash = sid ? `#/goals?star=${encodeURIComponent(sid)}` : '#/goals'
           }}
         />
       )
     }
   }
 
+  if (!starId) {
+    return (
+      <div>
+        <header className="page-head">
+          <div>
+            <p className="kicker">Goals // North stars</p>
+            <h1>Long-term goals</h1>
+            <p className="muted">Open a north star to see its 90-day command.</p>
+          </div>
+          <button className="btn" onClick={() => setAddingStar(true)}>
+            + Star
+          </button>
+        </header>
+        {addingStar ? (
+          <NorthStar
+            forceCreate
+            onSelect={(id) => {
+              setAddingStar(false)
+              openStar(id)
+            }}
+          />
+        ) : null}
+        {state.northStars.length === 0 ? (
+          <div className="hud-frame empty">
+            <p className="kicker">North star required</p>
+            <h3>No long-term goal yet</h3>
+            <p className="muted">Create a North Star first. Every 90-day command must sit under one.</p>
+          </div>
+        ) : (
+          <div className="stack">
+            {state.northStars.map((n) => (
+              <NorthStar
+                key={n.id}
+                variant="card"
+                star={n}
+                cycle={
+                  state.goalCycles.find((c) => c.status === 'active' && c.northStarId === n.id) ??
+                  state.goalCycles.find((c) => c.northStarId === n.id)
+                }
+                onOpen={() => openStar(n.id)}
+              />
+            ))}
+          </div>
+        )}
+        {cycleForm ? (
+          <CycleForm
+            defaultStarId=""
+            onClose={() => setCycleForm(false)}
+            onCreate={(name, start, end, northStarId) => {
+              addCycle({ name, startDate: start, endDate: end, northStarId })
+              openStar(northStarId)
+              setCycleForm(false)
+            }}
+          />
+        ) : null}
+      </div>
+    )
+  }
+
   return (
     <div>
-      <NorthStar star={star} cycle={cycle} onSelect={setStarId} />
+      <button
+        className="btn-ghost"
+        onClick={() => {
+          setStarId('')
+          location.hash = '#/goals'
+        }}
+      >
+        ← All north stars
+      </button>
+      <NorthStar star={star} cycle={cycle} onSelect={openStar} />
       <header className="page-head">
         <div>
           <p className="kicker">Goals // 90-day command</p>
@@ -385,7 +456,7 @@ export function Goals() {
           onClose={() => setCycleForm(false)}
           onCreate={(name, start, end, northStarId) => {
             addCycle({ name, startDate: start, endDate: end, northStarId })
-            setStarId(northStarId)
+            openStar(northStarId)
             setCycleForm(false)
           }}
         />
@@ -393,7 +464,7 @@ export function Goals() {
 
       {review90 && cycle ? (
         <Modal title="90-day review" onClose={() => setReview90(false)} wide>
-          <NorthStar star={star} cycle={cycle} onSelect={setStarId} />
+          <NorthStar star={star} cycle={cycle} onSelect={openStar} />
           {cards.concat(
             cycleGoals.filter((g) => g.status === 'done').map((g) => ({
               g,
