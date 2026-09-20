@@ -56,7 +56,6 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
   const [wsOpen, setWsOpen] = useState<string | null>(null)
   const [ask, setAsk] = useState('')
   const [moverCal, setMoverCal] = useState<{ pick: string[] } | null>(null)
-  const [calDate, setCalDate] = useState(todayISO())
   const [calStart, setCalStart] = useState('09:00')
   const [calDaily, setCalDaily] = useState(false)
 
@@ -162,7 +161,6 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                     const open = path.filter((m) => m.status !== 'complete')
                     const current = open.find((m) => m.status === 'current') ?? open[0]
                     setMoverCal({ pick: current ? [current.id] : open.map((m) => m.id) })
-                    setCalDate(current?.plannedEnd && current.plannedEnd >= todayISO() ? current.plannedEnd : todayISO())
                     setCalStart('09:00')
                     setCalDaily(false)
                   }}
@@ -222,7 +220,6 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                             type="button"
                             onClick={() => {
                               setMoverCal({ pick: [m.id] })
-                              setCalDate(m.plannedEnd && m.plannedEnd >= todayISO() ? m.plannedEnd : todayISO())
                               setCalStart('09:00')
                               setCalDaily(false)
                             }}
@@ -469,7 +466,7 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
 
       {moverCal ? (
         <Modal title="Add key movers to calendar" onClose={() => setMoverCal(null)}>
-          <p className="muted">Places a time block on Calendar. Turn on daily system if it should also sit on Today to check off.</p>
+          <p className="muted">Each mover lands on its Accomplish by date. Turn on daily system if it should also sit on Today to check off.</p>
           {path.filter((m) => m.status !== 'complete').map((m) => (
             <label key={m.id} className="row">
               <input
@@ -483,12 +480,12 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                   )
                 }
               />
-              {m.name}
+              <span>
+                {m.name}
+                <span className="muted"> · {m.plannedEnd ? formatShort(m.plannedEnd) : 'needs accomplish by'}</span>
+              </span>
             </label>
           ))}
-          <Field label="Date">
-            <DateField value={calDate} onChange={setCalDate} />
-          </Field>
           <Field label="Start">
             <input
               className="input"
@@ -509,10 +506,17 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
               className="btn"
               type="button"
               onClick={() => {
-                const chosen = path.filter((m) => moverCal.pick.includes(m.id))
-                if (!chosen.length || !calDate) return
+                const chosen = path.filter((m) => moverCal.pick.includes(m.id) && m.plannedEnd)
+                if (!chosen.length) {
+                  alert('Each selected mover needs an Accomplish by date.')
+                  return
+                }
                 const start0 = minutesOf(stampTime(calStart) || '09:00')
-                chosen.forEach((m, i) => {
+                const slot: Record<string, number> = {}
+                chosen.forEach((m) => {
+                  const date = m.plannedEnd!
+                  const i = slot[date] ?? 0
+                  slot[date] = i + 1
                   const start = minutesToStamp(start0 + i * 60)
                   const end = minutesToStamp(start0 + i * 60 + 60)
                   const title = `${m.name} · ${project.name}`
@@ -521,7 +525,7 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                     store.addTask({
                       title,
                       notes,
-                      due: calDate,
+                      due: date,
                       dueTime: start,
                       projectId: project.id,
                       milestoneId: m.id,
@@ -532,7 +536,7 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                     store.addEvent(
                       {
                         title,
-                        date: calDate,
+                        date,
                         start,
                         end,
                         allDay: false,
