@@ -74,6 +74,25 @@ export function Calendar() {
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const dayIso = toISO(cursor)
 
+  const doneMarks = useMemo(() => {
+    const ids = new Set<string>()
+    const keys = new Set<string>()
+    for (const t of state.tasks) {
+      if (!t.completed) continue
+      if (t.eventId) ids.add(t.eventId)
+      if (t.googleId) {
+        ids.add(t.googleId)
+        ids.add(`gcal:${t.googleId}`)
+      }
+      if (t.due) keys.add(`${t.due}|${t.title.trim().toLowerCase()}`)
+    }
+    return { ids, keys }
+  }, [state.tasks])
+  const isDone = (e: CalEvent) =>
+    doneMarks.ids.has(e.id) ||
+    (e.googleId ? doneMarks.ids.has(e.googleId) : false) ||
+    doneMarks.keys.has(`${e.date}|${e.title.trim().toLowerCase()}`)
+
   const eventsOn = (iso: string) => allEvents.filter((e) => e.date === iso)
   const tasksOn = (iso: string) =>
     state.tasks.filter((t) => t.due === iso && !t.completed && !t.eventId && !t.googleId)
@@ -313,7 +332,7 @@ export function Calendar() {
                 {evs.slice(0, 3).map((e) => (
                   <span
                     key={e.id}
-                    className="pill"
+                    className={`pill${isDone(e) ? ' is-done' : ''}`}
                     style={{ ['--c' as string]: e.color }}
                     onClick={(ev) => {
                       ev.stopPropagation()
@@ -349,6 +368,7 @@ export function Calendar() {
             }
           }}
           gap={gap}
+          isDone={isDone}
         />
       ) : null}
 
@@ -375,6 +395,7 @@ function WeekGrid({
   onEvent,
   onMove,
   gap,
+  isDone,
 }: {
   days: Date[]
   events: CalEvent[]
@@ -382,6 +403,7 @@ function WeekGrid({
   onEvent: (e: CalEvent) => void
   onMove: (e: CalEvent, date: string, start: string, end: string) => void
   gap: { date: string; startMin: number; endMin: number } | null
+  isDone: (e: CalEvent) => boolean
 }) {
   const [drag, setDrag] = useState<DragState | null>(null)
   const boardRef = useRef<HTMLDivElement>(null)
@@ -433,7 +455,7 @@ function WeekGrid({
               {all.map((e) => (
                 <button
                   key={e.id}
-                  className="pill"
+                  className={`pill${isDone(e) ? ' is-done' : ''}`}
                   style={{ ['--c' as string]: e.color, display: 'block', marginTop: 4 }}
                   onClick={(ev) => {
                     ev.stopPropagation()
@@ -478,6 +500,7 @@ function WeekGrid({
               })
             }}
             gap={gap}
+            isDone={isDone}
           />
         ))}
       </div>
@@ -492,6 +515,7 @@ function DayColumn({
   drag,
   onDragStart,
   gap,
+  isDone,
 }: {
   iso: string
   events: CalEvent[]
@@ -499,6 +523,7 @@ function DayColumn({
   drag: DragState | null
   onDragStart: (ev: ReactPointerEvent, block: ReturnType<typeof layoutTimedEvents>[number]) => void
   gap: { date: string; startMin: number; endMin: number } | null
+  isDone: (e: CalEvent) => boolean
 }) {
   const blocks = layoutTimedEvents(events)
   const inGap = (min: number) => Boolean(gap && iso === gap.date && min >= gap.startMin && min < gap.endMin)
@@ -530,7 +555,7 @@ function DayColumn({
           <button
             key={b.event.id}
             type="button"
-            className={`event-block${moving ? ' is-dragging' : ''}`}
+            className={`event-block${moving ? ' is-dragging' : ''}${isDone(b.event) ? ' is-done' : ''}`}
             style={{
               top,
               height,

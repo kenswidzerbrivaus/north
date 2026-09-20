@@ -697,6 +697,14 @@ form.row .input {
   white-space: nowrap;
 }
 
+.event-block.is-done,
+.event-block.is-done strong,
+.event-block.is-done .muted,
+.pill.is-done {
+  text-decoration: line-through;
+  opacity: 0.62;
+}
+
 .event-block .muted {
   color: var(--ink-soft);
   font-weight: 500;
