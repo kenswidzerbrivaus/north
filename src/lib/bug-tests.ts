@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { eventIsDone } from './cal-done'
 import { layoutTimedEvents } from './cal-layout'
 import { parseDeadline } from './dates'
 import { summarizeProjectDraft } from './drafts'
@@ -7,7 +8,7 @@ import { fromGoogleEvent, toGoogleBody } from './google-calendar'
 import { metricNumber } from './goal-engine'
 import { daysLeft, depsReady, parseMilestoneLines } from './project-engine'
 import { cloudAction } from './sync-policy'
-import type { ProjectMilestone } from './types'
+import type { CalEvent, ProjectMilestone, Task } from './types'
 
 test('cloud: unsaved local never overwrites cloud', () => {
   assert.equal(cloudAction(0, 1000), 'pull')
@@ -131,6 +132,38 @@ test('critical path: depsReady', () => {
 test('daysLeft is calendar-day based', () => {
   assert.equal(daysLeft('2026-09-20', '2026-09-17'), 3)
   assert.equal(daysLeft('2026-09-17', '2026-09-17'), 0)
+})
+
+function task(partial: Partial<Task> & Pick<Task, 'id' | 'title'>): Task {
+  return {
+    notes: '',
+    listId: 'calendar',
+    completed: false,
+    priority: 0,
+    createdAt: '',
+    updatedAt: '',
+    subtasks: [],
+    ...partial,
+  }
+}
+
+function ev(partial: Partial<CalEvent> & Pick<CalEvent, 'id' | 'title' | 'date'>): CalEvent {
+  return { notes: '', allDay: true, color: '#6ee7ff', location: '', ...partial }
+}
+
+test('calendar done: same title same day only strikes the checked task', () => {
+  const tasks = [
+    task({ id: 't1', title: 'Call mom', completed: true, eventId: 'e1', due: '2026-09-20' }),
+    task({ id: 't2', title: 'Call mom', completed: false, eventId: 'e2', due: '2026-09-20' }),
+  ]
+  assert.equal(eventIsDone(ev({ id: 'e1', title: 'Call mom', date: '2026-09-20' }), tasks), true)
+  assert.equal(eventIsDone(ev({ id: 'e2', title: 'Call mom', date: '2026-09-20' }), tasks), false)
+})
+
+test('calendar done: unlinked event still matches a lone completed task by title', () => {
+  const tasks = [task({ id: 't1', title: 'Call mom', completed: true, due: '2026-09-20' })]
+  assert.equal(eventIsDone(ev({ id: 'orphan', title: 'Call mom', date: '2026-09-20' }), tasks), true)
+  assert.equal(eventIsDone(ev({ id: 'other', title: 'Gym', date: '2026-09-20' }), tasks), false)
 })
 
 test('calendar overlapping blocks get side-by-side columns', () => {

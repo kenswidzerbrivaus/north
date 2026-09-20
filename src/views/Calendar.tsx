@@ -15,6 +15,7 @@ import {
   todayISO,
   weekdayNames,
 } from '../lib/dates'
+import { eventIsDone } from '../lib/cal-done'
 import { takeCalGap } from '../lib/cal-gap'
 import { layoutTimedEvents, minutesToStamp, snapStart } from '../lib/cal-layout'
 import { checkpointDate } from '../lib/goal-engine'
@@ -75,24 +76,7 @@ export function Calendar() {
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const dayIso = toISO(cursor)
 
-  const doneMarks = useMemo(() => {
-    const ids = new Set<string>()
-    const keys = new Set<string>()
-    for (const t of state.tasks) {
-      if (!t.completed) continue
-      if (t.eventId) ids.add(t.eventId)
-      if (t.googleId) {
-        ids.add(t.googleId)
-        ids.add(`gcal:${t.googleId}`)
-      }
-      if (t.due) keys.add(`${t.due}|${t.title.trim().toLowerCase()}`)
-    }
-    return { ids, keys }
-  }, [state.tasks])
-  const isDone = (e: CalEvent) =>
-    doneMarks.ids.has(e.id) ||
-    (e.googleId ? doneMarks.ids.has(e.googleId) : false) ||
-    doneMarks.keys.has(`${e.date}|${e.title.trim().toLowerCase()}`)
+  const isDone = (e: CalEvent) => eventIsDone(e, state.tasks)
 
   const eventsOn = (iso: string) => allEvents.filter((e) => e.date === iso)
   const tasksOn = (iso: string) =>
