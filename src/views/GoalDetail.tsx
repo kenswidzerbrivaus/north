@@ -44,6 +44,7 @@ export function GoalDetail({ goal, cycle, star, onBack }: { goal: Goal; cycle?: 
   const [planErr, setPlanErr] = useState('')
   const [rv, setRv] = useState({ wins: '', misses: '', constraint: '', lessons: '', adjustments: '', actual: '' })
   const [ask, setAsk] = useState('')
+  const [logged, setLogged] = useState('')
   const [calOpen, setCalOpen] = useState(false)
   const dailyGuess = Number(`${goal.targetValue ?? ''} ${goal.metricName ?? ''}`.match(/(\d+)\s*times?\s*(daily|a\s*day)/i)?.[1] || 1)
   const [cal, setCal] = useState({
@@ -117,21 +118,34 @@ export function GoalDetail({ goal, cycle, star, onBack }: { goal: Goal; cycle?: 
             <p className="proj-bar">
               {bar(progress)} {progress}%
             </p>
-            <form
-              className="row"
-              onSubmit={(e) => {
-                e.preventDefault()
-                store.updateGoal(goal.id, { currentValue: metric })
-              }}
-            >
-              <input className="input" value={metric} onChange={(e) => setMetric(e.target.value)} placeholder="Update current metric" />
-              <button className="btn" type="submit">
+            <div className="row" style={{ flexWrap: 'wrap' }}>
+              <input
+                className="input"
+                value={metric}
+                onChange={(e) => setMetric(e.target.value)}
+                placeholder="Update current metric"
+              />
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  const value = metric.trim()
+                  if (!value) {
+                    setLogged('Enter a current value first.')
+                    return
+                  }
+                  const next = { ...goal, currentValue: value }
+                  store.updateGoal(goal.id, { currentValue: value, progress: goalProgress(next, cps) })
+                  setLogged(`Logged ${value}`)
+                }}
+              >
                 Log
               </button>
               <button type="button" className="btn-ghost" onClick={() => setCalOpen(true)}>
                 Add to calendar
               </button>
-            </form>
+            </div>
+            {logged ? <p className="kicker">{logged}</p> : null}
             <button className="btn-ghost" onClick={() => setWhyOpen((v) => !v)}>
               {whyOpen ? 'Hide' : 'Why this matters'}
             </button>

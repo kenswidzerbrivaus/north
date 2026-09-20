@@ -32,9 +32,16 @@ export const GOAL_CATEGORIES: { id: GoalCategory; label: string }[] = [
 ]
 
 export function metricNumber(raw?: string) {
-  if (!raw) return null
-  const n = Number(String(raw).replace(/[^0-9.-]/g, ''))
-  return Number.isFinite(n) ? n : null
+  if (!raw?.trim()) return null
+  const cleaned = raw.replace(/,/g, '')
+  const times = cleaned.match(/(\d+(?:\.\d+)?)\s*times?/i)
+  if (times) return Number(times[1])
+  const first = cleaned.match(/-?\d+(?:\.\d+)?/)
+  if (first) {
+    const n = Number(first[0])
+    return Number.isFinite(n) ? n : null
+  }
+  return null
 }
 
 export function cycleDay(cycle: GoalCycle, from = todayISO()) {
@@ -50,10 +57,10 @@ export function cyclePhase(day: number): 'foundation' | 'momentum' | 'finish' {
 }
 
 export function goalProgress(goal: Goal, checkpoints: GoalCheckpoint[]) {
-  const b = metricNumber(goal.baseline)
+  const b = metricNumber(goal.baseline) ?? 0
   const c = metricNumber(goal.currentValue)
   const t = metricNumber(goal.targetValue)
-  if (b != null && c != null && t != null && t !== b) {
+  if (c != null && t != null && t !== b) {
     return Math.round(Math.max(0, Math.min(100, ((c - b) / (t - b)) * 100)))
   }
   if (!checkpoints.length) return goal.progress ?? 0

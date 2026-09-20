@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { layoutTimedEvents } from './cal-layout'
 import { parseDeadline } from './dates'
 import { fromGoogleEvent, toGoogleBody } from './google-calendar'
+import { metricNumber } from './goal-engine'
 import { daysLeft, depsReady, parseMilestoneLines } from './project-engine'
 import { cloudAction } from './sync-policy'
 import type { ProjectMilestone } from './types'
@@ -78,6 +79,12 @@ test('google: timed events round-trip local hours', () => {
   assert.equal(ev.allDay, false)
   assert.equal(ev.start, '15:45')
   assert.equal(ev.end, '16:15')
+})
+
+test('metricNumber uses times-count not concatenated digits', () => {
+  assert.equal(metricNumber('praying 1 time daily'), 1)
+  assert.equal(metricNumber('Pray 3 times daily and fast 3 days weekly'), 3)
+  assert.equal(metricNumber('$82,000'), 82000)
 })
 
 test('dates: parseDeadline accepts several formats', () => {
