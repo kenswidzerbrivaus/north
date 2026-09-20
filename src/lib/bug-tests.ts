@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { eventIsDone } from './cal-done'
+import { sephoCopy } from './rebrand'
 import { layoutTimedEvents } from './cal-layout'
 import { parseDeadline } from './dates'
 import { summarizeProjectDraft } from './drafts'
@@ -150,6 +151,12 @@ function task(partial: Partial<Task> & Pick<Task, 'id' | 'title'>): Task {
 function ev(partial: Partial<CalEvent> & Pick<CalEvent, 'id' | 'title' | 'date'>): CalEvent {
   return { notes: '', allDay: true, color: '#6ee7ff', location: '', ...partial }
 }
+
+test('rebrand: app name North becomes Sepho, north star stays', () => {
+  assert.equal(sephoCopy('Welcome to North'), 'Welcome to Sepho')
+  assert.equal(sephoCopy('Walk through North — tasks, calendar, habits, focus'), 'Walk through Sepho — tasks, calendar, habits, focus')
+  assert.equal(sephoCopy('North star // Long-term goal'), 'North star // Long-term goal')
+})
 
 test('calendar done: same title same day only strikes the checked task', () => {
   const tasks = [

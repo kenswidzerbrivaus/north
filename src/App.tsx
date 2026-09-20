@@ -262,6 +262,11 @@ function Shell() {
     el?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
   }, [route])
 
+  useEffect(() => {
+    const label = ROUTES.find((r) => r.id === route)?.label ?? 'Sepho'
+    document.title = `${label} — Sepho`
+  }, [route])
+
   const view = {
     today: <Today go={go} />,
     tasks: <Tasks />,

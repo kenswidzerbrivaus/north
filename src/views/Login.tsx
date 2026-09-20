@@ -13,6 +13,7 @@ export function Login() {
   const [now, setNow] = useState(Date.now())
 
   useEffect(() => {
+    document.title = 'Sepho'
     document.documentElement.classList.add('matrix-gate')
     const meta = document.querySelector('meta[name="theme-color"]')
     const prev = meta?.getAttribute('content')

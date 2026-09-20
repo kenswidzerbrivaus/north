@@ -12,6 +12,7 @@ import { nowISO, uid } from './lib/id'
 import { depsReady } from './lib/project-engine'
 import { readLink } from './lib/google-calendar'
 import { seedProjectBundle } from './lib/project-seed'
+import { rebrandState } from './lib/rebrand'
 import type {
   CalEvent,
   CheckpointDay,
@@ -78,7 +79,7 @@ export function freshState(): State {
       ...seedTasks,
       {
         id: uid(),
-        title: 'Walk through North — tasks, calendar, habits, focus',
+        title: 'Walk through Sepho — tasks, calendar, habits, focus',
         notes: 'Open each section from the sidebar. Press ⌘K for the command palette.',
         listId: 'inbox',
         completed: false,
@@ -126,7 +127,7 @@ export function freshState(): State {
     notes: [
       {
         id: uid(),
-        title: 'Welcome to North',
+        title: 'Welcome to Sepho',
         body: 'This is your notebook.\n\nCapture ideas, meeting scraps, and weekly reviews. Everything stays on this device — export a backup from Settings when you want a copy.',
         pinned: true,
         createdAt: created,
@@ -253,9 +254,9 @@ function load(): State {
       Object.assign(loaded, rest)
       if (seedTasks?.length) loaded.tasks = [...seedTasks, ...loaded.tasks]
     }
-    return linkExisting(loaded)
+    return rebrandState(linkExisting(loaded))
   } catch {
-    return linkExisting(freshState())
+    return rebrandState(linkExisting(freshState()))
   }
 }
 
@@ -913,12 +914,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (!data || typeof data !== 'object') throw new Error('Invalid backup')
         const d = data as Partial<State>
         if (!Array.isArray(d.lists) || !Array.isArray(d.tasks)) throw new Error('Backup is missing lists or tasks')
-        patch(() => ({
-          ...freshState(),
-          ...d,
-          version: 1,
-          settings: { ...defaultSettings(), ...d.settings },
-        }))
+        patch(() =>
+          rebrandState({
+            ...freshState(),
+            ...d,
+            version: 1,
+            settings: { ...defaultSettings(), ...d.settings },
+          }),
+        )
       },
       hydrateFromCloud: (data, savedAt) => {
         const clientId = stateRef.current.settings.googleClientId
@@ -957,7 +960,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               googleClientId: data.settings?.googleClientId || clientId,
             },
           }
-          return linkExisting(next)
+          return rebrandState(linkExisting(next))
         }, true)
       },
       resetState: () => patch(() => freshState()),
