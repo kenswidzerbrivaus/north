@@ -9,8 +9,9 @@ export function Notes() {
   const { state, addNote, updateNote, deleteNote } = useStore()
   const [projectId, setProjectId] = useState(() => hashParam('project'))
   const [goalId, setGoalId] = useState(() => hashParam('goal'))
-  const [id, setId] = useState<string | null>(state.notes[0]?.id ?? null)
+  const [id, setId] = useState<string | null>(null)
   const note = state.notes.find((n) => n.id === id)
+  const close = () => setId(null)
   const [title, setTitle] = useState(note?.title ?? '')
   const [body, setBody] = useState(note?.body ?? '')
 
@@ -60,10 +61,10 @@ export function Notes() {
         </button>
       </header>
 
-      {sorted.length === 0 ? (
+      {sorted.length === 0 && !note ? (
         <Empty title="Empty notebook" body="Write the thing you don’t want to lose." />
       ) : (
-        <div className="split">
+        <div className={`split${note ? ' is-note-open' : ''}`}>
           <aside className="list-col">
             {sorted.map((n) => (
               <button key={n.id} className="note-row" data-on={n.id === id} onClick={() => setId(n.id)}>
@@ -81,7 +82,10 @@ export function Notes() {
           {note ? (
             <section className="card note-editor">
               <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
-                <button className="btn-ghost" onClick={() => updateNote(note.id, { pinned: !note.pinned })}>
+                <button className="btn-ghost" type="button" onClick={close}>
+                  <Icon name="chevronL" size={16} /> Done
+                </button>
+                <button className="btn-ghost" type="button" onClick={() => updateNote(note.id, { pinned: !note.pinned })}>
                   {note.pinned ? 'Unpin' : 'Pin'}
                 </button>
                 <select
@@ -110,14 +114,25 @@ export function Notes() {
                     </option>
                   ))}
                 </select>
-                <button className="btn-danger" onClick={() => { deleteNote(note.id); setId(sorted.find((n) => n.id !== note.id)?.id ?? null) }}>
+                <button
+                  className="btn-danger"
+                  type="button"
+                  onClick={() => {
+                    deleteNote(note.id)
+                    close()
+                  }}
+                >
                   <Icon name="trash" size={14} /> Delete
                 </button>
               </div>
               <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
               <textarea className="textarea" value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write…" style={{ marginTop: 12 }} />
             </section>
-          ) : null}
+          ) : (
+            <section className="card note-editor note-editor-empty">
+              <p className="muted">Open a note to write, or create one.</p>
+            </section>
+          )}
         </div>
       )}
     </div>
