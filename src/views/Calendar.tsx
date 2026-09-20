@@ -3,6 +3,7 @@ import { mergeCalendars, useGoogleCalendar } from '../google'
 import { DateField } from '../components/DateField'
 import { ColorDots, Field, Modal } from '../components/ui'
 import { Icon } from '../icons'
+import { matchLinkedTask } from '../lib/cal-sync'
 import {
   addDays,
   formatTime,
@@ -10,6 +11,7 @@ import {
   monthCells,
   monthName,
   parseISO,
+  stampTime,
   startOfWeek,
   toISO,
   todayISO,
@@ -40,6 +42,7 @@ export function Calendar() {
   const [busy, setBusy] = useState(false)
   const [gap, setGap] = useState<{ date: string; startMin: number; endMin: number } | null>(null)
   const [moved, setMoved] = useState<Record<string, { date: string; start: string; end: string }>>({})
+  const [edits, setEdits] = useState<Record<string, Partial<CalEvent>>>({})
   const today = todayISO()
   const names = weekdayNames(weekStartsOn)
   const [projectId, setProjectId] = useState(() => hashParam('project'))
@@ -50,7 +53,13 @@ export function Calendar() {
   }, [])
   const merged = useMemo(() => mergeCalendars(state.events, gcal.events), [gcal.events, state.events])
   const allEvents = useMemo(() => {
-    const patched = merged.map((e) => (moved[e.id] ? { ...e, ...moved[e.id], allDay: false } : e))
+    const patched = merged.map((e) => {
+      const byId = edits[e.id]
+      const byG = e.googleId ? edits[e.googleId] : undefined
+      const drag = moved[e.id]
+      const extra = { ...byG, ...byId, ...(drag ? { ...drag, allDay: false } : {}) }
+      return Object.keys(extra).length ? { ...e, ...extra } : e
+    })
     if (!projectId) return patched
     const ids = new Set(
       state.tasks.filter((t) => t.projectId === projectId).flatMap((t) => [t.eventId, t.googleId].filter(Boolean) as string[]),
@@ -60,13 +69,32 @@ export function Calendar() {
     return patched.filter(
       (e) => ids.has(e.id) || (e.googleId && ids.has(e.googleId)) || (needle && e.title.toLowerCase().includes(needle.slice(0, 8))),
     )
-  }, [merged, moved, projectId, state.projects, state.tasks])
+  }, [edits, merged, moved, projectId, state.projects, state.tasks])
 
   const year = cursor.getFullYear()
   const month = cursor.getMonth()
   useEffect(() => {
     if (gcal.connected) void gcal.refresh(new Date(year, month, 1))
   }, [year, month, gcal.connected, gcal.refresh])
+
+  useEffect(() => {
+    setEdits((prev) => {
+      let next: typeof prev | null = null
+      for (const [key, patch] of Object.entries(prev)) {
+        const live = gcal.events.find((e) => e.id === key || e.googleId === key)
+        if (!live) continue
+        const same =
+          live.date === (patch.date ?? live.date) &&
+          (live.start ?? '') === (patch.start ?? live.start ?? '') &&
+          (live.end ?? '') === (patch.end ?? live.end ?? '') &&
+          live.allDay === (patch.allDay ?? live.allDay)
+        if (!same) continue
+        if (!next) next = { ...prev }
+        delete next[key]
+      }
+      return next ?? prev
+    })
+  }, [gcal.events])
 
   const cells = useMemo(
     () => monthCells(cursor.getFullYear(), cursor.getMonth(), weekStartsOn),
@@ -84,8 +112,8 @@ export function Calendar() {
 
   const save = async () => {
     if (!draft?.title?.trim() || !draft.date || busy) return
-    const start = draft.start?.trim() || undefined
-    const end = draft.end?.trim() || undefined
+    const start = stampTime(draft.start)
+    const end = stampTime(draft.end)
     const payload = {
       title: draft.title.trim(),
       date: draft.date,
@@ -97,11 +125,60 @@ export function Calendar() {
       location: draft.location ?? '',
       googleId: draft.googleId,
     }
+    const localId = draft.id && !draft.id.startsWith('gcal:') ? draft.id : undefined
     setBusy(true)
     try {
-      if (draft.googleId && gcal.connected) {
-        const saved = await gcal.saveToGoogle(payload)
-        if (saved) syncFromCalendar([saved])
+      const mirror = state.events.find(
+        (e) => e.id === localId || (payload.googleId && e.googleId === payload.googleId),
+      )
+      if (mirror) updateEvent(mirror.id, payload)
+      else if (localId) updateEvent(localId, payload)
+      const task = matchLinkedTask(state.tasks, {
+        id: draft.id || localId || '',
+        title: payload.title,
+        notes: payload.notes,
+        date: payload.date,
+        start: payload.start,
+        end: payload.end,
+        allDay: payload.allDay,
+        color: payload.color,
+        location: payload.location,
+        googleId: payload.googleId,
+      })
+      if (task) {
+        updateTask(task.id, {
+          title: payload.title,
+          due: payload.date,
+          dueTime: payload.allDay ? undefined : payload.start,
+        })
+      }
+      if (draft.id) {
+        setMoved((m) => {
+          if (!m[draft.id!]) return m
+          const next = { ...m }
+          delete next[draft.id!]
+          return next
+        })
+      }
+      if (draft.id || payload.googleId) {
+        const patch = { ...payload }
+        setEdits((w) => {
+          const next = { ...w }
+          if (draft.id) next[draft.id] = patch
+          if (payload.googleId) next[payload.googleId] = patch
+          return next
+        })
+      }
+      if (payload.googleId && gcal.connected) {
+        const saved = await gcal.saveToGoogle({ ...payload, googleId: payload.googleId })
+        if (saved) {
+          syncFromCalendar([saved])
+          setEdits((w) => ({
+            ...w,
+            [payload.googleId!]: { ...payload, ...saved },
+            ...(draft.id ? { [draft.id]: { ...payload, ...saved } } : {}),
+          }))
+        }
       } else if (!draft.id && toGoogle && gcal.connected) {
         try {
           const saved = await gcal.saveToGoogle(payload)
@@ -109,17 +186,7 @@ export function Calendar() {
         } catch {
           addEvent(payload)
         }
-      } else if (draft.id) {
-        updateEvent(draft.id, payload)
-        if (toGoogle && gcal.connected && !draft.googleId) {
-          try {
-            const saved = await gcal.saveToGoogle(payload)
-            if (saved?.googleId) updateEvent(draft.id, { googleId: saved.googleId })
-          } catch {
-            /* kept local */
-          }
-        }
-      } else {
+      } else if (!localId && !payload.googleId) {
         addEvent(payload)
       }
       setDraft(null)
@@ -181,10 +248,22 @@ export function Calendar() {
         {!draft.allDay ? (
           <div className="grid-2">
             <Field label="Start">
-              <input className="input" type="time" value={draft.start ?? ''} onChange={(e) => setDraft({ ...draft, start: e.target.value })} />
+              <input
+                className="input"
+                type="time"
+                value={stampTime(draft.start) ?? ''}
+                onChange={(e) => setDraft({ ...draft, start: stampTime(e.target.value) })}
+                onInput={(e) => setDraft({ ...draft, start: stampTime(e.currentTarget.value) })}
+              />
             </Field>
             <Field label="End">
-              <input className="input" type="time" value={draft.end ?? ''} onChange={(e) => setDraft({ ...draft, end: e.target.value })} />
+              <input
+                className="input"
+                type="time"
+                value={stampTime(draft.end) ?? ''}
+                onChange={(e) => setDraft({ ...draft, end: stampTime(e.target.value) })}
+                onInput={(e) => setDraft({ ...draft, end: stampTime(e.currentTarget.value) })}
+              />
             </Field>
           </div>
         ) : null}
@@ -344,8 +423,11 @@ export function Calendar() {
           onMove={(e, date, start, end) => {
             setMoved((m) => ({ ...m, [e.id]: { date, start, end } }))
             if (!e.id.startsWith('gcal:')) updateEvent(e.id, { date, start, end, allDay: false })
-            const task = state.tasks.find((t) => t.eventId === e.id || (e.googleId && t.googleId === e.googleId))
+            const task = matchLinkedTask(state.tasks, e)
             if (task) updateTask(task.id, { due: date, dueTime: start })
+            if (e.googleId) {
+              setEdits((w) => ({ ...w, [e.googleId!]: { date, start, end, allDay: false }, [e.id]: { date, start, end, allDay: false } }))
+            }
             if (e.googleId && gcal.connected) {
               void gcal.saveToGoogle({ ...e, date, start, end, allDay: false }).catch(() => {
                 /* local move already applied */

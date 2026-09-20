@@ -87,6 +87,14 @@ export function minutesOf(hhmm: string): number {
   return (h ?? 0) * 60 + (m ?? 0)
 }
 
+/** HH:mm for time inputs. Strips seconds iPhone type=time sometimes appends. */
+export function stampTime(raw?: string): string | undefined {
+  if (!raw) return undefined
+  const m = raw.trim().match(/^(\d{1,2}):(\d{2})/)
+  if (!m) return undefined
+  return `${String(Number(m[1])).padStart(2, '0')}:${m[2]}`
+}
+
 export function greeting(name: string): string {
   const h = new Date().getHours()
   const who = name.trim() ? `, ${name.trim()}` : ''

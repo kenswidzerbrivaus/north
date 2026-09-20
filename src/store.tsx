@@ -11,6 +11,7 @@ import { todayISO } from './lib/dates'
 import { nowISO, uid } from './lib/id'
 import { depsReady } from './lib/project-engine'
 import { readLink } from './lib/google-calendar'
+import { matchLinkedTask } from './lib/cal-sync'
 import { seedProjectBundle } from './lib/project-seed'
 import { rebrandState } from './lib/rebrand'
 import type {
@@ -375,9 +376,7 @@ function withCalendarList(lists: List[]) {
 }
 
 function linkedTask(tasks: Task[], event: CalEvent) {
-  return tasks.find(
-    (t) => t.eventId === event.id || (event.googleId && t.googleId === event.googleId && t.due === event.date),
-  )
+  return matchLinkedTask(tasks, event)
 }
 
 function taskFromEvent(event: CalEvent, existing?: Task): Task {
@@ -670,11 +669,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       syncFromCalendar: (events) =>
         patch((s) => {
           const today = todayISO()
-          const todays = events.filter((e) => e.date === today)
-          const next = syncTasksFromEvents(s, todays, true)
-          const tasks = next.tasks.filter((t) => !t.googleId || t.completed || t.due === today)
-          if (tasks.length === next.tasks.length) return next
-          return { ...next, tasks }
+          let tasks = s.tasks
+          let changed = false
+          for (const event of events) {
+            const existing = linkedTask(tasks, event)
+            if (existing) {
+              const nextTask = taskFromEvent(event, existing)
+              if (nextTask !== existing) {
+                changed = true
+                tasks = tasks.map((t) => (t.id === existing.id ? nextTask : t))
+              }
+              continue
+            }
+            if (event.date !== today) continue
+            changed = true
+            tasks = [taskFromEvent(event), ...tasks]
+          }
+          const lists = withCalendarList(s.lists)
+          let next: State = changed || lists !== s.lists ? { ...s, lists, tasks } : s
+          const pruned = next.tasks.filter((t) => !t.googleId || t.completed || t.due === today)
+          if (pruned.length !== next.tasks.length) next = { ...next, tasks: pruned }
+          return next
         }),
       dropGoogleItems: (googleId) =>
         patch((s) => ({

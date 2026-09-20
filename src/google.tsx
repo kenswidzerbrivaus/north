@@ -281,7 +281,14 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       const saved = event.googleId
         ? await updateGoogleEvent(event.googleId, { ...event, title: event.title, date: event.date })
         : await createGoogleEvent(event)
-      await refresh(undefined, true)
+      if (saved) {
+        setEvents((prev) => {
+          const gid = saved.googleId
+          const rest = prev.filter((e) => e.googleId !== gid && e.id !== saved.id)
+          return [saved, ...rest]
+        })
+      }
+      void refresh(undefined, true)
       return saved
     },
     [clientId, refresh],

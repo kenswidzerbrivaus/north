@@ -3,7 +3,8 @@ import { test } from 'node:test'
 import { eventIsDone } from './cal-done'
 import { sephoCopy } from './rebrand'
 import { layoutTimedEvents } from './cal-layout'
-import { parseDeadline } from './dates'
+import { matchLinkedTask } from './cal-sync'
+import { parseDeadline, stampTime } from './dates'
 import { summarizeProjectDraft } from './drafts'
 import { fromGoogleEvent, toGoogleBody } from './google-calendar'
 import { metricNumber } from './goal-engine'
@@ -94,6 +95,22 @@ test('dates: parseDeadline accepts several formats', () => {
   assert.equal(parseDeadline('2026-10-30'), '2026-10-30')
   assert.equal(parseDeadline('10/30/2026'), '2026-10-30')
   assert.equal(parseDeadline(''), '')
+})
+
+test('dates: stampTime strips seconds for time inputs', () => {
+  assert.equal(stampTime('09:00'), '09:00')
+  assert.equal(stampTime('9:05:00'), '09:05')
+  assert.equal(stampTime(''), undefined)
+})
+
+test('calendar: google task still matches after a time or date edit', () => {
+  const tasks = [
+    task({ id: 't1', title: 'Standup', googleId: 'g1', eventId: 'e-local', due: '2026-09-20', dueTime: '09:00' }),
+    task({ id: 't2', title: 'Standup', googleId: 'g2', eventId: 'gcal:g2', due: '2026-09-20', dueTime: '10:00' }),
+  ]
+  const moved = ev({ id: 'gcal:g1', title: 'Standup', date: '2026-09-21', start: '11:00', googleId: 'g1' })
+  assert.equal(matchLinkedTask(tasks, moved)?.id, 't1')
+  assert.equal(matchLinkedTask(tasks, ev({ id: 'gcal:g2', title: 'Standup', date: '2026-09-20', googleId: 'g2' }))?.id, 't2')
 })
 
 test('project draft: owner-only is empty; named form can park', () => {
