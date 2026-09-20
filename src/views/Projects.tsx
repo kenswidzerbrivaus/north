@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { DateField } from '../components/DateField'
 import { Field, Modal } from '../components/ui'
 import { parseDeadline } from '../lib/dates'
-import { clearDraft, loadDraft, saveDraft } from '../lib/drafts'
+import { clearDraft, loadDraft, parkedProjectDraft, saveDraft, summarizeProjectDraft } from '../lib/drafts'
 import { hashParam, projectIdFromHash } from '../lib/route'
 import {
   bar,
@@ -36,6 +36,8 @@ export function Projects() {
   const [capWarn, setCapWarn] = useState(false)
   const [overrideCap, setOverrideCap] = useState(false)
   const [intel, setIntel] = useState(false)
+  const ownerDefault = state.settings.name || 'Kens'
+  const [parked, setParked] = useState(() => parkedProjectDraft(ownerDefault))
 
   useEffect(() => {
     const on = () => {
@@ -45,6 +47,10 @@ export function Projects() {
     window.addEventListener('hashchange', on)
     return () => window.removeEventListener('hashchange', on)
   }, [])
+
+  useEffect(() => {
+    if (!creating) setParked(parkedProjectDraft(ownerDefault))
+  }, [creating, ownerDefault])
 
   const live = state.projects.filter((p) => p.state !== 'archived')
   const companies = [...new Set(live.map((p) => p.company).filter(Boolean))]
@@ -136,13 +142,39 @@ export function Projects() {
         <button
           className="btn"
           onClick={() => {
-            if (active.length >= limit) setCapWarn(true)
+            if (!parked && active.length >= limit) setCapWarn(true)
             else setCreating(true)
           }}
         >
-          + New project
+          {parked ? 'Resume project draft' : '+ New project'}
         </button>
       </header>
+
+      {parked ? (
+        <section className="hud-frame" style={{ padding: 14, marginBottom: 16 }}>
+          <p className="kicker">Saved for later</p>
+          <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <strong>{parked.name}</strong>
+              <p className="muted">Continue this project when you are ready.</p>
+            </div>
+            <div className="row">
+              <button
+                className="btn-ghost"
+                onClick={() => {
+                  clearDraft('project')
+                  setParked(null)
+                }}
+              >
+                Discard
+              </button>
+              <button className="btn" onClick={() => setCreating(true)}>
+                Continue
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <div className="proj-metrics">
         <Metric n={active.length} l="Active" />
@@ -203,8 +235,14 @@ export function Projects() {
               <p className="kicker">Project system online</p>
               <h3>No active projects</h3>
               <p className="muted">Projects convert goals into measurable outcomes.</p>
-              <button className="btn" onClick={() => setCreating(true)}>
-                Create first project
+              <button
+                className="btn"
+                onClick={() => {
+                  if (!parked && active.length >= limit) setCapWarn(true)
+                  else setCreating(true)
+                }}
+              >
+                {parked ? 'Resume project draft' : 'Create first project'}
               </button>
             </div>
           ) : cards.length === 0 ? (
@@ -324,7 +362,7 @@ export function Projects() {
           }}
           addProject={addProject}
           addMilestones={addMilestones}
-          ownerDefault={state.settings.name || 'Kens'}
+          ownerDefault={ownerDefault}
           goals={state.goals}
           overrideCapacity={overrideCap}
         />
@@ -424,10 +462,16 @@ function CreateProject({
   })
   const [steps, setSteps] = useState(() => loadDraft<{ steps: { name: string; date: string }[] }>('project')?.steps ?? [{ name: '', date: '' }, { name: '', date: '' }])
   const [missing, setMissing] = useState<string[]>([])
+  const [resuming] = useState(() => Boolean(parkedProjectDraft(ownerDefault)))
   useEffect(() => {
     const t = window.setTimeout(() => saveDraft('project', { form, steps }), 200)
     return () => window.clearTimeout(t)
   }, [form, steps])
+  const park = () => {
+    if (summarizeProjectDraft({ form, steps }, ownerDefault)) saveDraft('project', { form, steps })
+    else clearDraft('project')
+    onClose()
+  }
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }))
   const bind = (k: keyof typeof form) => ({
     name: k,
@@ -509,7 +553,10 @@ function CreateProject({
   return (
     <Modal title="New project" onClose={onClose} wide persist>
       <form className="stack" onSubmit={save}>
-        <p className="muted">Draft autosaves as you type. Leaving this page will not wipe it.</p>
+        <p className="muted">
+          {resuming ? 'Resuming saved draft. ' : ''}
+          Save and continue later keeps this on Projects. Create when the required fields are ready.
+        </p>
         {missing.length ? (
           <p className="gate-error" role="alert">
             Still needed: {missing.join(', ')}
@@ -599,8 +646,8 @@ function CreateProject({
           </select>
         </Field>
         <div className="row" style={{ justifyContent: 'flex-end' }}>
-          <button className="btn-ghost" type="button" onClick={onClose}>
-            Cancel
+          <button className="btn-ghost" type="button" onClick={park}>
+            Save and continue later
           </button>
           <button className="btn" type="submit">
             Create project

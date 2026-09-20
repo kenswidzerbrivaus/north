@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { layoutTimedEvents } from './cal-layout'
 import { parseDeadline } from './dates'
+import { summarizeProjectDraft } from './drafts'
 import { fromGoogleEvent, toGoogleBody } from './google-calendar'
 import { metricNumber } from './goal-engine'
 import { daysLeft, depsReady, parseMilestoneLines } from './project-engine'
@@ -91,6 +92,15 @@ test('dates: parseDeadline accepts several formats', () => {
   assert.equal(parseDeadline('2026-10-30'), '2026-10-30')
   assert.equal(parseDeadline('10/30/2026'), '2026-10-30')
   assert.equal(parseDeadline(''), '')
+})
+
+test('project draft: owner-only is empty; named form can park', () => {
+  assert.equal(summarizeProjectDraft({ form: { owner: 'Kens' } }, 'Kens'), null)
+  assert.equal(summarizeProjectDraft({ form: { name: '', owner: 'Kens' }, steps: [{ name: '', date: '' }] }, 'Kens'), null)
+  assert.deepEqual(summarizeProjectDraft({ form: { name: 'Fleet', owner: 'Kens' } }, 'Kens'), { name: 'Fleet' })
+  assert.deepEqual(summarizeProjectDraft({ form: { owner: 'Kens' }, steps: [{ name: 'Secure Financing', date: '2026-10-30' }] }, 'Kens'), {
+    name: 'Untitled project',
+  })
 })
 
 test('milestones: parse lines with dates', () => {
