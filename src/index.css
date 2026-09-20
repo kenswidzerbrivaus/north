@@ -1692,21 +1692,52 @@ html.sepho .north-star {
   font-size: 12px;
 }
 
-button.north-star-card {
-  display: block;
+.north-star-card {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
   width: 100%;
-  text-align: left;
-  cursor: pointer;
-  color: inherit;
-  font: inherit;
+  padding: 0;
+  overflow: hidden;
 }
 
-button.north-star-card:hover,
-button.north-star-card:focus-visible {
+.north-star-handle {
+  flex: 0 0 36px;
+  border: 0;
+  background: color-mix(in srgb, var(--ns) 22%, transparent);
+  color: var(--ns);
+  cursor: grab;
+  font-size: 16px;
+  letter-spacing: -2px;
+  touch-action: none;
+  user-select: none;
+}
+
+.north-star-handle:active {
+  cursor: grabbing;
+}
+
+.north-star-open {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+
+.north-star-card.is-dragging,
+.is-dragging .north-star-card {
+  opacity: 0.45;
+}
+
+.is-drop .north-star-card {
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--ns) 55%, transparent),
-    0 0 36px color-mix(in srgb, var(--ns) 40%, transparent),
-    inset 0 0 48px color-mix(in srgb, var(--ns) 14%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--ns) 70%, transparent),
+    0 0 28px color-mix(in srgb, var(--ns) 35%, transparent);
 }
 
 @media (max-width: 860px) {

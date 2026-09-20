@@ -31,30 +31,34 @@ export function NorthStar({
 
   if (variant === 'card' && star) {
     return (
-      <button
-        type="button"
+      <div
         className="hud-frame north-star north-star-card"
+        data-star-id={star.id}
         style={{ ['--ns' as string]: star.color || '#6ee7ff' }}
-        onClick={onOpen}
       >
-        <p className="board-label">North star // Long-term goal</p>
-        <p className="north-star-line">{star.title.trim() || 'Untitled'}</p>
-        {star.horizon.trim() || star.metric.trim() ? (
-          <p className="muted">
-            {star.horizon.trim() ? (
-              <>
-                <span className="kicker">Time horizon</span> {star.horizon}
-              </>
-            ) : null}
-            {star.horizon.trim() && star.metric.trim() ? ' · ' : null}
-            {star.metric.trim() || null}
+        <button type="button" className="north-star-handle" aria-label="Drag to reorder">
+          ⋮⋮
+        </button>
+        <button type="button" className="north-star-open" onClick={onOpen}>
+          <p className="board-label">North star // Long-term goal</p>
+          <p className="north-star-line">{star.title.trim() || 'Untitled'}</p>
+          {star.horizon.trim() || star.metric.trim() ? (
+            <p className="muted">
+              {star.horizon.trim() ? (
+                <>
+                  <span className="kicker">Time horizon</span> {star.horizon}
+                </>
+              ) : null}
+              {star.horizon.trim() && star.metric.trim() ? ' · ' : null}
+              {star.metric.trim() || null}
+            </p>
+          ) : null}
+          <p className="north-star-cycle">
+            <span className="kicker">90-day command</span>{' '}
+            {cycle ? cycle.name : 'None yet — open to start one'}
           </p>
-        ) : null}
-        <p className="north-star-cycle">
-          <span className="kicker">90-day command</span>{' '}
-          {cycle ? cycle.name : 'None yet — open to start one'}
-        </p>
-      </button>
+        </button>
+      </div>
     )
   }
 

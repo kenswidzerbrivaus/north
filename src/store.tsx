@@ -332,6 +332,7 @@ export type Store = {
   updateCycle: (id: string, patch: Partial<GoalCycle>) => void
   addNorthStar: (input: { title: string; horizon?: string; metric?: string }) => string
   updateNorthStar: (id: string, patch: Partial<NorthStar>) => void
+  reorderNorthStars: (ids: string[]) => void
   addCheckpoint: (input: Partial<GoalCheckpoint> & { goalId: string; day: CheckpointDay; targetDescription: string }) => string
   updateCheckpoint: (id: string, patch: Partial<GoalCheckpoint>) => void
   addMover: (input: Omit<GoalMover, 'id'>) => string
@@ -807,6 +808,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ...s,
           northStars: s.northStars.map((n) => (n.id === id ? { ...n, ...next } : n)),
         })),
+      reorderNorthStars: (ids) =>
+        patch((s) => {
+          const map = new Map(s.northStars.map((n) => [n.id, n]))
+          const next = ids.map((id) => map.get(id)).filter((n): n is NorthStar => Boolean(n))
+          for (const n of s.northStars) if (!ids.includes(n.id)) next.push(n)
+          return { ...s, northStars: next }
+        }),
       addCheckpoint: (input) => {
         const id = uid()
         patch((s) => ({

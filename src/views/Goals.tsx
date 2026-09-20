@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Field, Modal } from '../components/ui'
 import { bar } from '../lib/project-engine'
 import {
@@ -14,7 +14,7 @@ import {
 } from '../lib/goal-engine'
 import { formatShort, todayISO } from '../lib/dates'
 import { goalIdFromHash, hashParam } from '../lib/route'
-import type { Goal } from '../lib/types'
+import type { Goal, GoalCycle, NorthStar as Star } from '../lib/types'
 import { useStore } from '../store'
 import { loadDraft } from '../lib/drafts'
 import { NorthStar } from '../components/NorthStar'
@@ -23,7 +23,7 @@ import { GoalWizard } from './GoalWizard'
 
 export function Goals() {
   const store = useStore()
-  const { state, addCycle, addEnvAction, addTask, updateCycle, updateGoal } = store
+  const { state, addCycle, addEnvAction, addTask, updateCycle, updateGoal, reorderNorthStars } = store
   const [openId, setOpenId] = useState(() => goalIdFromHash())
   const [creating, setCreating] = useState(() => location.hash.includes('new=1'))
   const [tab, setTab] = useState<'current' | 'backlog' | 'history'>('current')
@@ -109,7 +109,7 @@ export function Goals() {
           <div>
             <p className="kicker">Goals // North stars</p>
             <h1>Long-term goals</h1>
-            <p className="muted">Open a north star to see its 90-day command.</p>
+            <p className="muted">Open a north star to see its 90-day command. Drag ⋮⋮ to reorder.</p>
           </div>
           <button className="btn" onClick={() => setAddingStar(true)}>
             + Star
@@ -131,20 +131,15 @@ export function Goals() {
             <p className="muted">Create a North Star first. Every 90-day command must sit under one.</p>
           </div>
         ) : (
-          <div className="stack">
-            {state.northStars.map((n) => (
-              <NorthStar
-                key={n.id}
-                variant="card"
-                star={n}
-                cycle={
-                  state.goalCycles.find((c) => c.status === 'active' && c.northStarId === n.id) ??
-                  state.goalCycles.find((c) => c.northStarId === n.id)
-                }
-                onOpen={() => openStar(n.id)}
-              />
-            ))}
-          </div>
+          <StarStack
+            stars={state.northStars}
+            onOpen={openStar}
+            onReorder={reorderNorthStars}
+            cycleOf={(id) =>
+              state.goalCycles.find((c) => c.status === 'active' && c.northStarId === id) ??
+              state.goalCycles.find((c) => c.northStarId === id)
+            }
+          />
         )}
         {cycleForm ? (
           <CycleForm
@@ -558,6 +553,80 @@ function RowCheck({ day, cards, cycle }: { day: 30 | 60 | 90; cards: { g: Goal; 
         )
       })}
     </>
+  )
+}
+
+function StarStack({
+  stars,
+  onOpen,
+  onReorder,
+  cycleOf,
+}: {
+  stars: Star[]
+  onOpen: (id: string) => void
+  onReorder: (ids: string[]) => void
+  cycleOf: (id: string) => GoalCycle | undefined
+}) {
+  const listRef = useRef<HTMLDivElement>(null)
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
+  const ids = stars.map((s) => s.id)
+  const move = (fromId: string, toId: string | null) => {
+    if (!toId || fromId === toId) return ids
+    const next = ids.filter((id) => id !== fromId)
+    const at = next.indexOf(toId)
+    next.splice(at < 0 ? next.length : at, 0, fromId)
+    return next
+  }
+  const shown = (dragId && overId ? move(dragId, overId) : ids)
+    .map((id) => stars.find((s) => s.id === id))
+    .filter((n): n is Star => Boolean(n))
+
+  const hitId = (clientY: number) => {
+    const nodes = [...(listRef.current?.querySelectorAll<HTMLElement>('[data-star-id]') ?? [])]
+    const hit = nodes.find((el) => {
+      const r = el.getBoundingClientRect()
+      return clientY >= r.top && clientY <= r.bottom
+    })
+    return hit?.dataset.starId ?? nodes.at(-1)?.dataset.starId ?? null
+  }
+
+  return (
+    <div
+      ref={listRef}
+      className="stack"
+      onPointerMove={(e) => {
+        if (!dragId) return
+        const over = hitId(e.clientY)
+        setOverId(over)
+      }}
+      onPointerUp={(e) => {
+        if (!dragId) return
+        const next = move(dragId, hitId(e.clientY) ?? overId)
+        if (next.join() !== ids.join()) onReorder(next)
+        setDragId(null)
+        setOverId(null)
+      }}
+      onPointerCancel={() => {
+        setDragId(null)
+        setOverId(null)
+      }}
+    >
+      {shown.map((n) => (
+        <div
+          key={n.id}
+          className={dragId === n.id ? 'is-dragging' : overId === n.id && dragId ? 'is-drop' : ''}
+          onPointerDown={(e) => {
+            if (!(e.target as HTMLElement).closest('.north-star-handle')) return
+            e.preventDefault()
+            listRef.current?.setPointerCapture(e.pointerId)
+            setDragId(n.id)
+          }}
+        >
+          <NorthStar variant="card" star={n} cycle={cycleOf(n.id)} onOpen={() => !dragId && onOpen(n.id)} />
+        </div>
+      ))}
+    </div>
   )
 }
 
