@@ -315,7 +315,7 @@ export type Store = {
   deleteTask: (id: string) => void
   addSubtask: (taskId: string, title: string) => void
   toggleSubtask: (taskId: string, subId: string) => void
-  addEvent: (input: Partial<CalEvent> & { title: string; date: string }) => string
+  addEvent: (input: Partial<CalEvent> & { title: string; date: string }, opts?: { daily?: boolean }) => string
   updateEvent: (id: string, patch: Partial<CalEvent>) => void
   deleteEvent: (id: string) => void
   syncFromCalendar: (events: CalEvent[]) => void
@@ -631,7 +631,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               : t,
           ),
         })),
-      addEvent: (input) => {
+      addEvent: (input, opts) => {
         const id = uid()
         patch((s) => {
           const event: CalEvent = {
@@ -643,7 +643,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             id,
             title: input.title.trim(),
           }
-          return syncTasksFromEvents({ ...s, events: [event, ...s.events] })
+          const next = { ...s, events: [event, ...s.events] }
+          if (opts?.daily === false) return next
+          return syncTasksFromEvents(next)
         })
         return id
       },

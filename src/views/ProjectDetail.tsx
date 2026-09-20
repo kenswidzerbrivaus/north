@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { DateField } from '../components/DateField'
 import { Field, Modal } from '../components/ui'
-import { formatShort, todayISO } from '../lib/dates'
+import { minutesToStamp } from '../lib/cal-layout'
+import { formatShort, minutesOf, stampTime, todayISO } from '../lib/dates'
 import {
   bar,
   commanderBrief,
@@ -54,6 +55,10 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
   const [lessons, setLessons] = useState('')
   const [wsOpen, setWsOpen] = useState<string | null>(null)
   const [ask, setAsk] = useState('')
+  const [moverCal, setMoverCal] = useState<{ pick: string[] } | null>(null)
+  const [calDate, setCalDate] = useState(todayISO())
+  const [calStart, setCalStart] = useState('09:00')
+  const [calDaily, setCalDaily] = useState(false)
 
   const path = ms.filter((m) => m.criticalPath).length ? ms.filter((m) => m.criticalPath) : ms
   const variance = vel.variance
@@ -147,7 +152,25 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
           </section>
 
           <section className="hud-frame cpath-panel" style={{ padding: 16 }}>
-            <p className="board-label">Critical path</p>
+            <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
+              <p className="board-label">Critical path</p>
+              {path.some((m) => m.status !== 'complete') ? (
+                <button
+                  className="btn-ghost"
+                  type="button"
+                  onClick={() => {
+                    const open = path.filter((m) => m.status !== 'complete')
+                    const current = open.find((m) => m.status === 'current') ?? open[0]
+                    setMoverCal({ pick: current ? [current.id] : open.map((m) => m.id) })
+                    setCalDate(current?.plannedEnd && current.plannedEnd >= todayISO() ? current.plannedEnd : todayISO())
+                    setCalStart('09:00')
+                    setCalDaily(false)
+                  }}
+                >
+                  Add key movers to calendar
+                </button>
+              ) : null}
+            </div>
             <p className="muted">
               Variance {variance ? `-${variance} days` : '0'} · Projected {projected} · Original {project.deadline}
             </p>
@@ -190,9 +213,23 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                         ) : null}
                       </div>
                       {m.status !== 'complete' && project.state !== 'complete' ? (
-                        <button className="chip" onClick={() => store.updateMilestone(m.id, { status: 'complete', actualEnd: todayISO() })}>
-                          Mark complete
-                        </button>
+                        <div className="row" style={{ marginTop: 6, flexWrap: 'wrap' }}>
+                          <button className="chip" type="button" onClick={() => store.updateMilestone(m.id, { status: 'complete', actualEnd: todayISO() })}>
+                            Mark complete
+                          </button>
+                          <button
+                            className="chip"
+                            type="button"
+                            onClick={() => {
+                              setMoverCal({ pick: [m.id] })
+                              setCalDate(m.plannedEnd && m.plannedEnd >= todayISO() ? m.plannedEnd : todayISO())
+                              setCalStart('09:00')
+                              setCalDaily(false)
+                            }}
+                          >
+                            Add
+                          </button>
+                        </div>
                       ) : null}
                       {ms.length > 1 && m.status !== 'complete' ? (
                         <select
@@ -429,6 +466,92 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
           </section>
         </aside>
       </div>
+
+      {moverCal ? (
+        <Modal title="Add key movers to calendar" onClose={() => setMoverCal(null)}>
+          <p className="muted">Places a time block on Calendar. Turn on daily system if it should also sit on Today to check off.</p>
+          {path.filter((m) => m.status !== 'complete').map((m) => (
+            <label key={m.id} className="row">
+              <input
+                type="checkbox"
+                checked={moverCal.pick.includes(m.id)}
+                onChange={(e) =>
+                  setMoverCal((cur) =>
+                    cur
+                      ? { pick: e.target.checked ? [...cur.pick, m.id] : cur.pick.filter((id) => id !== m.id) }
+                      : cur,
+                  )
+                }
+              />
+              {m.name}
+            </label>
+          ))}
+          <Field label="Date">
+            <DateField value={calDate} onChange={setCalDate} />
+          </Field>
+          <Field label="Start">
+            <input
+              className="input"
+              type="time"
+              value={stampTime(calStart) ?? ''}
+              onChange={(e) => setCalStart(stampTime(e.target.value) || e.target.value)}
+            />
+          </Field>
+          <label className="row">
+            <input type="checkbox" checked={calDaily} onChange={(e) => setCalDaily(e.target.checked)} />
+            Also add to my daily system (Today)
+          </label>
+          <div className="row" style={{ justifyContent: 'flex-end' }}>
+            <button className="btn-ghost" type="button" onClick={() => setMoverCal(null)}>
+              Cancel
+            </button>
+            <button
+              className="btn"
+              type="button"
+              onClick={() => {
+                const chosen = path.filter((m) => moverCal.pick.includes(m.id))
+                if (!chosen.length || !calDate) return
+                const start0 = minutesOf(stampTime(calStart) || '09:00')
+                chosen.forEach((m, i) => {
+                  const start = minutesToStamp(start0 + i * 60)
+                  const end = minutesToStamp(start0 + i * 60 + 60)
+                  const title = `${m.name} · ${project.name}`
+                  const notes = `Project ${project.id}`
+                  if (calDaily) {
+                    store.addTask({
+                      title,
+                      notes,
+                      due: calDate,
+                      dueTime: start,
+                      projectId: project.id,
+                      milestoneId: m.id,
+                      goalId: project.goalId,
+                      listId: 'calendar',
+                    })
+                  } else {
+                    store.addEvent(
+                      {
+                        title,
+                        date: calDate,
+                        start,
+                        end,
+                        allDay: false,
+                        notes,
+                      },
+                      { daily: false },
+                    )
+                  }
+                })
+                store.logProject(project.id, 'calendar', `Key movers placed on calendar${calDaily ? ' and Today' : ''}.`)
+                setMoverCal(null)
+                location.hash = '#/calendar'
+              }}
+            >
+              Add
+            </button>
+          </div>
+        </Modal>
+      ) : null}
 
       {plan ? (
         <Modal title="Execute plan" onClose={() => setPlan(false)}>
