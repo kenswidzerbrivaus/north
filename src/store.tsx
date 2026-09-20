@@ -336,6 +336,7 @@ export type Store = {
   updateCheckpoint: (id: string, patch: Partial<GoalCheckpoint>) => void
   addMover: (input: Omit<GoalMover, 'id'>) => string
   removeMover: (id: string) => void
+  setWeeklyMovers: (goalId: string, items: { entityType: GoalMover['entityType']; entityId: string }[]) => void
   addGoalReview: (input: Omit<GoalReview, 'id' | 'createdAt'> & { createdAt?: string }) => string
   addEnvAction: (input: Omit<EnvironmentAction, 'id' | 'done'> & { done?: boolean }) => string
   updateEnvAction: (id: string, patch: Partial<EnvironmentAction>) => void
@@ -828,6 +829,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return id
       },
       removeMover: (id) => patch((s) => ({ ...s, goalMovers: s.goalMovers.filter((m) => m.id !== id) })),
+      setWeeklyMovers: (goalId, items) =>
+        patch((s) => ({
+          ...s,
+          goalMovers: [
+            ...s.goalMovers.filter((m) => !(m.goalId === goalId && m.weekly)),
+            ...items.map((it, i) => ({
+              id: uid(),
+              goalId,
+              rank: i + 1,
+              entityType: it.entityType,
+              entityId: it.entityId,
+              weekly: true,
+            })),
+          ],
+        })),
       addGoalReview: (input) => {
         const id = uid()
         patch((s) => ({

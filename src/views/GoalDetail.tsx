@@ -39,7 +39,9 @@ export function GoalDetail({ goal, cycle, star, onBack }: { goal: Goal; cycle?: 
   const [plan, setPlan] = useState(false)
   const [review, setReview] = useState<'weekly' | 'day30' | 'day60' | 'complete' | null>(null)
   const [metric, setMetric] = useState(goal.currentValue ?? '')
-  const [pick, setPick] = useState<string[]>(weekly.map((m) => m.entityId))
+  const [pick, setPick] = useState<string[]>([])
+  const [planTitle, setPlanTitle] = useState('')
+  const [planErr, setPlanErr] = useState('')
   const [rv, setRv] = useState({ wins: '', misses: '', constraint: '', lessons: '', adjustments: '', actual: '' })
   const [ask, setAsk] = useState('')
   const [calOpen, setCalOpen] = useState(false)
@@ -219,14 +221,23 @@ export function GoalDetail({ goal, cycle, star, onBack }: { goal: Goal; cycle?: 
           <section className="hud-frame" style={{ padding: 16 }}>
             <div className="row" style={{ justifyContent: 'space-between' }}>
               <p className="board-label">This week</p>
-              <button className="btn-ghost" onClick={() => setPlan(true)}>
+              <button
+                className="btn-ghost"
+                onClick={() => {
+                  setPick(weekly.map((m) => m.entityId))
+                  setPlanTitle('')
+                  setPlanErr('')
+                  setPlan(true)
+                }}
+              >
                 Plan week
               </button>
             </div>
-            {(weekly.length ? weekly : movers.slice(0, 3)).map((m) => (
-              <p key={m.id} className="board-line">
+            {weekly.length === 0 ? <p className="today-empty">No weekly movers. Plan the week.</p> : null}
+            {weekly.map((m) => (
+              <button key={m.id} className="board-line" onClick={() => openMover(m)}>
                 {moverLabel(m)}
-              </p>
+              </button>
             ))}
           </section>
         </div>
@@ -343,19 +354,19 @@ export function GoalDetail({ goal, cycle, star, onBack }: { goal: Goal; cycle?: 
 
       {plan ? (
         <Modal title="Plan week" onClose={() => setPlan(false)}>
-          <p className="muted">Select 1–3 existing actions most likely to advance this goal.</p>
-          {tasks.filter((t) => !t.completed).slice(0, 16).map((t) => (
-            <label key={t.id} className="row">
+          <p className="muted">Select 1–3 movers. Check significant movers, open tasks, or type a new task.</p>
+          {movers.filter((m) => !m.weekly).map((m) => (
+            <label key={`m-${m.id}`} className="row">
               <input
                 type="checkbox"
-                checked={pick.includes(t.id)}
-                onChange={(e) => setPick((ids) => (e.target.checked ? [...ids, t.id] : ids.filter((x) => x !== t.id)))}
+                checked={pick.includes(m.entityId)}
+                onChange={(e) => setPick((ids) => (e.target.checked ? [...ids, m.entityId] : ids.filter((x) => x !== m.entityId)))}
               />
-              {t.title}
+              {moverLabel(m)} · {m.entityType}
             </label>
           ))}
           {projects.map((p) => (
-            <label key={p.id} className="row">
+            <label key={`p-${p.id}`} className="row">
               <input
                 type="checkbox"
                 checked={pick.includes(p.id)}
@@ -364,14 +375,46 @@ export function GoalDetail({ goal, cycle, star, onBack }: { goal: Goal; cycle?: 
               Project: {p.name}
             </label>
           ))}
+          {tasks.filter((t) => !t.completed).slice(0, 16).map((t) => (
+            <label key={`t-${t.id}`} className="row">
+              <input
+                type="checkbox"
+                checked={pick.includes(t.id)}
+                onChange={(e) => setPick((ids) => (e.target.checked ? [...ids, t.id] : ids.filter((x) => x !== t.id)))}
+              />
+              Task: {t.title}
+            </label>
+          ))}
+          <Field label="Or create a task for this week">
+            <input className="input" value={planTitle} onChange={(e) => setPlanTitle(e.target.value)} placeholder="e.g. Pray morning, noon, and night" />
+          </Field>
+          {planErr ? <p className="gate-error">{planErr}</p> : null}
           <button
+            type="button"
             className="btn"
             onClick={() => {
-              movers.filter((m) => m.weekly).forEach((m) => store.removeMover(m.id))
-              pick.slice(0, 3).forEach((id, i) => {
-                const isProj = projects.some((p) => p.id === id)
-                store.addMover({ goalId: goal.id, rank: i + 1, entityType: isProj ? 'project' : 'task', entityId: id, weekly: true })
-              })
+              const items: { entityType: 'project' | 'task' | 'habit' | 'milestone'; entityId: string }[] = []
+              const seen = new Set<string>()
+              const push = (entityType: (typeof items)[0]['entityType'], entityId: string) => {
+                if (!entityId || seen.has(entityId)) return
+                seen.add(entityId)
+                items.push({ entityType, entityId })
+              }
+              for (const id of pick) {
+                const mover = movers.find((m) => m.entityId === id)
+                if (mover) push(mover.entityType, id)
+                else if (projects.some((p) => p.id === id)) push('project', id)
+                else push('task', id)
+              }
+              if (planTitle.trim()) {
+                const id = store.addTask({ title: planTitle.trim(), listId: 'work', goalId: goal.id, due: todayISO() })
+                push('task', id)
+              }
+              if (!items.length) {
+                setPlanErr('Pick at least one mover or type a task.')
+                return
+              }
+              store.setWeeklyMovers(goal.id, items.slice(0, 3))
               setPlan(false)
             }}
           >
