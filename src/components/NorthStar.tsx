@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Field } from './ui'
 import { STAR_PALETTE } from '../lib/types'
 import type { GoalCycle, NorthStar as Star } from '../lib/types'
@@ -11,6 +11,7 @@ export function NorthStar({
   variant = 'command',
   onOpen,
   forceCreate = false,
+  onDragStart,
 }: {
   star?: Star
   cycle?: GoalCycle
@@ -18,6 +19,7 @@ export function NorthStar({
   variant?: 'card' | 'command'
   onOpen?: () => void
   forceCreate?: boolean
+  onDragStart?: (e: ReactPointerEvent) => void
 }) {
   const { state, addNorthStar, updateNorthStar } = useStore()
   const stars = state.northStars
@@ -36,7 +38,16 @@ export function NorthStar({
         data-star-id={star.id}
         style={{ ['--ns' as string]: star.color || '#6ee7ff' }}
       >
-        <button type="button" className="north-star-handle" aria-label="Drag to reorder">
+        <button
+          type="button"
+          className="north-star-handle"
+          aria-label="Drag to reorder"
+          onPointerDown={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onDragStart?.(e)
+          }}
+        >
           ⋮⋮
         </button>
         <button type="button" className="north-star-open" onClick={onOpen}>

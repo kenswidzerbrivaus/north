@@ -1701,8 +1701,12 @@ html.sepho .north-star {
   overflow: hidden;
 }
 
+.star-stack {
+  touch-action: pan-y;
+}
+
 .north-star-handle {
-  flex: 0 0 36px;
+  flex: 0 0 44px;
   border: 0;
   background: color-mix(in srgb, var(--ns) 22%, transparent);
   color: var(--ns);

@@ -568,62 +568,71 @@ function StarStack({
   cycleOf: (id: string) => GoalCycle | undefined
 }) {
   const listRef = useRef<HTMLDivElement>(null)
+  const slots = useRef<{ id: string; mid: number }[]>([])
+  const origin = useRef({ id: '', y: 0, moved: false })
   const [dragId, setDragId] = useState<string | null>(null)
-  const [overId, setOverId] = useState<string | null>(null)
-  const ids = stars.map((s) => s.id)
-  const move = (fromId: string, toId: string | null) => {
-    if (!toId || fromId === toId) return ids
-    const next = ids.filter((id) => id !== fromId)
-    const at = next.indexOf(toId)
-    next.splice(at < 0 ? next.length : at, 0, fromId)
+  const [order, setOrder] = useState(stars.map((s) => s.id))
+
+  useEffect(() => {
+    setOrder(stars.map((s) => s.id))
+  }, [stars])
+
+  const place = (y: number, id: string) => {
+    const rest = slots.current.filter((s) => s.id !== id)
+    let at = rest.findIndex((s) => y < s.mid)
+    if (at < 0) at = rest.length
+    const next = rest.map((s) => s.id)
+    next.splice(at, 0, id)
     return next
   }
-  const shown = (dragId && overId ? move(dragId, overId) : ids)
-    .map((id) => stars.find((s) => s.id === id))
-    .filter((n): n is Star => Boolean(n))
 
-  const hitId = (clientY: number) => {
-    const nodes = [...(listRef.current?.querySelectorAll<HTMLElement>('[data-star-id]') ?? [])]
-    const hit = nodes.find((el) => {
-      const r = el.getBoundingClientRect()
-      return clientY >= r.top && clientY <= r.bottom
-    })
-    return hit?.dataset.starId ?? nodes.at(-1)?.dataset.starId ?? null
-  }
+  const shown = order.map((id) => stars.find((s) => s.id === id)).filter((n): n is Star => Boolean(n))
 
   return (
     <div
       ref={listRef}
-      className="stack"
+      className="stack star-stack"
       onPointerMove={(e) => {
         if (!dragId) return
-        const over = hitId(e.clientY)
-        setOverId(over)
+        if (Math.abs(e.clientY - origin.current.y) > 6) origin.current.moved = true
+        const next = place(e.clientY, dragId)
+        setOrder((prev) => (prev.join() === next.join() ? prev : next))
       }}
-      onPointerUp={(e) => {
-        if (!dragId) return
-        const next = move(dragId, hitId(e.clientY) ?? overId)
-        if (next.join() !== ids.join()) onReorder(next)
+      onPointerUp={() => {
+        if (dragId && origin.current.moved) {
+          const base = stars.map((s) => s.id)
+          if (order.join() !== base.join()) onReorder(order)
+        }
         setDragId(null)
-        setOverId(null)
+        origin.current.moved = false
       }}
       onPointerCancel={() => {
         setDragId(null)
-        setOverId(null)
+        origin.current.moved = false
+        setOrder(stars.map((s) => s.id))
       }}
     >
       {shown.map((n) => (
-        <div
-          key={n.id}
-          className={dragId === n.id ? 'is-dragging' : overId === n.id && dragId ? 'is-drop' : ''}
-          onPointerDown={(e) => {
-            if (!(e.target as HTMLElement).closest('.north-star-handle')) return
-            e.preventDefault()
-            listRef.current?.setPointerCapture(e.pointerId)
-            setDragId(n.id)
-          }}
-        >
-          <NorthStar variant="card" star={n} cycle={cycleOf(n.id)} onOpen={() => !dragId && onOpen(n.id)} />
+        <div key={n.id} className={dragId === n.id ? 'is-dragging' : undefined}>
+          <NorthStar
+            variant="card"
+            star={n}
+            cycle={cycleOf(n.id)}
+            onOpen={() => {
+              if (origin.current.moved) return
+              onOpen(n.id)
+            }}
+            onDragStart={(e) => {
+              const nodes = [...(listRef.current?.querySelectorAll<HTMLElement>('[data-star-id]') ?? [])]
+              slots.current = nodes.map((el) => {
+                const r = el.getBoundingClientRect()
+                return { id: el.dataset.starId || '', mid: r.top + r.height / 2 }
+              })
+              origin.current = { id: n.id, y: e.clientY, moved: false }
+              listRef.current?.setPointerCapture(e.pointerId)
+              setDragId(n.id)
+            }}
+          />
         </div>
       ))}
     </div>
