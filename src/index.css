@@ -1914,10 +1914,6 @@ html.sepho .date-pop {
   opacity: 0.55;
 }
 
-.cpath-todo-add {
-  margin-top: 6px;
-}
-
 .cpath-dates {
   display: flex;
   flex-wrap: wrap;
