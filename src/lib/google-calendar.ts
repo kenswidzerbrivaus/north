@@ -106,6 +106,18 @@ export function isGoogleLinked() {
   return Boolean(readLink()?.email || readStoredToken()?.access)
 }
 
+export async function tokenHasDriveScope(access: string) {
+  try {
+    const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(access)}`)
+    if (!res.ok) return false
+    const data = (await res.json()) as { scope?: string }
+    const scope = data.scope ?? ''
+    return scope.includes('drive.appdata') || scope.includes('/auth/drive')
+  } catch {
+    return false
+  }
+}
+
 export function readStoredToken(): TokenBlob | null {
   try {
     const raw = localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY)

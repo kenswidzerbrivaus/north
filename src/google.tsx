@@ -12,6 +12,7 @@ import {
   prefersRedirectAuth,
   readLink,
   readToken,
+  tokenHasDriveScope,
   updateGoogleEvent,
 } from './lib/google-calendar'
 import { clearCloudFileId, pullCloudState, pushCloudState } from './lib/cloud-sync'
@@ -33,6 +34,7 @@ type GCal = {
   cloudAt: number
   cloudMsg: string
   cloudNeedsTap: boolean
+  driveBlocked: 'api' | 'scope' | null
   saveToGoogle: (event: Omit<CalEvent, 'id' | 'color'> & { id?: string; color?: string; googleId?: string }) => Promise<CalEvent | null>
   removeFromGoogle: (googleId: string) => Promise<void>
 }
@@ -53,6 +55,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
   const [cloudAt, setCloudAt] = useState(0)
   const [cloudMsg, setCloudMsg] = useState('')
   const [cloudNeedsTap, setCloudNeedsTap] = useState(false)
+  const [driveBlocked, setDriveBlocked] = useState<'api' | 'scope' | null>(null)
   const pushing = useRef(false)
   const cloudReady = useRef(false)
   const lastCloudSavedAt = useRef(0)
@@ -201,7 +204,14 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
   const syncCloud = useCallback(async () => {
     if (!clientId || !isGoogleLinked()) return
     try {
-      await ensureGoogleToken(clientId)
+      let token = await ensureGoogleToken(clientId)
+      if (!(await tokenHasDriveScope(token.access))) {
+        setDriveBlocked('scope')
+        setCloudMsg('Google Calendar is linked. Allow Drive so tasks, goals, notes, and projects sync.')
+        setCloudNeedsTap(true)
+        await ensureGoogleToken(clientId, true)
+        return
+      }
       const remote = await pullCloudState()
       const local = peekState()
       if (!local) return
@@ -233,12 +243,18 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       }
       setCloudAt(Date.now())
       setCloudNeedsTap(false)
+      setDriveBlocked(null)
       cloudReady.current = true
       queuedPush.current = null
     } catch (err) {
       const code = err instanceof Error ? err.message : ''
-      if (code === 'GOOGLE_SCOPES') {
-        setCloudMsg('Click Connect Google again and allow Drive access so phone and computer stay in sync.')
+      if (code === 'GOOGLE_DRIVE_API') {
+        setDriveBlocked('api')
+        setCloudMsg('Enable the Google Drive API so tasks, goals, notes, and projects can sync. Calendar already works.')
+        setCloudNeedsTap(true)
+      } else if (code === 'GOOGLE_SCOPES') {
+        setDriveBlocked('scope')
+        setCloudMsg('Google Calendar is linked. Allow Drive so tasks, goals, notes, and projects sync.')
         setCloudNeedsTap(true)
       } else if (code === 'GOOGLE_NEEDS_GESTURE' || code === 'GOOGLE_AUTH') {
         setCloudMsg('Tap to load work from your other device.')
@@ -443,8 +459,9 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       cloudAt,
       cloudMsg,
       cloudNeedsTap,
+      driveBlocked,
     }),
-    [cloudAt, cloudMsg, cloudNeedsTap, connect, connected, disconnect, email, error, events, loading, refresh, removeFromGoogle, saveToGoogle, syncCloud],
+    [cloudAt, cloudMsg, cloudNeedsTap, connect, connected, disconnect, driveBlocked, email, error, events, loading, refresh, removeFromGoogle, saveToGoogle, syncCloud],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

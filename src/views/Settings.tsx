@@ -280,7 +280,7 @@ export function Settings() {
                 </a>
               </li>
               <li>
-                Enable the{' '}
+                Enable both{' '}
                 <a
                   href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com?project=969056584851"
                   target="_blank"
@@ -288,7 +288,15 @@ export function Settings() {
                 >
                   Google Calendar API
                 </a>{' '}
-                for this project, then wait a minute.
+                and{' '}
+                <a
+                  href="https://console.cloud.google.com/apis/library/drive.googleapis.com?project=969056584851"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Google Drive API
+                </a>
+                . Calendar alone does not sync tasks, goals, notes, or projects. Wait a minute after enabling.
               </li>
               <li>
                 Open{' '}

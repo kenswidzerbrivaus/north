@@ -324,7 +324,21 @@ function Shell() {
             <Icon name="search" />
           </button>
         </div>
-        {gcal.cloudNeedsTap && !gcal.connected ? (
+        {gcal.driveBlocked === 'api' ? (
+          <a
+            className="btn"
+            style={{ marginBottom: 12 }}
+            href="https://console.cloud.google.com/apis/library/drive.googleapis.com?project=969056584851"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Enable Google Drive API so tasks, goals, notes, and projects sync
+          </a>
+        ) : gcal.driveBlocked === 'scope' ? (
+          <button className="btn" type="button" style={{ marginBottom: 12 }} onClick={() => void gcal.connect()}>
+            Allow Drive so tasks, goals, notes, and projects sync
+          </button>
+        ) : gcal.cloudNeedsTap && !gcal.connected ? (
           <button className="btn" type="button" style={{ marginBottom: 12 }} onClick={() => void gcal.connect()}>
             Google needs a moment — tap to finish sync
           </button>

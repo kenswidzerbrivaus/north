@@ -6,6 +6,12 @@ const FILE_NAME = 'sepho-state.json'
 
 export type CloudSnapshot = { v: 1; savedAt: number; state: State }
 
+function driveDenied(text: string) {
+  if (/has not been used|is disabled|DRIVE_API/i.test(text)) return 'GOOGLE_DRIVE_API'
+  if (/ACCESS_TOKEN_SCOPE_INSUFFICIENT|insufficientPermissions|insufficient authentication/i.test(text)) return 'GOOGLE_SCOPES'
+  return 'GOOGLE_SCOPES'
+}
+
 function tokenOrThrow() {
   const token = readToken()
   if (!token) throw new Error('GOOGLE_NEEDS_GESTURE')
@@ -22,7 +28,10 @@ async function driveJson<T>(url: string, init?: RequestInit): Promise<T> {
     },
   })
   if (res.status === 401) throw new Error('GOOGLE_AUTH')
-  if (res.status === 403) throw new Error('GOOGLE_SCOPES')
+  if (res.status === 403) {
+    const text = await res.text()
+    throw new Error(driveDenied(text))
+  }
   if (!res.ok) {
     const text = await res.text()
     throw new Error(text.slice(0, 160) || `Drive error ${res.status}`)
@@ -51,7 +60,10 @@ export async function pullCloudState(): Promise<CloudSnapshot | null> {
     headers: { Authorization: `Bearer ${token.access}` },
   })
   if (res.status === 401) throw new Error('GOOGLE_AUTH')
-  if (res.status === 403) throw new Error('GOOGLE_SCOPES')
+  if (res.status === 403) {
+    const text = await res.text()
+    throw new Error(driveDenied(text))
+  }
   if (res.status === 404) {
     localStorage.removeItem(FILE_KEY)
     return null
@@ -78,7 +90,10 @@ export async function pushCloudState(state: State, opts?: { keepalive?: boolean 
       body: json,
     })
     if (res.status === 401) throw new Error('GOOGLE_AUTH')
-    if (res.status === 403) throw new Error('GOOGLE_SCOPES')
+    if (res.status === 403) {
+      const text = await res.text()
+      throw new Error(driveDenied(text))
+    }
     if (res.status === 404) {
       localStorage.removeItem(FILE_KEY)
       return pushCloudState(state)
