@@ -1873,6 +1873,31 @@ html.sepho .date-pop {
   grid-template-columns: 1fr minmax(140px, 160px);
 }
 
+.cpath-todos {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cpath-todos li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.cpath-todos li.is-done span {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+.cpath-todo-add {
+  margin-top: 6px;
+}
+
 .cpath-dates {
   display: flex;
   flex-wrap: wrap;

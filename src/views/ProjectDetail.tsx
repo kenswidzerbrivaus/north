@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { DateField } from '../components/DateField'
-import { Field, Modal } from '../components/ui'
+import { Check, Field, Modal } from '../components/ui'
 import { minutesToStamp } from '../lib/cal-layout'
 import { formatShort, minutesOf, stampTime, todayISO } from '../lib/dates'
 import {
@@ -249,6 +249,35 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                           ))}
                         </select>
                       ) : null}
+                      <ul className="cpath-todos">
+                        {tasks
+                          .filter((t) => t.milestoneId === m.id)
+                          .map((t) => (
+                            <li key={t.id} className={t.completed ? 'is-done' : undefined}>
+                              <Check on={t.completed} onClick={() => store.toggleTask(t.id)} />
+                              <span>{t.title}</span>
+                            </li>
+                          ))}
+                      </ul>
+                      <form
+                        className="cpath-todo-add"
+                        onSubmit={(e) => {
+                          e.preventDefault()
+                          const fd = new FormData(e.currentTarget)
+                          const title = String(fd.get('todo') ?? '').trim()
+                          if (!title) return
+                          store.addTask({
+                            title,
+                            projectId: project.id,
+                            milestoneId: m.id,
+                            goalId: project.goalId,
+                            listId: state.lists.some((l) => l.id === 'work') ? 'work' : 'inbox',
+                          })
+                          e.currentTarget.reset()
+                        }}
+                      >
+                        <input className="input" name="todo" placeholder="Add a to-do under this step" />
+                      </form>
                     </div>
                     {i < path.length - 1 ? <div className="cpath-line">↓</div> : null}
                   </li>
