@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { AuthProvider, useAuth } from './auth/auth'
-import { GoogleCalendarProvider } from './google'
+import { GoogleCalendarProvider, useGoogleCalendar } from './google'
 import { Icon, type IconName } from './icons'
 import { todayISO } from './lib/dates'
 import { isTypingTarget, useRoute } from './lib/route'
@@ -90,6 +90,7 @@ function Gate() {
 
 function Shell() {
   const { state, addTask, addNote, addEvent } = useStore()
+  const gcal = useGoogleCalendar()
   const { signOut } = useAuth()
   const { running, start, pause, alert, dismissAlert } = useTimerControls()
   const [route, go] = useRoute()
@@ -323,6 +324,11 @@ function Shell() {
             <Icon name="search" />
           </button>
         </div>
+        {gcal.connected && gcal.cloudNeedsTap ? (
+          <button className="btn" type="button" style={{ marginBottom: 12 }} onClick={() => void gcal.syncCloud()}>
+            Load latest from your other device
+          </button>
+        ) : null}
         <Suspense fallback={<p className="muted">Loading…</p>}>{view}</Suspense>
       </main>
       <TravisHud />

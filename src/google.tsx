@@ -15,7 +15,7 @@ import { clearCloudFileId, pullCloudState, pushCloudState } from './lib/cloud-sy
 import { cloudAction } from './lib/sync-policy'
 import { addDays } from './lib/dates'
 import type { CalEvent } from './lib/types'
-import { onPersist, peekState, useStore } from './store'
+import { flushPersist, onPersist, peekState, useStore } from './store'
 
 type GCal = {
   connected: boolean
@@ -29,6 +29,7 @@ type GCal = {
   syncCloud: () => Promise<void>
   cloudAt: number
   cloudMsg: string
+  cloudNeedsTap: boolean
   saveToGoogle: (event: Omit<CalEvent, 'id' | 'color'> & { id?: string; color?: string; googleId?: string }) => Promise<CalEvent | null>
   removeFromGoogle: (googleId: string) => Promise<void>
 }
@@ -48,7 +49,11 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
   const loadingRef = useRef(false)
   const [cloudAt, setCloudAt] = useState(0)
   const [cloudMsg, setCloudMsg] = useState('')
+  const [cloudNeedsTap, setCloudNeedsTap] = useState(false)
   const pushing = useRef(false)
+  const cloudReady = useRef(false)
+  const queuedPush = useRef<ReturnType<typeof peekState>>(null)
+  const pushTimer = useRef(0)
 
   const markLinked = useCallback(() => {
     const linked = readLink()
@@ -166,6 +171,28 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
     }
   }, [clientId, connected, markLinked, refresh])
 
+  const pushNow = useCallback(async (s: NonNullable<ReturnType<typeof peekState>>, keepalive = false) => {
+    if (!readToken()) return
+    if (pushing.current) {
+      queuedPush.current = s
+      return
+    }
+    pushing.current = true
+    try {
+      await pushCloudState(s, { keepalive })
+      setCloudAt(Date.now())
+      setCloudMsg('Saved to Google')
+      setCloudNeedsTap(false)
+    } catch {
+      setCloudMsg('Waiting to sync…')
+    } finally {
+      pushing.current = false
+      const next = queuedPush.current
+      queuedPush.current = null
+      if (next) void pushNow(next)
+    }
+  }, [])
+
   const syncCloud = useCallback(async () => {
     if (!clientId || !isGoogleLinked()) return
     try {
@@ -185,17 +212,22 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
         setCloudMsg('In sync')
       }
       setCloudAt(Date.now())
+      setCloudNeedsTap(false)
+      cloudReady.current = true
+      queuedPush.current = null
     } catch (err) {
       const code = err instanceof Error ? err.message : ''
       if (code === 'GOOGLE_SCOPES') {
         setCloudMsg('Click Connect Google again and allow Drive access so phone and computer stay in sync.')
+        setCloudNeedsTap(true)
       } else if (code === 'GOOGLE_NEEDS_GESTURE' || code === 'GOOGLE_AUTH') {
-        setCloudMsg('Click Sync Google to resume device sync.')
+        setCloudMsg('Tap to load work from your other device.')
+        setCloudNeedsTap(true)
       } else {
         setCloudMsg(code || 'Cloud sync failed')
       }
     }
-  }, [clientId, hydrateFromCloud])
+  }, [clientId, hydrateFromCloud, pushNow])
 
   useEffect(() => {
     if (events.length) syncFromCalendar(events)
@@ -208,36 +240,43 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!clientId || !connected) return
-    const push = (s: Parameters<Parameters<typeof onPersist>[0]>[0]) => {
-      if (pushing.current || !readToken()) return
-      pushing.current = true
-      void pushCloudState(s)
-        .then(() => {
-          setCloudAt(Date.now())
-          setCloudMsg('Saved to Google')
-        })
-        .catch(() => {
-          setCloudMsg('Waiting to sync…')
-        })
-        .finally(() => {
-          pushing.current = false
-        })
-    }
-    let timer = 0
     const stop = onPersist((s) => {
-      window.clearTimeout(timer)
-      timer = window.setTimeout(() => push(s), 1600)
+      if (!cloudReady.current) {
+        queuedPush.current = s
+        return
+      }
+      window.clearTimeout(pushTimer.current)
+      pushTimer.current = window.setTimeout(() => void pushNow(s), 400)
     })
+    const leave = () => {
+      flushPersist()
+      window.clearTimeout(pushTimer.current)
+      const s = peekState()
+      if (s && cloudReady.current) void pushNow(s, true)
+    }
+    const resume = () => {
+      if (document.visibilityState === 'hidden') return
+      void syncCloud()
+    }
     const onVis = () => {
-      if (document.visibilityState === 'visible') void syncCloud()
+      if (document.visibilityState === 'hidden') leave()
+      else resume()
     }
     document.addEventListener('visibilitychange', onVis)
+    window.addEventListener('pagehide', leave)
+    window.addEventListener('pageshow', resume)
+    window.addEventListener('focus', resume)
+    window.addEventListener('online', resume)
     return () => {
       stop()
-      window.clearTimeout(timer)
+      window.clearTimeout(pushTimer.current)
       document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener('pagehide', leave)
+      window.removeEventListener('pageshow', resume)
+      window.removeEventListener('focus', resume)
+      window.removeEventListener('online', resume)
     }
-  }, [clientId, connected, syncCloud])
+  }, [clientId, connected, pushNow, syncCloud])
 
   const connect = useCallback(async () => {
     if (!clientId) {
@@ -317,8 +356,9 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       syncCloud,
       cloudAt,
       cloudMsg,
+      cloudNeedsTap,
     }),
-    [cloudAt, cloudMsg, connect, connected, disconnect, email, error, events, loading, refresh, removeFromGoogle, saveToGoogle, syncCloud],
+    [cloudAt, cloudMsg, cloudNeedsTap, connect, connected, disconnect, email, error, events, loading, refresh, removeFromGoogle, saveToGoogle, syncCloud],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

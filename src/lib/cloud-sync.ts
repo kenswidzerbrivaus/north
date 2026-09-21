@@ -62,7 +62,7 @@ export async function pullCloudState(): Promise<CloudSnapshot | null> {
   return { v: 1, savedAt: Number(data.savedAt) || 0, state: data.state }
 }
 
-export async function pushCloudState(state: State) {
+export async function pushCloudState(state: State, opts?: { keepalive?: boolean }) {
   const snapshot: CloudSnapshot = { v: 1, savedAt: state.savedAt ?? Date.now(), state }
   const json = JSON.stringify(snapshot)
   const token = tokenOrThrow()
@@ -70,6 +70,7 @@ export async function pushCloudState(state: State) {
   if (id) {
     const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(id)}?uploadType=media`, {
       method: 'PATCH',
+      keepalive: Boolean(opts?.keepalive),
       headers: {
         Authorization: `Bearer ${token.access}`,
         'Content-Type': 'application/json',

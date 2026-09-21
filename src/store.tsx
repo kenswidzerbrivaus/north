@@ -267,7 +267,7 @@ let latestState: State | null = null
 const persistListeners = new Set<(state: State) => void>()
 
 export function peekState() {
-  return latestState
+  return pending ?? latestState
 }
 
 export function onPersist(fn: (state: State) => void) {
@@ -275,7 +275,7 @@ export function onPersist(fn: (state: State) => void) {
   return () => persistListeners.delete(fn)
 }
 
-function flushPersist() {
+export function flushPersist() {
   if (persistTimer) {
     window.clearTimeout(persistTimer)
     persistTimer = 0
@@ -692,7 +692,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const pruned = next.tasks.filter((t) => !t.googleId || t.completed || t.due === today)
           if (pruned.length !== next.tasks.length) next = { ...next, tasks: pruned }
           return next
-        }),
+        }, true),
       dropGoogleItems: (googleId) =>
         patch((s) => ({
           ...s,

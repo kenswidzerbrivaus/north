@@ -21,6 +21,10 @@ test('cloud: unsaved local never overwrites cloud', () => {
   assert.equal(cloudAction(0, 0), 'push')
 })
 
+test('cloud: newer remote always wins when opening the other device', () => {
+  assert.equal(cloudAction(1_700_000_000_000, 1_700_000_000_500), 'pull')
+})
+
 test('google: iPhone time with seconds is valid RFC3339', () => {
   const body = toGoogleBody({
     title: 'Call',
