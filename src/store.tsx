@@ -769,7 +769,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         patch((s) => ({
           ...s,
           goals: [
-            { notes: '', progress: 0, status, owner: s.settings.name || 'Kens', ...input, id, title: input.title.trim(), createdAt: nowISO() },
+            { notes: '', progress: 0, status, owner: s.settings.name || 'Kens', ...input, id, title: input.title.trim(), createdAt: nowISO(), updatedAt: nowISO() },
             ...s.goals,
           ],
         }))
@@ -778,7 +778,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       updateGoal: (id, next) =>
         patch((s) => ({
           ...s,
-          goals: s.goals.map((g) => (g.id === id ? { ...g, ...next } : g)),
+          goals: s.goals.map((g) => (g.id === id ? { ...g, ...next, updatedAt: nowISO() } : g)),
         })),
       deleteGoal: (id) =>
         patch((s) => ({
@@ -1131,7 +1131,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       updateMilestone: (id, next) =>
         patch((s) => {
           const prev = s.milestones.find((m) => m.id === id)
-          let milestones = s.milestones.map((m) => (m.id === id ? { ...m, ...next } : m))
+          let milestones = s.milestones.map((m) => (m.id === id ? { ...m, ...next, updatedAt: nowISO() } : m))
           if (next.status === 'complete' && prev && prev.status !== 'complete') {
             const siblings = milestones.filter((m) => m.projectId === prev.projectId).sort((a, b) => a.sortOrder - b.sortOrder)
             const hasCurrent = siblings.some((m) => m.id !== id && (m.status === 'current' || m.status === 'blocked'))

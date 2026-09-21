@@ -146,6 +146,7 @@ export interface Goal {
   progress: number
   status: GoalStatus
   createdAt: string
+  updatedAt?: string
   cycleId?: string
   owner?: string
   category?: GoalCategory
@@ -315,6 +316,7 @@ export interface ProjectMilestone {
   sortOrder: number
   notes: string
   dependsOn: string[]
+  updatedAt?: string
 }
 
 export interface ProjectWorkstream {

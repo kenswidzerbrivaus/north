@@ -67,6 +67,54 @@ test('cloud merge keeps tasks from both devices', () => {
   assert.equal(merged.settings.googleClientId, 'local')
 })
 
+test('cloud merge keeps notes, goals, and projects from both devices', () => {
+  const empty = {
+    savedAt: 1,
+    tasks: [],
+    events: [],
+    lists: [],
+    habits: [],
+    habitLogs: [],
+    notes: [],
+    goals: [],
+    journal: [],
+    sessions: [],
+    settings: { googleClientId: '' },
+    projects: [],
+    milestones: [],
+    workstreams: [],
+    projectDecisions: [],
+    blockers: [],
+    waitingOnItems: [],
+    projectActivity: [],
+    goalCycles: [],
+    goalCheckpoints: [],
+    goalMovers: [],
+    goalReviews: [],
+    envActions: [],
+    northStars: [],
+    version: 1 as const,
+  }
+  const local = {
+    ...empty,
+    savedAt: 20,
+    notes: [{ id: 'n1', title: 'Phone note', body: 'x', pinned: false, createdAt: 't', updatedAt: '2026-09-21T12:00:00' }],
+    goals: [{ id: 'g1', title: 'Phone goal', notes: '', progress: 2, status: 'active' as const, createdAt: 't', updatedAt: '2026-09-21T12:00:00' }],
+    projects: [{ id: 'p1', name: 'Phone project', company: '', owner: '', objective: '', definitionOfDone: '', successMetric: '', why: '', constraints: '', problem: '', desiredOutcome: '', assumptions: '', killPivot: '', state: 'active' as const, priority: 0, deadline: '', createdAt: 't', updatedAt: '2026-09-21T12:00:00' }],
+  }
+  const remote = {
+    ...empty,
+    savedAt: 10,
+    notes: [{ id: 'n2', title: 'Web note', body: 'y', pinned: false, createdAt: 't', updatedAt: '2026-09-21T11:00:00' }],
+    goals: [{ id: 'g1', title: 'Old goal', notes: '', progress: 0, status: 'active' as const, createdAt: 't', updatedAt: '2026-09-21T10:00:00' }],
+    projects: [{ id: 'p2', name: 'Web project', company: '', owner: '', objective: '', definitionOfDone: '', successMetric: '', why: '', constraints: '', problem: '', desiredOutcome: '', assumptions: '', killPivot: '', state: 'active' as const, priority: 0, deadline: '', createdAt: 't', updatedAt: '2026-09-21T11:00:00' }],
+  }
+  const merged = mergeStates(local as never, remote as never)
+  assert.equal(merged.notes.length, 2)
+  assert.equal(merged.projects.length, 2)
+  assert.equal(merged.goals.find((g) => g.id === 'g1')?.title, 'Phone goal')
+})
+
 test('google: iPhone time with seconds is valid RFC3339', () => {
   const body = toGoogleBody({
     title: 'Call',
