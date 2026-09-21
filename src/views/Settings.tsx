@@ -3,6 +3,7 @@ import { useAuth } from '../auth/auth'
 import { useGoogleCalendar } from '../google'
 import { Field } from '../components/ui'
 import { Icon } from '../icons'
+import { INSTALL_URL, isIosDevice, isStandaloneApp } from '../lib/install'
 import { readXaiKey, writeXaiKey } from '../lib/travis'
 import { useStore } from '../store'
 
@@ -14,6 +15,8 @@ export function Settings() {
   const [msg, setMsg] = useState('')
   const [showGoogleHelp, setShowGoogleHelp] = useState(!s.googleClientId)
   const [xai, setXai] = useState(() => readXaiKey())
+  const installed = isStandaloneApp()
+  const onIphone = isIosDevice()
 
   const exportBackup = () => {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })
@@ -36,6 +39,66 @@ export function Settings() {
       </header>
 
       <div className="grid-2">
+        <section className="card stack">
+          <h2>Install on iPhone</h2>
+          {installed ? (
+            <p className="muted">Sepho is on this Home Screen. Open it from the cyan star icon — same data as the website when Google is connected.</p>
+          ) : (
+            <>
+              <p className="muted">
+                iPhone 17 Pro Max on iOS 27: install Sepho as a Home Screen app. One tap from the dock, no Safari chrome.
+              </p>
+              <a className="btn" href={INSTALL_URL}>
+                {INSTALL_URL.replace('https://', '')}
+              </a>
+              <div className="row" style={{ flexWrap: 'wrap' }}>
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      if (navigator.share) {
+                        await navigator.share({ title: 'Sepho', url: INSTALL_URL })
+                        return
+                      }
+                    } catch {
+                      /* cancelled */
+                    }
+                    try {
+                      await navigator.clipboard.writeText(INSTALL_URL)
+                      setMsg('Download link copied.')
+                    } catch {
+                      setMsg(INSTALL_URL)
+                    }
+                  }}
+                >
+                  {onIphone ? 'Add to Home Screen' : 'Copy download link'}
+                </button>
+                <button
+                  className="btn-ghost"
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(INSTALL_URL)
+                      setMsg('Download link copied.')
+                    } catch {
+                      setMsg(INSTALL_URL)
+                    }
+                  }}
+                >
+                  Copy link
+                </button>
+              </div>
+              <ol className="install-steps">
+                <li>Open the link in Safari on the iPhone.</li>
+                <li>Tap Share (square with the arrow).</li>
+                <li>Tap Add to Home Screen, then Add.</li>
+              </ol>
+              {msg ? <p className="kicker">{msg}</p> : null}
+            </>
+          )}
+        </section>
+
         <section className="card stack">
           <h2>Profile</h2>
           <p className="muted">Signed in as {username}</p>

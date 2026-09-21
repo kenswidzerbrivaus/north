@@ -1,16 +1,27 @@
 {
+  "id": "/",
   "name": "Sepho",
   "short_name": "Sepho",
   "description": "Executive command system.",
-  "start_url": "https://kenswidzerbrivaus.com/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#efe8db",
-  "theme_color": "#b4451a",
+  "orientation": "portrait",
+  "background_color": "#05080e",
+  "theme_color": "#05080e",
+  "lang": "en",
   "icons": [
     {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
+      "src": "/icons/sepho-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/sepho-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

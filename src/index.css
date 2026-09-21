@@ -2741,3 +2741,19 @@ html.sepho .date-pop {
     bottom: calc(78px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+.install-steps {
+  margin: 0;
+  padding-left: 1.25em;
+}
+
+.install-steps li {
+  margin: 8px 0;
+  line-height: 1.35;
+}
+
+@media (display-mode: standalone) {
+  html.sepho .top-mobile {
+    padding-top: max(14px, env(safe-area-inset-top, 0px));
+  }
+}
