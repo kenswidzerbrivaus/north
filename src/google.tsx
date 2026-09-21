@@ -40,7 +40,7 @@ type GCal = {
 const Ctx = createContext<GCal | null>(null)
 
 export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
-  const { state, syncFromCalendar, hydrateFromCloud } = useStore()
+  const { state, syncFromCalendar, hydrateFromCloud, setGoogleClientId } = useStore()
   const clientId = state.settings.googleClientId.trim() || linkedClientId()
   const [email, setEmail] = useState(() => readLink()?.email || '')
   const [events, setEvents] = useState<CalEvent[]>([])
@@ -250,8 +250,15 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
   }, [clientId, hydrateFromCloud, pushNow])
 
   useEffect(() => {
-    if (events.length) syncFromCalendar(events)
-  }, [events, syncFromCalendar])
+    if (clientId) return
+    void fetch(`/google-client.json?t=${Date.now()}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        const id = typeof j?.clientId === 'string' ? j.clientId.trim() : ''
+        if (id) setGoogleClientId(id)
+      })
+      .catch(() => {})
+  }, [clientId, setGoogleClientId])
 
   useEffect(() => {
     if (!clientId) return
@@ -269,7 +276,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
         void syncCloud()
         return
       }
-      if (prefersRedirectAuth() && !sessionStorage.getItem('sepho.oauth.bounce')) {
+      if (!sessionStorage.getItem('sepho.oauth.bounce') && prefersRedirectAuth()) {
         sessionStorage.setItem('sepho.oauth.bounce', '1')
         const silent = Boolean(readLink()?.email) && sessionStorage.getItem('sepho.oauth.error') !== 'interaction_required'
         beginGoogleRedirect(clientId, silent)
@@ -303,7 +310,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
     void syncCloud()
     const tick = window.setInterval(() => {
       if (document.visibilityState === 'visible' && readToken()) void syncCloud()
-    }, 4000)
+    }, 3000)
     return () => window.clearInterval(tick)
   }, [clientId, connected, syncCloud])
 
@@ -316,7 +323,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       }
       if ((s.savedAt ?? 0) <= lastCloudSavedAt.current) return
       window.clearTimeout(pushTimer.current)
-      pushTimer.current = window.setTimeout(() => void pushNow(s), 400)
+      pushTimer.current = window.setTimeout(() => void pushNow(s), 200)
     })
     const leave = () => {
       flushPersist()
@@ -370,6 +377,15 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     }
   }, [clientId, refresh, syncCloud])
+
+  useEffect(() => {
+    const onAuthed = () => {
+      if (!clientId || readToken()) return
+      void connect()
+    }
+    window.addEventListener('sepho-authed', onAuthed)
+    return () => window.removeEventListener('sepho-authed', onAuthed)
+  }, [clientId, connect])
 
   const disconnect = useCallback(() => {
     clearToken(true)

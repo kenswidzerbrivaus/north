@@ -230,7 +230,15 @@ export function Settings() {
               className="input"
               value={s.googleClientId}
               placeholder="xxxx.apps.googleusercontent.com"
-              onChange={(e) => updateSettings({ googleClientId: e.target.value.trim() })}
+              onChange={(e) => {
+                const id = e.target.value.trim()
+                updateSettings({ googleClientId: id })
+                try {
+                  if (id) localStorage.setItem('sepho.google.client', id)
+                } catch {
+                  /* ignore */
+                }
+              }}
               autoComplete="off"
             />
           </Field>

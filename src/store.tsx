@@ -226,7 +226,9 @@ function load(): State {
     }
     try {
       const gcid = new URLSearchParams(location.hash.split('?')[1] || '').get('gcid')
+      const stored = localStorage.getItem('sepho.google.client')
       if (gcid) loaded.settings.googleClientId = gcid
+      else if (!loaded.settings.googleClientId && stored) loaded.settings.googleClientId = stored
     } catch {
       /* ignore */
     }
@@ -352,6 +354,7 @@ export type Store = {
   upsertJournal: (date: string, patch: Partial<JournalEntry>) => void
   logSession: (session: Omit<FocusSession, 'id'>) => void
   updateSettings: (patch: Partial<Settings>) => void
+  setGoogleClientId: (id: string) => void
   importState: (data: unknown) => void
   hydrateFromCloud: (data: State, savedAt: number) => void
   resetState: () => void
@@ -933,6 +936,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           sessions: [{ id: uid(), ...session }, ...s.sessions].slice(0, 120),
         })),
       updateSettings: (next) => patch((s) => ({ ...s, settings: { ...s.settings, ...next } })),
+      setGoogleClientId: (id) =>
+        patch((s) => {
+          const clientId = id.trim()
+          if (!clientId || s.settings.googleClientId === clientId) return s
+          try {
+            localStorage.setItem('sepho.google.client', clientId)
+          } catch {
+            /* ignore */
+          }
+          return { ...s, settings: { ...s.settings, googleClientId: clientId } }
+        }, true),
       importState: (data) => {
         if (!data || typeof data !== 'object') throw new Error('Invalid backup')
         const d = data as Partial<State>

@@ -39,6 +39,7 @@ export function Login() {
     setBusy(true)
     setError('')
     const result = await signIn(username, password, remember)
+    if (result === 'ok') window.dispatchEvent(new Event('sepho-authed'))
     if (result === 'invalid') setError('That sign-in doesn’t match.')
     if (result === 'locked') setError('Too many attempts. Wait a moment.')
     setBusy(false)
