@@ -248,8 +248,56 @@ export function Calendar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const eventFoot = draft ? (
+    <div className="row" style={{ justifyContent: 'space-between', width: '100%' }}>
+      {draft.id ? (
+        <button
+          className="btn-danger"
+          type="button"
+          onClick={async () => {
+            if (draft.googleId && gcal.connected) {
+              try {
+                await gcal.removeFromGoogle(draft.googleId)
+              } catch (err) {
+                alert(err instanceof Error ? err.message : 'Could not delete from Google')
+                return
+              }
+            }
+            if (draft.id && !draft.id.startsWith('gcal:')) deleteEvent(draft.id)
+            if (draft.googleId) dropGoogleItems(draft.googleId)
+            setDraft(null)
+          }}
+        >
+          Delete
+        </button>
+      ) : (
+        <span />
+      )}
+      <div className="row">
+        {draft.id &&
+        !matchLinkedTask(state.tasks, {
+          id: draft.id,
+          title: draft.title ?? '',
+          notes: draft.notes ?? '',
+          date: draft.date ?? '',
+          allDay: Boolean(draft.allDay),
+          color: draft.color ?? '',
+          location: draft.location ?? '',
+          googleId: draft.googleId,
+        }) ? (
+          <button className="btn-ghost" type="button" onClick={() => void save({ daily: true })} disabled={busy}>
+            Add to daily system
+          </button>
+        ) : null}
+        <button className="btn" type="button" onClick={() => void save()} disabled={busy}>
+          {busy ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </div>
+  ) : null
+
   const form = draft ? (
-    <Modal title={draft.id ? 'Edit event' : 'New event'} onClose={() => setDraft(null)}>
+    <Modal title={draft.id ? 'Edit event' : 'New event'} onClose={() => setDraft(null)} foot={eventFoot}>
       <div className="stack">
         <Field label="Title">
           <input className="input" value={draft.title ?? ''} onChange={(e) => setDraft({ ...draft, title: e.target.value })} autoFocus />
@@ -304,50 +352,6 @@ export function Calendar() {
             </label>
           )
         ) : null}
-        <div className="row" style={{ justifyContent: 'space-between' }}>
-          {draft.id ? (
-            <button
-              className="btn-danger"
-              onClick={async () => {
-                if (draft.googleId && gcal.connected) {
-                  try {
-                    await gcal.removeFromGoogle(draft.googleId)
-                  } catch (err) {
-                    alert(err instanceof Error ? err.message : 'Could not delete from Google')
-                    return
-                  }
-                }
-                if (draft.id && !draft.id.startsWith('gcal:')) deleteEvent(draft.id)
-                if (draft.googleId) dropGoogleItems(draft.googleId)
-                setDraft(null)
-              }}
-            >
-              Delete
-            </button>
-          ) : (
-            <span />
-          )}
-          <div className="row">
-            {draft.id &&
-            !matchLinkedTask(state.tasks, {
-              id: draft.id,
-              title: draft.title ?? '',
-              notes: draft.notes ?? '',
-              date: draft.date ?? '',
-              allDay: Boolean(draft.allDay),
-              color: draft.color ?? '',
-              location: draft.location ?? '',
-              googleId: draft.googleId,
-            }) ? (
-              <button className="btn-ghost" type="button" onClick={() => void save({ daily: true })} disabled={busy}>
-                Add to daily system
-              </button>
-            ) : null}
-            <button className="btn" type="button" onClick={() => void save()} disabled={busy}>
-              {busy ? 'Saving…' : 'Save'}
-            </button>
-          </div>
-        </div>
       </div>
     </Modal>
   ) : null
@@ -361,6 +365,7 @@ export function Calendar() {
 
   return (
     <div>
+      {form}
       <header className="page-head">
         <div>
           <p className="kicker">{projectId ? `Project // ${state.projects.find((p) => p.id === projectId)?.name ?? 'filter'}` : 'Time-block schedule · drag to reschedule'}</p>
@@ -507,10 +512,7 @@ export function Calendar() {
           isDone={isDone}
         />
       ) : null}
-
       </div>
-
-      {form}
     </div>
   )
 }

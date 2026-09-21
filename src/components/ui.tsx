@@ -1,16 +1,19 @@
 import { useEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Icon } from '../icons'
 
 export function Modal({
   title,
   onClose,
   children,
+  foot,
   wide,
   persist,
 }: {
   title: string
   onClose: () => void
   children: ReactNode
+  foot?: ReactNode
   wide?: boolean
   persist?: boolean
 }) {
@@ -19,10 +22,25 @@ export function Modal({
       if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    const vv = window.visualViewport
+    const apply = () => {
+      if (!vv) return
+      document.documentElement.style.setProperty('--vv-top', `${vv.offsetTop}px`)
+      document.documentElement.style.setProperty('--vvh', `${vv.height}px`)
+    }
+    vv?.addEventListener('resize', apply)
+    vv?.addEventListener('scroll', apply)
+    apply()
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      vv?.removeEventListener('resize', apply)
+      vv?.removeEventListener('scroll', apply)
+      document.documentElement.style.removeProperty('--vv-top')
+      document.documentElement.style.removeProperty('--vvh')
+    }
   }, [onClose])
 
-  return (
+  const node = (
     <div className="modal-backdrop" onMouseDown={persist ? undefined : onClose}>
       <div
         className="modal"
@@ -39,9 +57,11 @@ export function Modal({
           </button>
         </header>
         <div className="modal-body">{children}</div>
+        {foot ? <footer className="modal-foot">{foot}</footer> : null}
       </div>
     </div>
   )
+  return createPortal(node, document.body)
 }
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
