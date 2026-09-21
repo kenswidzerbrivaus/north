@@ -43,7 +43,7 @@ export function DayClock({ compact }: { compact?: boolean }) {
     return (
       <div className={`day-clock is-compact ${heat}`} title="Time remaining today">
         <b>
-          {t.h}H {t.m}M {t.s}S
+          {t.h}h {t.m}m
         </b>
       </div>
     )

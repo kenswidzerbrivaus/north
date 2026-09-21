@@ -35,6 +35,9 @@ const NAV_ICON: Record<Route, IconName> = {
   settings: 'settings',
 }
 
+const MOBILE_TABS: Route[] = ['today', 'tasks', 'calendar', 'projects']
+const MORE_TABS: Route[] = ['goals', 'notes', 'habits', 'focus', 'journal', 'settings']
+
 function useResolvedTheme(mode: 'light' | 'dark' | 'system') {
   const [sysDark, setSysDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches)
   useEffect(() => {
@@ -95,6 +98,7 @@ function Shell() {
   const { running, start, pause, alert, dismissAlert } = useTimerControls()
   const [route, go] = useRoute()
   const [cmd, setCmd] = useState(false)
+  const [more, setMore] = useState(false)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const tabStrip = useRef<HTMLElement>(null)
@@ -318,7 +322,7 @@ function Shell() {
 
       <main className="main">
         <div className="top-mobile">
-          <strong className="display">Sepho</strong>
+          <strong className="display">{ROUTES.find((r) => r.id === route)?.label ?? 'Sepho'}</strong>
           <DayClock compact />
           <button className="btn-icon" onClick={() => setCmd(true)} aria-label="Search">
             <Icon name="search" />
@@ -348,13 +352,50 @@ function Shell() {
       <TravisHud />
 
       <nav className="bottom-nav" aria-label="Mobile" ref={tabStrip}>
-        {ROUTES.map((r) => (
-          <button key={r.id} data-on={route === r.id} onClick={() => go(r.id)}>
-            <Icon name={NAV_ICON[r.id]} size={18} />
-            {r.label}
+        {MOBILE_TABS.map((id) => (
+          <button
+            key={id}
+            data-on={route === id}
+            onClick={() => {
+              setMore(false)
+              go(id)
+            }}
+          >
+            <Icon name={NAV_ICON[id]} size={20} />
+            {ROUTES.find((r) => r.id === id)?.label}
           </button>
         ))}
+        <button
+          data-on={more || MORE_TABS.includes(route)}
+          onClick={() => setMore((v) => !v)}
+          aria-label="More"
+        >
+          <Icon name="more" size={20} />
+          More
+        </button>
       </nav>
+      {more ? (
+        <div className="more-sheet-backdrop" onClick={() => setMore(false)}>
+          <div className="more-sheet" onClick={(e) => e.stopPropagation()} role="menu">
+            <p className="kicker">More</p>
+            {MORE_TABS.map((id) => (
+              <button
+                key={id}
+                type="button"
+                role="menuitem"
+                data-on={route === id}
+                onClick={() => {
+                  setMore(false)
+                  go(id)
+                }}
+              >
+                <Icon name={NAV_ICON[id]} size={18} />
+                {ROUTES.find((r) => r.id === id)?.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {alert ? (
         <div className="timer-alert" role="alertdialog" aria-modal="true" aria-label="Timer finished">
