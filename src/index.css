@@ -1862,6 +1862,26 @@ html.sepho .date-pop {
   border-color: rgba(110, 231, 255, 0.4);
 }
 
+.cpath-edit-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.cpath-edit-block > .btn-ghost {
+  align-self: start;
+  width: max-content;
+}
+
+.cpath-edit-todo {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin-left: 32px;
+  align-items: center;
+}
+
 .cpath-edit-row {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) minmax(168px, 210px) auto;

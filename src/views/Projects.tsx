@@ -460,7 +460,11 @@ function CreateProject({
     const merged = saved ? { ...blank, ...saved, owner: saved.owner || ownerDefault } : blank
     return { ...merged, goalId: fromGoal || merged.goalId }
   })
-  const [steps, setSteps] = useState(() => loadDraft<{ steps: { name: string; date: string }[] }>('project')?.steps ?? [{ name: '', date: '' }, { name: '', date: '' }])
+  const [steps, setSteps] = useState(() => {
+    const raw = loadDraft<{ steps: { name: string; date: string; todos?: string[] }[] }>('project')?.steps
+    const rows = raw?.length ? raw : [{ name: '', date: '' }, { name: '', date: '' }]
+    return rows.map((s) => ({ name: s.name, date: s.date, todos: s.todos ?? [] }))
+  })
   const [missing, setMissing] = useState<string[]>([])
   const [resuming] = useState(() => Boolean(parkedProjectDraft(ownerDefault)))
   useEffect(() => {
@@ -494,7 +498,11 @@ function CreateProject({
     const definitionOfDone = read('definitionOfDone')
     const successMetric = read('successMetric')
     const pathSteps = steps
-      .map((s) => ({ name: s.name.trim(), plannedEnd: parseDeadline(s.date) }))
+      .map((s) => ({
+        name: s.name.trim(),
+        plannedEnd: parseDeadline(s.date),
+        todos: s.todos.map((t) => t.trim()).filter(Boolean),
+      }))
       .filter((s) => s.name)
     const blank = [
       !name && 'Project name',
@@ -586,33 +594,69 @@ function CreateProject({
           <input className="input" required autoComplete="off" {...bind('successMetric')} />
         </Field>
         <Field label="Critical path *">
-          <span className="muted">Each step needs a name and an accomplishment date.</span>
+          <span className="muted">Each step needs a name and an accomplishment date. Add to-dos under a step if you want extra work on it.</span>
           <div className="cpath-editor">
             {steps.map((step, i) => (
-              <div key={i} className="cpath-edit-row">
-                <span className="cpath-mark">{i === 0 ? '●' : '○'}</span>
-                <input
-                  className="input"
-                  placeholder={i === 0 ? 'Secure Financing' : 'Next milestone'}
-                  value={step.name}
-                  onChange={(e) => setSteps((rows) => rows.map((r, n) => (n === i ? { ...r, name: e.target.value } : r)))}
-                />
-                <DateField
-                  aria-label={`Accomplishment date for step ${i + 1}`}
-                  value={step.date}
-                  onChange={(date) => setSteps((rows) => rows.map((r, n) => (n === i ? { ...r, date } : r)))}
-                />
+              <div key={i} className="cpath-edit-block">
+                <div className="cpath-edit-row">
+                  <span className="cpath-mark">{i === 0 ? '●' : '○'}</span>
+                  <input
+                    className="input"
+                    placeholder={i === 0 ? 'Secure Financing' : 'Next milestone'}
+                    value={step.name}
+                    onChange={(e) => setSteps((rows) => rows.map((r, n) => (n === i ? { ...r, name: e.target.value } : r)))}
+                  />
+                  <DateField
+                    aria-label={`Accomplishment date for step ${i + 1}`}
+                    value={step.date}
+                    onChange={(date) => setSteps((rows) => rows.map((r, n) => (n === i ? { ...r, date } : r)))}
+                  />
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() =>
+                      setSteps((rows) => (rows.length === 1 ? [{ name: '', date: '', todos: [] }] : rows.filter((_, n) => n !== i)))
+                    }
+                  >
+                    ×
+                  </button>
+                </div>
+                {step.todos.map((todo, ti) => (
+                  <div key={ti} className="cpath-edit-todo">
+                    <input
+                      className="input"
+                      placeholder="To-do under this step"
+                      value={todo}
+                      onChange={(e) =>
+                        setSteps((rows) =>
+                          rows.map((r, n) =>
+                            n === i ? { ...r, todos: r.todos.map((t, k) => (k === ti ? e.target.value : t)) } : r,
+                          ),
+                        )
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={() =>
+                        setSteps((rows) => rows.map((r, n) => (n === i ? { ...r, todos: r.todos.filter((_, k) => k !== ti) } : r)))
+                      }
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
                 <button
                   type="button"
                   className="btn-ghost"
-                  onClick={() => setSteps((rows) => (rows.length === 1 ? [{ name: '', date: '' }] : rows.filter((_, n) => n !== i)))}
+                  onClick={() => setSteps((rows) => rows.map((r, n) => (n === i ? { ...r, todos: [...r.todos, ''] } : r)))}
                 >
-                  ×
+                  + Add a to-do under this step
                 </button>
               </div>
             ))}
           </div>
-          <button type="button" className="btn-ghost" onClick={() => setSteps((rows) => [...rows, { name: '', date: '' }])}>
+          <button type="button" className="btn-ghost" onClick={() => setSteps((rows) => [...rows, { name: '', date: '', todos: [] }])}>
             + Add step
           </button>
         </Field>

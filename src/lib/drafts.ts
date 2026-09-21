@@ -28,7 +28,7 @@ export function clearDraft(key: string) {
 
 export type ProjectDraft = {
   form?: Record<string, string>
-  steps?: { name: string; date: string }[]
+  steps?: { name: string; date: string; todos?: string[] }[]
 }
 
 export function summarizeProjectDraft(draft: ProjectDraft | null, ownerDefault = ''): { name: string } | null {
@@ -40,7 +40,7 @@ export function summarizeProjectDraft(draft: ProjectDraft | null, ownerDefault =
     if (k === 'owner' && t === ownerDefault) return false
     return true
   })
-  const stepWork = (draft.steps ?? []).some((s) => s.name.trim() || s.date.trim())
+  const stepWork = (draft.steps ?? []).some((s) => s.name.trim() || s.date.trim() || (s.todos ?? []).some((t) => t.trim()))
   if (!formWork && !stepWork) return null
   return { name: String(form.name ?? '').trim() || 'Untitled project' }
 }

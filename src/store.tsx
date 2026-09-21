@@ -352,7 +352,7 @@ export type Store = {
   addProject: (input: Partial<Project> & { name: string; owner: string; deadline: string; objective: string; definitionOfDone: string; successMetric: string }, opts?: { overrideCapacity?: boolean }) => string | { error: 'capacity' }
   updateProject: (id: string, patch: Partial<Project>) => void
   addMilestone: (projectId: string, name: string, extra?: Partial<ProjectMilestone>) => string
-  addMilestones: (projectId: string, steps: { name: string; plannedEnd?: string }[]) => void
+  addMilestones: (projectId: string, steps: { name: string; plannedEnd?: string; todos?: string[] }[]) => void
   updateMilestone: (id: string, patch: Partial<ProjectMilestone>) => void
   addWorkstream: (projectId: string, name: string, owner: string) => string
   addDecision: (input: Partial<ProjectDecision> & { projectId: string; title: string; owner: string }) => string
@@ -1064,11 +1064,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return id
       },
       addMilestones: (projectId, steps) => {
-        const clean = steps.map((n) => ({ name: n.name.trim(), plannedEnd: n.plannedEnd || undefined })).filter((n) => n.name)
+        const clean = steps
+          .map((n) => ({
+            name: n.name.trim(),
+            plannedEnd: n.plannedEnd || undefined,
+            todos: (n.todos ?? []).map((t) => t.trim()).filter(Boolean),
+          }))
+          .filter((n) => n.name)
         if (!clean.length) return
         patch((s) => {
           const existing = s.milestones.filter((m) => m.projectId === projectId).sort((a, b) => a.sortOrder - b.sortOrder)
           const owner = s.projects.find((p) => p.id === projectId)?.owner ?? ''
+          const listId = s.lists.some((l) => l.id === 'work') ? 'work' : 'inbox'
+          const t = nowISO()
           let prevId = existing.at(-1)?.id
           const added = clean.map((step, i) => {
             const id = uid()
@@ -1088,9 +1096,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             prevId = id
             return row
           })
+          const todos: Task[] = added.flatMap((row, i) =>
+            clean[i]!.todos.map((title) => ({
+              id: uid(),
+              title,
+              notes: '',
+              listId,
+              completed: false,
+              priority: 0,
+              createdAt: t,
+              updatedAt: t,
+              subtasks: [],
+              projectId,
+              milestoneId: row.id,
+            })),
+          )
           return {
             ...s,
             milestones: [...s.milestones, ...added],
+            tasks: todos.length ? [...todos, ...s.tasks] : s.tasks,
             projectActivity: [
               { id: uid(), projectId, type: 'milestone', description: `Critical path updated (+${added.length}).`, createdAt: nowISO() },
               ...s.projectActivity,
