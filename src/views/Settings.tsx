@@ -300,6 +300,10 @@ export function Settings() {
                 Authorized JavaScript origins: <code>https://kenswidzerbrivaus.com</code>,{' '}
                 <code>http://localhost:5173</code>, <code>http://127.0.0.1:5173</code>
               </li>
+              <li>
+                Authorized redirect URIs (required for the iPhone app): <code>https://kenswidzerbrivaus.com/oauth.html</code>,{' '}
+                <code>http://localhost:5173/oauth.html</code>
+              </li>
               <li>Paste the client ID above, then Connect again with that Gmail.</li>
             </ol>
           ) : null}

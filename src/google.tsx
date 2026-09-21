@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
+  adoptPendingToken,
+  beginGoogleRedirect,
   clearToken,
   createGoogleEvent,
   deleteGoogleEvent,
@@ -7,6 +9,7 @@ import {
   isGoogleLinked,
   linkedClientId,
   listGoogleEvents,
+  prefersRedirectAuth,
   readLink,
   readToken,
   updateGoogleEvent,
@@ -251,11 +254,56 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
   }, [events, syncFromCalendar])
 
   useEffect(() => {
+    if (!clientId) return
+    let cancelled = false
+    void (async () => {
+      const adopted = await adoptPendingToken(clientId)
+      if (cancelled) return
+      if (adopted) {
+        setConnected(true)
+        setEmail(adopted.email)
+        await syncCloud()
+        return
+      }
+      if (readToken()) {
+        void syncCloud()
+        return
+      }
+      if (prefersRedirectAuth() && !sessionStorage.getItem('sepho.oauth.bounce')) {
+        sessionStorage.setItem('sepho.oauth.bounce', '1')
+        const silent = Boolean(readLink()?.email) && sessionStorage.getItem('sepho.oauth.error') !== 'interaction_required'
+        beginGoogleRedirect(clientId, silent)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [clientId, syncCloud])
+
+  useEffect(() => {
+    if (!clientId) return
+    let armed = true
+    const onUse = () => {
+      if (readToken()) {
+        if (!cloudReady.current) void syncCloud()
+        return
+      }
+      if (!armed) return
+      armed = false
+      void ensureGoogleToken(clientId, true).then(() => syncCloud()).catch(() => {
+        armed = true
+      })
+    }
+    document.addEventListener('pointerdown', onUse, { capture: true })
+    return () => document.removeEventListener('pointerdown', onUse, { capture: true })
+  }, [clientId, syncCloud])
+
+  useEffect(() => {
     if (!clientId || !connected) return
     void syncCloud()
     const tick = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void syncCloud()
-    }, 8000)
+      if (document.visibilityState === 'visible' && readToken()) void syncCloud()
+    }, 4000)
     return () => window.clearInterval(tick)
   }, [clientId, connected, syncCloud])
 

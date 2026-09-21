@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sepho</title>
+  </head>
+  <body>
+    <script>
+      (function () {
+        var raw = (location.hash || '').replace(/^#/, '') + '&' + (location.search || '').replace(/^\?/, '')
+        var p = new URLSearchParams(raw)
+        var token = p.get('access_token')
+        var err = p.get('error')
+        var exp = Number(p.get('expires_in') || '3600')
+        try {
+          if (token) {
+            localStorage.setItem(
+              'north.gcal.pending',
+              JSON.stringify({ access: token, exp: Date.now() + Math.max(60, exp) * 1000, email: '' }),
+            )
+            sessionStorage.removeItem('sepho.oauth.error')
+          } else if (err) {
+            sessionStorage.setItem('sepho.oauth.error', err)
+          }
+        } catch (e) {}
+        location.replace('/#/today')
+      })()
+    </script>
+  </body>
+</html>

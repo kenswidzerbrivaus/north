@@ -24,6 +24,30 @@ const SCOPE = [
 ].join(' ')
 const TOKEN_KEY = 'north.gcal.token'
 const LINK_KEY = 'north.gcal.link'
+const PENDING_KEY = 'north.gcal.pending'
+
+export function oauthRedirectUri() {
+  return `${location.origin}/oauth.html`
+}
+
+export function prefersRedirectAuth() {
+  if (typeof navigator === 'undefined') return false
+  const nav = navigator as Navigator & { standalone?: boolean }
+  return Boolean(nav.standalone) || window.matchMedia('(display-mode: standalone)').matches || /iPhone|iPad|iPod/i.test(navigator.userAgent)
+}
+
+export function beginGoogleRedirect(clientId: string, silent = false) {
+  const u = new URL('https://accounts.google.com/o/oauth2/v2/auth')
+  u.searchParams.set('client_id', clientId)
+  u.searchParams.set('redirect_uri', oauthRedirectUri())
+  u.searchParams.set('response_type', 'token')
+  u.searchParams.set('scope', SCOPE)
+  u.searchParams.set('include_granted_scopes', 'true')
+  u.searchParams.set('prompt', silent ? 'none' : 'consent')
+  const hint = readLink()?.email || readStoredToken()?.email
+  if (hint) u.searchParams.set('login_hint', hint)
+  location.assign(u.toString())
+}
 
 type TokenBlob = { access: string; exp: number; email: string }
 type LinkBlob = { email: string; clientId?: string; linkedAt?: string }
@@ -247,10 +271,31 @@ export function requestGoogleToken(clientId: string, prompt: '' | 'consent' = 'c
   })
 }
 
+export async function adoptPendingToken(clientId: string): Promise<TokenBlob | null> {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY)
+    if (!raw) return null
+    localStorage.removeItem(PENDING_KEY)
+    const parsed = JSON.parse(raw) as TokenBlob
+    if (!parsed.access) return null
+    const seconds = Math.max(60, Math.round(((parsed.exp || Date.now()) - Date.now()) / 1000))
+    return await finishToken(parsed.access, seconds, clientId)
+  } catch {
+    return null
+  }
+}
+
 export function ensureGoogleToken(clientId: string, consent = false): Promise<TokenBlob> {
   const fresh = readToken()
   if (fresh && !consent) return Promise.resolve(fresh)
   if (tokenWait && !consent) return tokenWait
+  if (prefersRedirectAuth()) {
+    if (!consent) return Promise.reject(new Error('GOOGLE_NEEDS_GESTURE'))
+    beginGoogleRedirect(clientId, Boolean(readLink()?.email || readStoredToken()?.email) && sessionStorage.getItem('sepho.oauth.error') !== 'interaction_required')
+    return new Promise<TokenBlob>(() => {
+      /* page navigates away */
+    })
+  }
   tokenWait = requestGoogleToken(clientId, consent ? 'consent' : '').finally(() => {
     tokenWait = null
   })

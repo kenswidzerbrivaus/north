@@ -324,13 +324,9 @@ function Shell() {
             <Icon name="search" />
           </button>
         </div>
-        {!gcal.connected ? (
-          <button className="btn" type="button" style={{ marginBottom: 12 }} onClick={() => { location.hash = '#/settings' }}>
-            Connect Google to share this device with the website
-          </button>
-        ) : gcal.cloudNeedsTap ? (
-          <button className="btn" type="button" style={{ marginBottom: 12 }} onClick={() => void gcal.syncCloud()}>
-            Load latest from your other device
+        {gcal.cloudNeedsTap && !gcal.connected ? (
+          <button className="btn" type="button" style={{ marginBottom: 12 }} onClick={() => void gcal.connect()}>
+            Google needs a moment — tap to finish sync
           </button>
         ) : null}
         <Suspense fallback={<p className="muted">Loading…</p>}>{view}</Suspense>
