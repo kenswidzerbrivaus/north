@@ -3,7 +3,7 @@ import { useAuth } from '../auth/auth'
 import { useGoogleCalendar } from '../google'
 import { Field } from '../components/ui'
 import { Icon } from '../icons'
-import { INSTALL_URL, isIosDevice, isStandaloneApp } from '../lib/install'
+import { INSTALL_URL, installUrlWithClient, isIosDevice, isStandaloneApp } from '../lib/install'
 import { readXaiKey, writeXaiKey } from '../lib/travis'
 import { useStore } from '../store'
 
@@ -49,18 +49,19 @@ export function Settings() {
               Apple does not put Add to Home Screen inside Sepho. Use Safari’s Share menu. Chrome and in-app browsers will not show it.
             </p>
           )}
-          <a className="btn" href={INSTALL_URL}>
+          <a className="btn" href={installUrlWithClient(s.googleClientId)}>
             {INSTALL_URL.replace('https://', '')}
           </a>
           <button
             className="btn-ghost"
             type="button"
             onClick={async () => {
+              const link = installUrlWithClient(s.googleClientId)
               try {
-                await navigator.clipboard.writeText(INSTALL_URL)
+                await navigator.clipboard.writeText(link)
                 setMsg('Download link copied.')
               } catch {
-                setMsg(INSTALL_URL)
+                setMsg(link)
               }
             }}
           >

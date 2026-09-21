@@ -1,4 +1,12 @@
-export const INSTALL_URL = 'https://kenswidzerbrivaus.com/'
+export const INSTALL_ORIGIN = 'https://kenswidzerbrivaus.com/'
+
+export const INSTALL_URL = INSTALL_ORIGIN
+
+export function installUrlWithClient(clientId?: string) {
+  const id = clientId?.trim()
+  if (!id) return INSTALL_ORIGIN
+  return `${INSTALL_ORIGIN}#/settings?gcid=${encodeURIComponent(id)}`
+}
 
 export function isStandaloneApp() {
   if (typeof window === 'undefined') return false

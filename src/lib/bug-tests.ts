@@ -9,6 +9,7 @@ import { summarizeProjectDraft } from './drafts'
 import { fromGoogleEvent, toGoogleBody } from './google-calendar'
 import { metricNumber } from './goal-engine'
 import { daysLeft, depsReady, parseMilestoneLines } from './project-engine'
+import { mergeStates } from './cloud-merge'
 import { cloudAction } from './sync-policy'
 import type { CalEvent, ProjectMilestone, Task } from './types'
 
@@ -23,6 +24,47 @@ test('cloud: unsaved local never overwrites cloud', () => {
 
 test('cloud: newer remote always wins when opening the other device', () => {
   assert.equal(cloudAction(1_700_000_000_000, 1_700_000_000_500), 'pull')
+})
+
+test('cloud merge keeps tasks from both devices', () => {
+  const local = {
+    savedAt: 2,
+    tasks: [{ id: 'a', title: 'Phone', notes: '', listId: 'inbox', completed: true, priority: 0, createdAt: 't', updatedAt: '2026-09-21T12:00:00', subtasks: [] }],
+    events: [],
+    lists: [],
+    habits: [],
+    habitLogs: [],
+    notes: [],
+    goals: [],
+    journal: [],
+    sessions: [],
+    settings: { googleClientId: 'local' },
+    projects: [],
+    milestones: [],
+    workstreams: [],
+    projectDecisions: [],
+    blockers: [],
+    waitingOnItems: [],
+    projectActivity: [],
+    goalCycles: [],
+    goalCheckpoints: [],
+    goalMovers: [],
+    goalReviews: [],
+    envActions: [],
+    northStars: [],
+    version: 1 as const,
+  }
+  const remote = {
+    ...local,
+    savedAt: 1,
+    tasks: [{ id: 'b', title: 'Web', notes: '', listId: 'inbox', completed: false, priority: 0, createdAt: 't', updatedAt: '2026-09-21T11:00:00', subtasks: [] }],
+    settings: { googleClientId: 'remote' },
+  }
+  const merged = mergeStates(local as never, remote as never)
+  assert.equal(merged.tasks.length, 2)
+  assert.ok(merged.tasks.some((t) => t.id === 'a' && t.completed))
+  assert.ok(merged.tasks.some((t) => t.id === 'b'))
+  assert.equal(merged.settings.googleClientId, 'local')
 })
 
 test('google: iPhone time with seconds is valid RFC3339', () => {

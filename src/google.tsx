@@ -12,7 +12,7 @@ import {
   updateGoogleEvent,
 } from './lib/google-calendar'
 import { clearCloudFileId, pullCloudState, pushCloudState } from './lib/cloud-sync'
-import { cloudAction } from './lib/sync-policy'
+import { mergeStates, workFingerprint } from './lib/cloud-merge'
 import { addDays } from './lib/dates'
 import type { CalEvent } from './lib/types'
 import { flushPersist, onPersist, peekState, useStore } from './store'
@@ -201,20 +201,32 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       await ensureGoogleToken(clientId)
       const remote = await pullCloudState()
       const local = peekState()
-      const action = cloudAction(local?.savedAt ?? 0, remote ? remote.savedAt : null)
-      if (action === 'pull' && remote) {
-        hydrateFromCloud(remote.state, remote.savedAt)
-        lastCloudSavedAt.current = remote.savedAt
-        setCloudMsg('Loaded from Google')
-      } else if (action === 'push' && local) {
+      if (!local) return
+      if (!remote) {
         const stamped = { ...local, savedAt: local.savedAt || Date.now() }
-        if (!local.savedAt) hydrateFromCloud(stamped, stamped.savedAt ?? Date.now())
         await pushCloudState(stamped)
         lastCloudSavedAt.current = stamped.savedAt ?? Date.now()
         setCloudMsg('Saved to Google')
+      } else if (!(local.savedAt ?? 0)) {
+        hydrateFromCloud(remote.state, remote.savedAt)
+        lastCloudSavedAt.current = remote.savedAt
+        setCloudMsg('Loaded from Google')
       } else {
-        lastCloudSavedAt.current = Math.max(local?.savedAt ?? 0, remote?.savedAt ?? 0)
-        setCloudMsg('In sync')
+        const merged = mergeStates(local, remote.state)
+        const localFp = workFingerprint(local)
+        const remoteFp = workFingerprint(remote.state)
+        const mergedFp = workFingerprint(merged)
+        if (mergedFp !== remoteFp) {
+          const stamped = { ...merged, savedAt: Date.now() }
+          hydrateFromCloud(stamped, stamped.savedAt)
+          await pushCloudState(stamped)
+          lastCloudSavedAt.current = stamped.savedAt
+          setCloudMsg('Synced across devices')
+        } else {
+          if (mergedFp !== localFp) hydrateFromCloud(merged, remote.savedAt)
+          lastCloudSavedAt.current = Math.max(local.savedAt ?? 0, remote.savedAt)
+          setCloudMsg('In sync')
+        }
       }
       setCloudAt(Date.now())
       setCloudNeedsTap(false)
@@ -241,6 +253,10 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!clientId || !connected) return
     void syncCloud()
+    const tick = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void syncCloud()
+    }, 8000)
+    return () => window.clearInterval(tick)
   }, [clientId, connected, syncCloud])
 
   useEffect(() => {

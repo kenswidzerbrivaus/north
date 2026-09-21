@@ -224,6 +224,12 @@ function load(): State {
       const linkedId = readLink()?.clientId
       if (linkedId) loaded.settings.googleClientId = linkedId
     }
+    try {
+      const gcid = new URLSearchParams(location.hash.split('?')[1] || '').get('gcid')
+      if (gcid) loaded.settings.googleClientId = gcid
+    } catch {
+      /* ignore */
+    }
     const needsSeed =
       !Array.isArray(parsed.projects) ||
       (parsed.projects.length === 0 &&
