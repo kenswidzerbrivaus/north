@@ -78,6 +78,14 @@ export function Calendar() {
   }, [year, month, gcal.connected, gcal.refresh])
 
   useEffect(() => {
+    if (view !== 'day') return
+    const hour = Math.min(22, Math.max(6, new Date().getHours() - 1))
+    window.setTimeout(() => {
+      document.querySelector(`[data-cal-hour="${hour}"]`)?.scrollIntoView({ block: 'start', behavior: 'instant' as ScrollBehavior })
+    }, 40)
+  }, [view, cursor])
+
+  useEffect(() => {
     setEdits((prev) => {
       let next: typeof prev | null = null
       for (const [key, patch] of Object.entries(prev)) {
@@ -376,6 +384,7 @@ export function Calendar() {
       {gcal.error ? <p className="muted" style={{ marginTop: -12 }}>{gcal.error}</p> : null}
       {gcal.connected && gcal.email ? <p className="muted" style={{ marginTop: -8 }}>Showing Google Calendar for {gcal.email}</p> : null}
 
+      <div className={view === 'day' ? 'cal-day-shell' : undefined}>
       <div className="cal-toolbar">
         <div className="row">
           <button className="btn-icon" onClick={() => shift(-1)} aria-label="Previous">
@@ -396,6 +405,29 @@ export function Calendar() {
           ))}
         </div>
       </div>
+      {view === 'day' ? (
+        <div className="cal-day-strip" role="tablist" aria-label="Jump to day">
+          {[-3, -2, -1, 0, 1, 2, 3].map((off) => {
+            const d = addDays(cursor, off)
+            const iso = toISO(d)
+            return (
+              <button
+                key={iso}
+                type="button"
+                role="tab"
+                className="cal-day-chip"
+                aria-selected={off === 0}
+                data-on={off === 0}
+                data-today={iso === today ? 'true' : 'false'}
+                onClick={() => setCursor(d)}
+              >
+                <span>{d.toLocaleDateString(undefined, { weekday: 'short' })}</span>
+                <strong>{d.getDate()}</strong>
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
 
       {view === 'month' ? (
         <div className="cal-month">
@@ -418,7 +450,14 @@ export function Calendar() {
               <button
                 key={c.iso}
                 className={`cal-cell${c.inMonth ? '' : ' out'}${c.iso === today ? ' today' : ''}`}
-                onClick={() => openNew(c.iso)}
+                onClick={() => {
+                  if (window.matchMedia('(max-width: 860px)').matches) {
+                    setCursor(c.date)
+                    setView('day')
+                    return
+                  }
+                  openNew(c.iso)
+                }}
               >
                 <span className="day-num">{c.date.getDate()}</span>
                 {mark ? <span className="kicker">{mark}</span> : null}
@@ -448,6 +487,7 @@ export function Calendar() {
           days={view === 'day' ? [cursor] : weekDays}
           events={allEvents}
           onSlot={openNew}
+          onSwipeDay={view === 'day' ? shift : undefined}
           onEvent={(e) => setDraft({ ...e })}
           onMove={(e, date, start, end) => {
             setMoved((m) => ({ ...m, [e.id]: { date, start, end } }))
@@ -467,6 +507,8 @@ export function Calendar() {
           isDone={isDone}
         />
       ) : null}
+
+      </div>
 
       {form}
     </div>
@@ -490,6 +532,7 @@ function WeekGrid({
   onSlot,
   onEvent,
   onMove,
+  onSwipeDay,
   gap,
   isDone,
 }: {
@@ -498,11 +541,13 @@ function WeekGrid({
   onSlot: (iso: string, start?: string, end?: string) => void
   onEvent: (e: CalEvent) => void
   onMove: (e: CalEvent, date: string, start: string, end: string) => void
+  onSwipeDay?: (dir: number) => void
   gap: { date: string; startMin: number; endMin: number } | null
   isDone: (e: CalEvent) => boolean
 }) {
   const [drag, setDrag] = useState<DragState | null>(null)
   const boardRef = useRef<HTMLDivElement>(null)
+  const swipeRef = useRef<{ x: number; y: number; id: number } | null>(null)
 
   const readSlot = (clientX: number, clientY: number, duration: number) => {
     const el = document.elementFromPoint(clientX, clientY)?.closest('[data-cal-day]') as HTMLElement | null
@@ -514,26 +559,45 @@ function WeekGrid({
 
   const onPointerMove = (e: ReactPointerEvent) => {
     if (!drag || e.pointerId !== drag.pointerId) return
-    const moved = Math.hypot(e.clientX - drag.originX, e.clientY - drag.originY)
-    if (!drag.dragging && moved < 8) return
+    const dx = e.clientX - drag.originX
+    const dy = e.clientY - drag.originY
+    const moved = Math.hypot(dx, dy)
+    if (!drag.dragging) {
+      if (onSwipeDay && Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)) {
+        setDrag(null)
+        return
+      }
+      if (moved < 12) return
+      boardRef.current?.setPointerCapture(e.pointerId)
+    }
     const slot = readSlot(e.clientX, e.clientY, drag.duration)
     if (!slot) return
     setDrag((d) => (d ? { ...d, dragging: true, iso: slot.iso, start: slot.start } : d))
   }
 
   const onPointerUp = (e: ReactPointerEvent) => {
-    if (!drag || e.pointerId !== drag.pointerId) return
-    if (drag.dragging) {
-      const end = drag.start + drag.duration
-      onMove(drag.event, drag.iso, minutesToStamp(drag.start), minutesToStamp(end))
-    } else onEvent(drag.event)
-    setDrag(null)
+    const swipe = swipeRef.current
+    swipeRef.current = null
+    const dx = swipe ? e.clientX - swipe.x : 0
+    const dy = swipe ? e.clientY - swipe.y : 0
+    const swiped = Boolean(onSwipeDay && swipe && Math.abs(dx) > 56 && Math.abs(dx) > Math.abs(dy) * 1.3)
+    if (drag && e.pointerId === drag.pointerId) {
+      if (drag.dragging) {
+        const end = drag.start + drag.duration
+        onMove(drag.event, drag.iso, minutesToStamp(drag.start), minutesToStamp(end))
+      } else if (!swiped) onEvent(drag.event)
+      setDrag(null)
+    }
+    if (swiped) onSwipeDay!(dx < 0 ? 1 : -1)
   }
 
   return (
     <div
       ref={boardRef}
-      className="week-board"
+      className={`week-board${days.length === 1 ? ' is-day' : ''}`}
+      onPointerDown={(e) => {
+        swipeRef.current = { x: e.clientX, y: e.clientY, id: e.pointerId }
+      }}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
@@ -582,8 +646,6 @@ function WeekGrid({
             drag={drag}
             onDragStart={(ev, block) => {
               ev.stopPropagation()
-              ev.preventDefault()
-              boardRef.current?.setPointerCapture(ev.pointerId)
               setDrag({
                 event: block.event,
                 duration: block.end - block.start,

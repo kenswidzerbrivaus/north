@@ -644,6 +644,7 @@ form.row .input {
   border-right: 1px solid var(--line);
   cursor: pointer;
   min-width: 0;
+  touch-action: pan-y;
 }
 
 .hour-line {
@@ -674,8 +675,61 @@ form.row .input {
   gap: 1px;
   line-height: 1.2;
   cursor: grab;
-  touch-action: none;
+  touch-action: pan-y;
   user-select: none;
+}
+
+.event-block.is-dragging {
+  touch-action: none;
+  cursor: grabbing;
+}
+
+.cal-day-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  margin: -6px 0 12px;
+  padding: 2px 0 8px;
+}
+
+.cal-day-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.cal-day-chip {
+  flex: 1 0 auto;
+  min-width: 44px;
+  min-height: 52px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+}
+
+.cal-day-chip span {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.cal-day-chip strong {
+  font-size: 16px;
+}
+
+.cal-day-chip[data-on='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.cal-day-chip[data-today='true'] strong {
+  color: var(--accent);
 }
 
 .event-block.is-dragging {
@@ -2567,6 +2621,24 @@ html.sepho .date-pop {
   }
   .week-grid {
     max-height: 62vh;
+  }
+  .week-board.is-day .week-grid {
+    max-height: none;
+    overflow: visible;
+  }
+  .cal-toolbar .btn-icon {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .cal-day-strip {
+    position: sticky;
+    top: calc(46px + env(safe-area-inset-top, 0px));
+    z-index: 18;
+    margin-left: -12px;
+    margin-right: -12px;
+    padding: 8px 12px;
+    background: rgba(5, 8, 14, 0.92);
+    backdrop-filter: blur(16px);
   }
   .cal-cell {
     min-height: 64px;
