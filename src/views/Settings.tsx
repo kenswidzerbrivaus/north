@@ -40,63 +40,44 @@ export function Settings() {
 
       <div className="grid-2">
         <section className="card stack">
-          <h2>Install on iPhone</h2>
+          <p className="kicker">iPhone</p>
+          <h2>Add to Home Screen</h2>
           {installed ? (
-            <p className="muted">Sepho is on this Home Screen. Open it from the cyan star icon — same data as the website when Google is connected.</p>
+            <p className="muted">This window is already the Home Screen app. Look for the cyan star on the dock.</p>
           ) : (
-            <>
-              <p className="muted">
-                iPhone 17 Pro Max on iOS 27: install Sepho as a Home Screen app. One tap from the dock, no Safari chrome.
-              </p>
-              <a className="btn" href={INSTALL_URL}>
-                {INSTALL_URL.replace('https://', '')}
-              </a>
-              <div className="row" style={{ flexWrap: 'wrap' }}>
-                <button
-                  className="btn"
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      if (navigator.share) {
-                        await navigator.share({ title: 'Sepho', url: INSTALL_URL })
-                        return
-                      }
-                    } catch {
-                      /* cancelled */
-                    }
-                    try {
-                      await navigator.clipboard.writeText(INSTALL_URL)
-                      setMsg('Download link copied.')
-                    } catch {
-                      setMsg(INSTALL_URL)
-                    }
-                  }}
-                >
-                  {onIphone ? 'Add to Home Screen' : 'Copy download link'}
-                </button>
-                <button
-                  className="btn-ghost"
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(INSTALL_URL)
-                      setMsg('Download link copied.')
-                    } catch {
-                      setMsg(INSTALL_URL)
-                    }
-                  }}
-                >
-                  Copy link
-                </button>
-              </div>
-              <ol className="install-steps">
-                <li>Open the link in Safari on the iPhone.</li>
-                <li>Tap Share (square with the arrow).</li>
-                <li>Tap Add to Home Screen, then Add.</li>
-              </ol>
-              {msg ? <p className="kicker">{msg}</p> : null}
-            </>
+            <p className="muted">
+              Apple does not put Add to Home Screen inside Sepho. Use Safari’s Share menu. Chrome and in-app browsers will not show it.
+            </p>
           )}
+          <a className="btn" href={INSTALL_URL}>
+            {INSTALL_URL.replace('https://', '')}
+          </a>
+          <button
+            className="btn-ghost"
+            type="button"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(INSTALL_URL)
+                setMsg('Download link copied.')
+              } catch {
+                setMsg(INSTALL_URL)
+              }
+            }}
+          >
+            Copy download link
+          </button>
+          <p className="kicker">Do this in Safari</p>
+          <ol className="install-steps">
+            <li>{onIphone ? 'You are on the iPhone — stay in Safari.' : 'On the iPhone, open this site in Safari (not Chrome).'}</li>
+            <li>Tap the Share button at the bottom of Safari (square with an arrow pointing up).</li>
+            <li>
+              Scroll the share sheet and tap <strong>Add to Home Screen</strong>, then Add.
+            </li>
+            <li>
+              If Add to Home Screen is missing: tap <strong>Edit Actions</strong> or <strong>More</strong>, turn on Add to Home Screen, then tap it.
+            </li>
+          </ol>
+          {msg ? <p className="kicker">{msg}</p> : null}
         </section>
 
         <section className="card stack">
