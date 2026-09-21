@@ -52,6 +52,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
   const [cloudNeedsTap, setCloudNeedsTap] = useState(false)
   const pushing = useRef(false)
   const cloudReady = useRef(false)
+  const lastCloudSavedAt = useRef(0)
   const queuedPush = useRef<ReturnType<typeof peekState>>(null)
   const pushTimer = useRef(0)
 
@@ -180,6 +181,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
     pushing.current = true
     try {
       await pushCloudState(s, { keepalive })
+      lastCloudSavedAt.current = s.savedAt ?? Date.now()
       setCloudAt(Date.now())
       setCloudMsg('Saved to Google')
       setCloudNeedsTap(false)
@@ -202,13 +204,16 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       const action = cloudAction(local?.savedAt ?? 0, remote ? remote.savedAt : null)
       if (action === 'pull' && remote) {
         hydrateFromCloud(remote.state, remote.savedAt)
+        lastCloudSavedAt.current = remote.savedAt
         setCloudMsg('Loaded from Google')
       } else if (action === 'push' && local) {
         const stamped = { ...local, savedAt: local.savedAt || Date.now() }
         if (!local.savedAt) hydrateFromCloud(stamped, stamped.savedAt ?? Date.now())
         await pushCloudState(stamped)
+        lastCloudSavedAt.current = stamped.savedAt ?? Date.now()
         setCloudMsg('Saved to Google')
       } else {
+        lastCloudSavedAt.current = Math.max(local?.savedAt ?? 0, remote?.savedAt ?? 0)
         setCloudMsg('In sync')
       }
       setCloudAt(Date.now())
@@ -245,6 +250,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
         queuedPush.current = s
         return
       }
+      if ((s.savedAt ?? 0) <= lastCloudSavedAt.current) return
       window.clearTimeout(pushTimer.current)
       pushTimer.current = window.setTimeout(() => void pushNow(s), 400)
     })
@@ -252,7 +258,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       flushPersist()
       window.clearTimeout(pushTimer.current)
       const s = peekState()
-      if (s && cloudReady.current) void pushNow(s, true)
+      if (s && cloudReady.current && (s.savedAt ?? 0) > lastCloudSavedAt.current) void pushNow(s, true)
     }
     const resume = () => {
       if (document.visibilityState === 'hidden') return
