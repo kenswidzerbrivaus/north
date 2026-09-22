@@ -11,6 +11,7 @@ import { metricNumber } from './goal-engine'
 import { daysLeft, depsReady, parseMilestoneLines } from './project-engine'
 import { mergeStates } from './cloud-merge'
 import { cloudAction } from './sync-policy'
+import { countWords, escapeHtml, looksLikeHtml, plainPreview, sanitizeNoteHtml, toEditorHtml } from './note-body'
 import type { CalEvent, ProjectMilestone, Task } from './types'
 
 test('cloud: unsaved local never overwrites cloud', () => {
@@ -304,4 +305,23 @@ test('calendar overlapping blocks get side-by-side columns', () => {
   assert.equal(b.cols, 2)
   assert.notEqual(a.col, b.col)
   assert.equal(c.cols, 1)
+})
+
+test('note body wraps plain text and keeps html', () => {
+  assert.equal(looksLikeHtml('<p>Hi</p>'), true)
+  assert.equal(looksLikeHtml('just text < 3'), false)
+  assert.equal(toEditorHtml(''), '<p><br></p>')
+  assert.match(toEditorHtml('hello\n\nworld'), /<p>hello<\/p>/)
+  assert.match(toEditorHtml('hello\nworld'), /hello<br>world/)
+  assert.equal(toEditorHtml('<h1>A</h1>'), '<h1>A</h1>')
+  assert.equal(plainPreview('<p>Hello <b>world</b></p>'), 'Hello world')
+  assert.equal(countWords('one two three').words, 3)
+  assert.equal(countWords('<p></p>').words, 0)
+  assert.equal(escapeHtml('<x>'), '&lt;x&gt;')
+})
+
+test('note sanitize strips scripts without executing', () => {
+  const out = sanitizeNoteHtml('ok<script>alert(1)</script><b>hi</b>')
+  assert.equal(out.includes('script'), false)
+  assert.equal(out.includes('alert'), false)
 })
