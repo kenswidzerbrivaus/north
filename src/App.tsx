@@ -330,8 +330,7 @@ function Shell() {
         </div>
         {gcal.driveBlocked === 'api' ? (
           <a
-            className="btn"
-            style={{ marginBottom: 12 }}
+            className="btn cloud-callout"
             href="https://console.cloud.google.com/apis/library/drive.googleapis.com?project=969056584851"
             target="_blank"
             rel="noreferrer"
@@ -339,11 +338,11 @@ function Shell() {
             Enable Google Drive API so tasks, goals, notes, and projects sync
           </a>
         ) : gcal.driveBlocked === 'scope' ? (
-          <button className="btn" type="button" style={{ marginBottom: 12 }} onClick={() => void gcal.connect()}>
+          <button className="btn cloud-callout" type="button" onClick={() => void gcal.connect()}>
             Allow Drive so tasks, goals, notes, and projects sync
           </button>
         ) : gcal.cloudNeedsTap && !gcal.connected ? (
-          <button className="btn" type="button" style={{ marginBottom: 12 }} onClick={() => void gcal.connect()}>
+          <button className="btn cloud-callout" type="button" onClick={() => void gcal.connect()}>
             Google needs a moment — tap to finish sync
           </button>
         ) : null}
@@ -378,21 +377,33 @@ function Shell() {
         <div className="more-sheet-backdrop" onClick={() => setMore(false)}>
           <div className="more-sheet" onClick={(e) => e.stopPropagation()} role="menu">
             <p className="kicker">More</p>
-            {MORE_TABS.map((id) => (
-              <button
-                key={id}
-                type="button"
-                role="menuitem"
-                data-on={route === id}
-                onClick={() => {
-                  setMore(false)
-                  go(id)
-                }}
-              >
-                <Icon name={NAV_ICON[id]} size={18} />
-                {ROUTES.find((r) => r.id === id)?.label}
-              </button>
-            ))}
+            <div className="more-grid">
+              {MORE_TABS.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="menuitem"
+                  data-on={route === id}
+                  onClick={() => {
+                    setMore(false)
+                    go(id)
+                  }}
+                >
+                  <Icon name={NAV_ICON[id]} size={20} />
+                  {ROUTES.find((r) => r.id === id)?.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="more-signout"
+              onClick={() => {
+                setMore(false)
+                signOut()
+              }}
+            >
+              Sign out
+            </button>
           </div>
         </div>
       ) : null}

@@ -134,7 +134,7 @@ export function Projects() {
 
   return (
     <div>
-      <header className="page-head">
+      <header className="page-head page-head-route">
         <div>
           <p className="kicker">Projects // Command center</p>
           <h1>Projects</h1>
@@ -194,7 +194,7 @@ export function Projects() {
 
       <div className="proj-cc">
         <div>
-          <div className="row" style={{ marginBottom: 14, flexWrap: 'wrap' }}>
+          <div className="row chip-rail" style={{ marginBottom: 14 }}>
             {(['all', 'active', 'at_risk', 'blocked', 'backlog', 'complete'] as Filter[]).map((f) => (
               <button key={f} className="chip" data-on={filter === f} onClick={() => setFilter(f)}>
                 {f.replace('_', ' ')}

@@ -1384,10 +1384,15 @@ html.sepho .daily-box {
 
 .board-head {
   grid-area: head;
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px 20px;
   padding: 16px 18px;
+}
+
+.board-head .today-quote {
+  grid-column: 1 / -1;
 }
 
 .board-head-main {
@@ -2379,7 +2384,7 @@ html.sepho .date-pop {
       'command';
   }
   .board-head {
-    flex-wrap: wrap;
+    flex-wrap: unset;
   }
   .today-ledger {
     grid-template-columns: 1fr;
@@ -3308,5 +3313,290 @@ html.sepho .date-pop {
 @media (display-mode: standalone) {
   html.sepho .top-mobile {
     padding-top: max(14px, env(safe-area-inset-top, 0px));
+  }
+}
+
+.cloud-callout {
+  margin-bottom: 12px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.3;
+}
+
+@media (max-width: 860px) {
+  .cloud-callout {
+    display: block;
+    width: 100%;
+    margin: 0 0 10px;
+    padding: 8px 10px;
+    min-height: 36px;
+    font-size: 13px;
+  }
+
+  .page-head-route {
+    justify-content: flex-end;
+  }
+  .page-head-route h1 {
+    display: none;
+  }
+  .page-head-route > div:first-child:not(:has(.muted)):not(:has(button)) {
+    display: none;
+  }
+  .page-head-route:not(:has(button)):not(:has(.btn)):not(:has(.muted)):not(:has(.row)) {
+    display: none;
+  }
+  .page-head {
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+  .page-head > .btn,
+  .page-head > button {
+    margin-left: auto;
+  }
+  .today-dow {
+    white-space: nowrap;
+    font-size: 11px;
+  }
+  .proj-metric:last-child {
+    grid-column: 1 / -1;
+  }
+  .page-head .row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    max-width: 100%;
+  }
+  .page-head-route .row {
+    flex: 1;
+  }
+  .page-head-route .row > button {
+    flex: 1;
+    justify-content: center;
+  }
+  .page-head .row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .board {
+    grid-template-areas:
+      'head'
+      'now'
+      'capture'
+      'queue'
+      'morning'
+      'systems'
+      'command';
+    gap: 8px;
+  }
+  .split {
+    min-height: 0;
+    align-content: start;
+  }
+  .board-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    flex-direction: unset;
+    align-items: start;
+    padding: 10px 12px;
+    gap: 8px 12px;
+  }
+  .board-head .today-quote {
+    grid-column: 1 / -1;
+  }
+  .today-num {
+    font-size: 34px;
+  }
+  .board-hello {
+    font-size: 13px;
+    margin-top: 2px;
+  }
+  .sepho-sys {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+  }
+  .board-readouts {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    width: auto;
+  }
+  .today-focus {
+    padding: 4px 8px;
+    text-align: right;
+  }
+  .today-focus b {
+    font-size: 18px;
+  }
+  .today-quote {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 13px;
+    margin-top: 6px;
+    max-width: none;
+  }
+  .today-quote cite {
+    display: inline;
+    margin: 0 0 0 8px;
+  }
+
+  .board-now,
+  .board-queue,
+  .board-morning,
+  .board-systems,
+  .board-capture,
+  .board-command .hud-frame {
+    padding: 10px 12px;
+  }
+  .board-command {
+    gap: 8px;
+  }
+  .now-clock {
+    font-size: 28px;
+  }
+  .now-star {
+    font-size: 16px;
+  }
+  .morning-mark {
+    font-size: 22px;
+    text-underline-offset: 4px;
+  }
+  .capture-kinds {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .capture-kinds::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-rail {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    align-content: center;
+    overflow-x: auto;
+    gap: 6px;
+    margin: 0 -16px 10px;
+    padding: 0 16px 8px;
+    min-height: 0;
+    height: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .filter-rail::-webkit-scrollbar {
+    display: none;
+  }
+  .filter-rail .list-btn,
+  .filter-rail .btn-ghost {
+    flex: 0 0 auto;
+    align-self: center;
+    white-space: nowrap;
+    height: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    padding: 0 12px;
+    border: 1px solid rgba(110, 231, 255, 0.28);
+    border-radius: 2px;
+  }
+  .filter-rail .kicker {
+    flex: 0 0 auto;
+    margin: 0 2px 0 8px !important;
+    align-self: center;
+    padding: 0;
+  }
+
+  .chip-rail {
+    flex-wrap: nowrap !important;
+    align-items: center;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-bottom: 10px;
+  }
+  .chip-rail .chip {
+    white-space: nowrap;
+    height: 36px;
+    flex: 0 0 auto;
+  }
+  .chip-rail::-webkit-scrollbar {
+    display: none;
+  }
+  .chip-rail .select {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 140px;
+  }
+
+  .cal-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    margin-bottom: 10px;
+    scrollbar-width: none;
+  }
+  .cal-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+  .cal-toolbar .row {
+    flex-wrap: nowrap;
+  }
+
+  .more-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .more-grid button {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    min-height: 72px;
+    padding: 10px 8px;
+    text-align: center;
+    border: 1px solid rgba(110, 231, 255, 0.18);
+    border-radius: 12px;
+    font-size: 13px;
+    width: 100%;
+  }
+  .more-sheet .more-signout {
+    margin-top: 10px;
+    min-height: 44px;
+    width: 100%;
+    justify-content: center;
+    font-size: 15px;
+    border: 1px solid rgba(110, 231, 255, 0.18);
+  }
+
+  .ring-wrap svg {
+    width: 200px;
+    height: 200px;
+  }
+  .clock b {
+    font-size: 36px;
+  }
+
+  .empty {
+    padding: 24px 8px;
+  }
+
+  .daily-page {
+    padding: 4px 0 12px;
+  }
+  .daily-hero h2 {
+    font-size: 22px;
+  }
+
+  .habit-card .row {
+    flex-wrap: wrap;
+  }
+
+  .proj-cap {
+    margin-bottom: 10px;
   }
 }

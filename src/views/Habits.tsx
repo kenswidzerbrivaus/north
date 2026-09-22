@@ -29,7 +29,7 @@ export function Habits() {
 
   return (
     <div>
-      <header className="page-head">
+      <header className="page-head page-head-route">
         <div>
           <p className="kicker">Show up, quietly</p>
           <h1>Habits</h1>

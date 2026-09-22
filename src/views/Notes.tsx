@@ -44,7 +44,7 @@ export function Notes() {
 
   return (
     <div className={`notes-page${note ? ' is-writing' : ''}`}>
-      <header className="page-head">
+      <header className="page-head page-head-route">
         <div>
           <p className="kicker">Scratch, then keep</p>
           <h1>Notes</h1>

@@ -160,9 +160,6 @@ export function Today({ go }: { go: (r: Route) => void }) {
               <p className="board-hello">{sephoHello(state.settings.name)}</p>
             </div>
           </div>
-          <p className="today-quote">
-            “{quote.text}” <cite>// {quote.by}</cite>
-          </p>
         </div>
         <div className="board-readouts">
           <div>
@@ -175,6 +172,9 @@ export function Today({ go }: { go: (r: Route) => void }) {
             <b>{formatRemain(timer.remaining)}</b>
           </button>
         </div>
+        <p className="today-quote">
+          “{quote.text}” <cite>// {quote.by}</cite>
+        </p>
       </header>
 
       <section className="board-morning hud-frame">

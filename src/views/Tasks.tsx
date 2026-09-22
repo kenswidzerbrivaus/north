@@ -65,7 +65,7 @@ export function Tasks() {
 
   return (
     <div>
-      <header className="page-head">
+      <header className="page-head page-head-route">
         <div>
           <p className="kicker">Capture and close</p>
           <h1>Tasks{projectId ? ' // project' : ''}</h1>
@@ -78,7 +78,7 @@ export function Tasks() {
       </header>
 
       <div className="split">
-        <aside className="list-col">
+        <aside className="list-col filter-rail">
           {(['today', 'inbox', 'upcoming', 'all', 'done'] as Filter[]).map((f) => (
             <button key={f} className="list-btn" data-on={filter === f && listId === 'all'} onClick={() => { setFilter(f); setListId('all') }}>
               {f[0].toUpperCase() + f.slice(1)}

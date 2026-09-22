@@ -31,7 +31,7 @@ export function Settings() {
 
   return (
     <div>
-      <header className="page-head">
+      <header className="page-head page-head-route">
         <div>
           <p className="kicker">Make it yours</p>
           <h1>Settings</h1>

@@ -8,7 +8,7 @@ export function Journal() {
 
   return (
     <div>
-      <header className="page-head">
+      <header className="page-head page-head-route">
         <div>
           <p className="kicker">Daily update</p>
           <h1>Journal</h1>
