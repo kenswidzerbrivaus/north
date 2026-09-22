@@ -1399,6 +1399,7 @@ html.sepho .note-foot {
   color: #7aa8b8;
 }
 
+html.sepho .daily-write .note-write,
 html.sepho .daily-page,
 html.sepho .daily-box {
   background: rgba(4, 16, 26, 0.55);
@@ -2604,6 +2605,32 @@ html.sepho .date-pop {
 
 .daily-box-tall {
   min-height: 220px;
+}
+
+.daily-write .note-write {
+  border: 1px solid var(--line-strong);
+  background: color-mix(in srgb, var(--bg-2) 55%, transparent);
+  padding: 8px 10px 6px;
+}
+
+.note-write.is-compact .note-tools {
+  position: static;
+  top: auto;
+  margin: 0 0 8px;
+  padding: 4px 0;
+}
+
+.note-write.is-compact .note-body {
+  min-height: 120px;
+  padding-bottom: 12px;
+}
+
+.note-write.is-compact.is-tall .note-body {
+  min-height: 200px;
+}
+
+.note-write.is-compact .note-foot-hint {
+  display: none;
 }
 
 .daily-affirm {

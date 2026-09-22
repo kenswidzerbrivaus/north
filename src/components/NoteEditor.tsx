@@ -79,10 +79,16 @@ export function NoteEditor({
   noteId,
   value,
   onChange,
+  compact,
+  tall,
+  placeholder,
 }: {
   noteId: string
   value: string
   onChange: (html: string) => void
+  compact?: boolean
+  tall?: boolean
+  placeholder?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const rangeRef = useRef<Range | null>(null)
@@ -248,7 +254,7 @@ export function NoteEditor({
   }
 
   return (
-    <div className="note-write">
+    <div className={`note-write${compact ? ' is-compact' : ''}${tall ? ' is-tall' : ''}`}>
       <div className="note-tools" role="toolbar" aria-label="Writing tools">
         <Tool on={marks.bold} label="Bold" shortcut="⌘B" onPointerDown={hold} onClick={() => act(() => run('bold'))}>
           <b>B</b>
@@ -417,7 +423,7 @@ export function NoteEditor({
         role="textbox"
         aria-multiline
         aria-label="Note body"
-        data-placeholder="Write — headings, lists, checks, quotes…"
+        data-placeholder={placeholder ?? 'Write — headings, lists, checks, quotes…'}
         data-empty="true"
         spellCheck
         suppressContentEditableWarning

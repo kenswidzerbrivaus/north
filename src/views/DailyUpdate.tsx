@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { NoteEditor } from '../components/NoteEditor'
 import { formatLong } from '../lib/dates'
 import { quoteForDate } from '../lib/quotes'
 import type { JournalEntry, Workout } from '../lib/types'
@@ -115,34 +116,38 @@ export function DailyUpdate({ date }: { date: string }) {
         </section>
       </div>
 
-      <section>
+      <section className="daily-write">
         <p className="daily-label">Goals I am currently working towards</p>
-        <textarea
-          className="daily-box"
-          rows={4}
-          placeholder="What you’re building toward."
+        <NoteEditor
+          noteId={`${date}:goals`}
           value={draft.currentGoals}
-          onChange={(e) => setDraft({ ...draft, currentGoals: e.target.value })}
+          onChange={(currentGoals) => setDraft((d) => ({ ...d, currentGoals }))}
+          compact
+          placeholder="What you’re building toward."
         />
       </section>
 
       <div className="daily-split">
-        <section>
+        <section className="daily-write">
           <p className="daily-label">What actions did I take today to help achieve my goals</p>
-          <textarea
-            className="daily-box daily-box-tall"
-            placeholder="What you actually did."
+          <NoteEditor
+            noteId={`${date}:today`}
             value={draft.actionsToday}
-            onChange={(e) => setDraft({ ...draft, actionsToday: e.target.value })}
+            onChange={(actionsToday) => setDraft((d) => ({ ...d, actionsToday }))}
+            compact
+            tall
+            placeholder="What you actually did."
           />
         </section>
-        <section>
+        <section className="daily-write">
           <p className="daily-label">What actions will I take tomorrow to help achieve my goals</p>
-          <textarea
-            className="daily-box daily-box-tall"
-            placeholder="The next move."
+          <NoteEditor
+            noteId={`${date}:tomorrow`}
             value={draft.actionsTomorrow}
-            onChange={(e) => setDraft({ ...draft, actionsTomorrow: e.target.value })}
+            onChange={(actionsTomorrow) => setDraft((d) => ({ ...d, actionsTomorrow }))}
+            compact
+            tall
+            placeholder="The next move."
           />
         </section>
       </div>
