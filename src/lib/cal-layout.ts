@@ -57,6 +57,14 @@ export function minutesToStamp(total: number) {
 
 export const SNAP_MIN = 5
 
+export function nowMinutes(at = new Date()) {
+  return at.getHours() * 60 + at.getMinutes() + at.getSeconds() / 60 + at.getMilliseconds() / 60_000
+}
+
+export function nowLineTop(hourPx: number, at = new Date()) {
+  return (nowMinutes(at) / 60) * hourPx
+}
+
 export function snapStart(pxFromTop: number, hourPx: number, duration: number) {
   const slotPx = hourPx / (60 / SNAP_MIN)
   const raw = Math.round(pxFromTop / slotPx) * SNAP_MIN

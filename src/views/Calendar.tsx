@@ -19,7 +19,7 @@ import {
 } from '../lib/dates'
 import { eventIsDone } from '../lib/cal-done'
 import { takeCalGap } from '../lib/cal-gap'
-import { layoutTimedEvents, minutesToStamp, snapStart } from '../lib/cal-layout'
+import { layoutTimedEvents, minutesToStamp, nowLineTop, nowMinutes, snapStart } from '../lib/cal-layout'
 import { checkpointDate } from '../lib/goal-engine'
 import { friendlyGoogleError } from '../lib/google-calendar'
 import { hashParam } from '../lib/route'
@@ -661,11 +661,24 @@ function WeekGrid({
             }}
             gap={gap}
             isDone={isDone}
+            nowLine={days.length === 1 && toISO(d) === todayISO()}
           />
         ))}
       </div>
     </div>
   )
+}
+
+function useLiveNow(on: boolean) {
+  const [at, setAt] = useState(() => new Date())
+  useEffect(() => {
+    if (!on) return
+    const tick = () => setAt(new Date())
+    const id = window.setInterval(tick, 1000)
+    tick()
+    return () => window.clearInterval(id)
+  }, [on])
+  return at
 }
 
 function DayColumn({
@@ -676,6 +689,7 @@ function DayColumn({
   onDragStart,
   gap,
   isDone,
+  nowLine,
 }: {
   iso: string
   events: CalEvent[]
@@ -684,10 +698,14 @@ function DayColumn({
   onDragStart: (ev: ReactPointerEvent, block: ReturnType<typeof layoutTimedEvents>[number]) => void
   gap: { date: string; startMin: number; endMin: number } | null
   isDone: (e: CalEvent) => boolean
+  nowLine?: boolean
 }) {
   const blocks = layoutTimedEvents(events)
   const inGap = (min: number) => Boolean(gap && iso === gap.date && min >= gap.startMin && min < gap.endMin)
   const ghost = drag?.dragging && drag.iso === iso ? drag : null
+  const at = useLiveNow(Boolean(nowLine))
+  const nowTop = nowLine ? nowLineTop(HOUR_PX, at) : 0
+  const nowStamp = minutesToStamp(Math.floor(nowMinutes(at)))
   return (
     <div
       className="day-col"
@@ -705,6 +723,12 @@ function DayColumn({
       {HOURS.map((h) => (
         <div key={h} className={`hour-line${inGap(h * 60) ? ' is-gap' : ''}`} style={{ height: HOUR_PX }} />
       ))}
+      {nowLine ? (
+        <div className="now-line" style={{ top: nowTop }} aria-label={`Now ${formatTime(nowStamp)}`}>
+          <span className="now-line-dot" />
+          <span className="now-line-time">{formatTime(nowStamp)}</span>
+        </div>
+      ) : null}
       {blocks.map((b) => {
         const moving = drag?.event.id === b.event.id && drag.dragging
         const startMin = moving && drag.iso === iso ? drag.start : b.start

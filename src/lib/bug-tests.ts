@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { eventIsDone } from './cal-done'
 import { sephoCopy } from './rebrand'
-import { layoutTimedEvents } from './cal-layout'
+import { layoutTimedEvents, nowLineTop, nowMinutes } from './cal-layout'
 import { matchLinkedTask } from './cal-sync'
 import { parseDeadline, stampTime } from './dates'
 import { summarizeProjectDraft } from './drafts'
@@ -305,6 +305,14 @@ test('calendar overlapping blocks get side-by-side columns', () => {
   assert.equal(b.cols, 2)
   assert.notEqual(a.col, b.col)
   assert.equal(c.cols, 1)
+})
+
+test('calendar now line sits at the current minute on the day grid', () => {
+  const at = new Date(2026, 8, 22, 15, 17, 0)
+  assert.equal(nowMinutes(at), 15 * 60 + 17)
+  assert.equal(nowLineTop(60, at), 15 * 60 + 17)
+  assert.equal(nowLineTop(56, new Date(2026, 8, 22, 0, 0, 0)), 0)
+  assert.equal(nowLineTop(56, new Date(2026, 8, 22, 12, 0, 0)), 12 * 56)
 })
 
 test('note body wraps plain text and keeps html', () => {

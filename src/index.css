@@ -657,6 +657,41 @@ form.row .input {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
+.now-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  pointer-events: none;
+  border-top: 2px solid #6ee7ff;
+  box-shadow: 0 0 10px rgba(110, 231, 255, 0.55);
+}
+
+.now-line-dot {
+  position: absolute;
+  left: -5px;
+  top: -6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 99px;
+  background: #6ee7ff;
+  box-shadow: 0 0 10px #6ee7ff;
+}
+
+.now-line-time {
+  position: absolute;
+  left: 8px;
+  top: -10px;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  line-height: 16px;
+  padding: 0 6px;
+  color: #041018;
+  background: #6ee7ff;
+  box-shadow: 0 0 10px rgba(110, 231, 255, 0.45);
+}
+
 .event-block {
   position: absolute;
   border-radius: 2px;
