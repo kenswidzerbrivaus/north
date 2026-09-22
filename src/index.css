@@ -3351,6 +3351,18 @@ html.sepho .date-pop {
   }
 }
 
+@media (max-width: 860px) {
+  .shell[data-route='calendar'] .top-mobile {
+    display: none;
+  }
+  .shell[data-route='calendar'] .main {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .shell[data-route='calendar'] .cal-day-strip {
+    top: 0;
+  }
+}
+
 .cloud-callout {
   margin-bottom: 12px;
   white-space: normal;

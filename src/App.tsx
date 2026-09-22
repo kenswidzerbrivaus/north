@@ -286,7 +286,7 @@ function Shell() {
   }[route]
 
   return (
-    <div className="shell">
+    <div className="shell" data-route={route}>
       <div className="sepho-scan" aria-hidden />
       <aside className="sidebar">
         <a className="brand" href="#/today">
