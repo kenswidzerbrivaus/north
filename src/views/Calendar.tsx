@@ -79,10 +79,36 @@ export function Calendar() {
 
   useEffect(() => {
     if (view !== 'day') return
-    const hour = Math.min(22, Math.max(6, new Date().getHours() - 1))
-    window.setTimeout(() => {
-      document.querySelector(`[data-cal-hour="${hour}"]`)?.scrollIntoView({ block: 'start', behavior: 'instant' as ScrollBehavior })
-    }, 40)
+    let cancelled = false
+    const scrollToNow = () => {
+      if (cancelled) return
+      const line = document.querySelector('.now-line') as HTMLElement | null
+      const hour = Math.min(22, Math.max(6, new Date().getHours() - 1))
+      const fallback = document.querySelector(`[data-cal-hour="${hour}"]`) as HTMLElement | null
+      const target = line ?? fallback
+      if (!target) return
+      const mobile = window.matchMedia('(max-width: 860px)').matches
+      const scroller = document.querySelector('.main') as HTMLElement | null
+      if (mobile && scroller) {
+        const s = scroller.getBoundingClientRect()
+        const t = target.getBoundingClientRect()
+        const next = scroller.scrollTop + (t.top - s.top) - scroller.clientHeight / 2 + t.height / 2
+        scroller.scrollTo({ top: Math.max(0, next), behavior: 'instant' })
+        return
+      }
+      target.scrollIntoView({ block: 'center', behavior: 'instant' as ScrollBehavior })
+    }
+    let raf2 = 0
+    const raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(scrollToNow)
+    })
+    const t = window.setTimeout(scrollToNow, 80)
+    return () => {
+      cancelled = true
+      window.cancelAnimationFrame(raf1)
+      window.cancelAnimationFrame(raf2)
+      window.clearTimeout(t)
+    }
   }, [view, cursor])
 
   useEffect(() => {
