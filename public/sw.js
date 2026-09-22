@@ -1,4 +1,4 @@
-const CACHE = 'sepho-app-v10'
+const CACHE = 'sepho-app-v11'
 
 self.addEventListener('install', (event) => {
   self.skipWaiting()

@@ -167,6 +167,7 @@ export function Today({ go }: { go: (r: Route) => void }) {
             <b>{exec}%</b>
           </div>
           <DayClock />
+          <DayClock compact />
           <button className="today-focus hud-frame" onClick={() => go('focus')}>
             <span className="kicker">{timer.running ? 'Reactor' : 'Focus // Standby'}</span>
             <b>{formatRemain(timer.remaining)}</b>

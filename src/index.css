@@ -1457,6 +1457,10 @@ html.sepho .daily-box {
   font-variant-numeric: tabular-nums;
 }
 
+.board-readouts .day-clock.is-compact {
+  display: none;
+}
+
 .day-clock {
   text-align: right;
   min-width: 0;
@@ -3000,12 +3004,16 @@ html.sepho .date-pop {
   .sidebar {
     display: none;
   }
+  html.sepho {
+    -webkit-tap-highlight-color: transparent;
+  }
   .main {
     height: 100%;
     min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding: 0 16px calc(76px + env(safe-area-inset-bottom, 0px));
+    overscroll-behavior: contain;
+    padding: env(safe-area-inset-top, 0px) 12px calc(78px + env(safe-area-inset-bottom, 0px));
   }
   .sepho-scan {
     opacity: 0.25;
@@ -3055,8 +3063,11 @@ html.sepho .date-pop {
     justify-content: space-between;
     align-items: center;
   }
-  .board-readouts .day-clock {
+  .board-readouts .day-clock:not(.is-compact) {
     display: none;
+  }
+  .board-readouts .day-clock.is-compact {
+    display: block;
   }
   .now-clock {
     font-size: 32px;
@@ -3097,7 +3108,7 @@ html.sepho .date-pop {
     min-height: calc(var(--vvh, 100dvh) - 150px);
   }
   .note-tools {
-    top: calc(env(safe-area-inset-top, 0px) + 52px);
+    top: 0;
     margin-left: -10px;
     margin-right: -10px;
     padding-left: 10px;
@@ -3109,11 +3120,11 @@ html.sepho .date-pop {
   }
   .cal-day-strip {
     position: sticky;
-    top: calc(48px + env(safe-area-inset-top, 0px));
+    top: 0;
     z-index: 18;
-    margin-left: -16px;
-    margin-right: -16px;
-    padding: 8px 16px;
+    margin-left: -12px;
+    margin-right: -12px;
+    padding: 8px 12px;
     background: rgba(5, 8, 14, 0.94);
     backdrop-filter: blur(16px);
   }
@@ -3176,31 +3187,7 @@ html.sepho .date-pop {
     background: transparent;
   }
   .top-mobile {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: nowrap;
-    position: sticky;
-    top: 0;
-    z-index: 25;
-    margin: 0 -16px 10px;
-    padding: max(10px, env(safe-area-inset-top, 0px)) 16px 10px;
-    background: rgba(5, 8, 14, 0.94);
-    border-bottom: 1px solid rgba(110, 231, 255, 0.16);
-    backdrop-filter: blur(16px);
-  }
-  .top-mobile .display {
-    font-size: 17px;
-    font-weight: 650;
-    flex: 0 0 auto;
-    min-width: 0;
-  }
-  .top-mobile .day-clock {
-    order: 0;
-    flex: 1;
-    flex-basis: auto;
-    text-align: center;
+    display: none;
   }
   .page-head h1 {
     font-size: 22px;
@@ -3352,14 +3339,18 @@ html.sepho .date-pop {
 }
 
 @media (max-width: 860px) {
-  .shell[data-route='calendar'] .top-mobile {
-    display: none;
-  }
-  .shell[data-route='calendar'] .main {
-    padding-top: env(safe-area-inset-top, 0px);
-  }
-  .shell[data-route='calendar'] .cal-day-strip {
-    top: 0;
+  .more-search {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    margin-bottom: 8px;
+    border: 1px solid rgba(110, 231, 255, 0.22);
+    background: rgba(110, 231, 255, 0.08);
+    color: #6ee7ff;
+    font-size: 15px;
   }
 }
 
@@ -3381,19 +3372,16 @@ html.sepho .date-pop {
   }
 
   .page-head-route {
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
   }
   .page-head-route h1 {
-    display: none;
-  }
-  .page-head-route > div:first-child:not(:has(.muted)):not(:has(button)) {
-    display: none;
-  }
-  .page-head-route:not(:has(button)):not(:has(.btn)):not(:has(.muted)):not(:has(.row)) {
-    display: none;
+    display: block;
+    font-size: 28px;
+    line-height: 1.1;
   }
   .page-head {
-    margin-bottom: 10px;
+    margin: 4px 0 12px;
     gap: 8px;
   }
   .page-head > .btn,
@@ -3528,8 +3516,8 @@ html.sepho .date-pop {
     align-content: center;
     overflow-x: auto;
     gap: 6px;
-    margin: 0 -16px 10px;
-    padding: 0 16px 8px;
+    margin: 0 -12px 10px;
+    padding: 0 12px 8px;
     min-height: 0;
     height: auto;
     -webkit-overflow-scrolling: touch;

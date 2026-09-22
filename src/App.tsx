@@ -377,6 +377,17 @@ function Shell() {
         <div className="more-sheet-backdrop" onClick={() => setMore(false)}>
           <div className="more-sheet" onClick={(e) => e.stopPropagation()} role="menu">
             <p className="kicker">More</p>
+            <button
+              type="button"
+              className="more-search"
+              onClick={() => {
+                setMore(false)
+                setCmd(true)
+              }}
+            >
+              <Icon name="search" size={18} />
+              Search
+            </button>
             <div className="more-grid">
               {MORE_TABS.map((id) => (
                 <button
