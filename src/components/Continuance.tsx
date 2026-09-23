@@ -17,7 +17,7 @@ export function Continuance({
   task: Task
   onClose: () => void
 }) {
-  const { toggleTask, addTask, addEvent, updateTask } = useStore()
+  const { toggleTask, addTask, addEvent } = useStore()
   const [when, setWhen] = useState(false)
   const [date, setDate] = useState(task.due && task.due > todayISO() ? task.due : tomorrow())
   const [time, setTime] = useState(task.dueTime || '09:00')
@@ -28,7 +28,20 @@ export function Continuance({
   const schedule = () => {
     complete()
     const start = time || '09:00'
-    const id = addTask({
+    const eventId = onCal
+      ? addEvent(
+          {
+            title: task.title,
+            date,
+            start,
+            end: minutesToStamp(minutesOf(start) + 30),
+            allDay: false,
+            notes: 'Continuance',
+          },
+          { daily: false },
+        )
+      : undefined
+    addTask({
       title: task.title,
       notes: task.notes ? `${task.notes}\n\nContinuance of completed item.` : 'Continuance of completed item.',
       listId: task.listId,
@@ -39,18 +52,8 @@ export function Continuance({
       goalId: task.goalId,
       milestoneId: task.milestoneId,
       workstreamId: task.workstreamId,
+      eventId,
     })
-    if (onCal) {
-      const eventId = addEvent({
-        title: task.title,
-        date,
-        start,
-        end: minutesToStamp(minutesOf(start) + 30),
-        allDay: false,
-        notes: 'Continuance',
-      })
-      updateTask(id, { eventId })
-    }
     onClose()
   }
 

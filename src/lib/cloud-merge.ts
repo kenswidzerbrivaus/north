@@ -1,3 +1,4 @@
+import { collapseDuplicateTasks } from './cal-sync'
 import type { State } from './types'
 
 function recency(item: { updatedAt?: string; createdAt?: string; requestedAt?: string; completedAt?: string }) {
@@ -63,7 +64,7 @@ export function mergeStates(local: State, remote: State): State {
     version: 1,
     savedAt: Math.max(localAt, remoteAt),
     lists: mergeById(local.lists, remote.lists, preferLocal),
-    tasks: mergeById(local.tasks, remote.tasks, preferLocal),
+    tasks: collapseDuplicateTasks(mergeById(local.tasks, remote.tasks, preferLocal)),
     events: mergeEvents(local.events, remote.events, preferLocal),
     habits: mergeById(local.habits, remote.habits, preferLocal),
     habitLogs: mergeLogs(local.habitLogs, remote.habitLogs),

@@ -160,6 +160,7 @@ export function Calendar() {
       googleId: draft.googleId,
     }
     const localId = draft.id && !draft.id.startsWith('gcal:') ? draft.id : undefined
+    let createdId: string | undefined
     setBusy(true)
     try {
       const mirror = state.events.find(
@@ -216,15 +217,15 @@ export function Calendar() {
       } else if (!draft.id && toGoogle && gcal.connected) {
         try {
           const saved = await gcal.saveToGoogle(payload)
-          addEvent({ ...payload, googleId: saved?.googleId })
+          createdId = addEvent({ ...payload, googleId: saved?.googleId }, { daily: false })
         } catch {
-          addEvent(payload)
+          createdId = addEvent(payload, { daily: false })
         }
       } else if (!localId && !payload.googleId) {
-        addEvent(payload)
+        createdId = addEvent(payload, { daily: false })
       }
       if (opts?.daily && !task) {
-        const eventId = mirror?.id || localId || draft.id
+        const eventId = createdId || mirror?.id || localId || draft.id
         addTask({
           title: payload.title,
           notes: payload.notes,

@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { eventIsDone } from './cal-done'
 import { sephoCopy } from './rebrand'
 import { layoutTimedEvents, nowLineTop, nowMinutes } from './cal-layout'
-import { matchLinkedTask } from './cal-sync'
+import { collapseDuplicateTasks, matchLinkedTask } from './cal-sync'
 import { parseDeadline, stampTime } from './dates'
 import { summarizeProjectDraft } from './drafts'
 import { fromGoogleEvent, toGoogleBody } from './google-calendar'
@@ -283,6 +283,33 @@ test('calendar done: unlinked event still matches a lone completed task by title
   const tasks = [task({ id: 't1', title: 'Call mom', completed: true, due: '2026-09-20' })]
   assert.equal(eventIsDone(ev({ id: 'orphan', title: 'Call mom', date: '2026-09-20' }), tasks), true)
   assert.equal(eventIsDone(ev({ id: 'other', title: 'Gym', date: '2026-09-20' }), tasks), false)
+})
+
+test('calendar task link matches google all-day ids and unlinked same-day title', () => {
+  const linked = task({ id: 't1', title: 'Standup', googleId: 'abc', due: '2026-09-23' })
+  assert.equal(matchLinkedTask([linked], ev({ id: 'gcal:abc:2026-09-23', title: 'Standup', date: '2026-09-23', googleId: 'abc' }))?.id, 't1')
+  const local = task({ id: 't2', title: 'Walk', due: '2026-09-23' })
+  assert.equal(matchLinkedTask([local], ev({ id: 'gcal:xyz', title: 'Walk', date: '2026-09-23', googleId: 'xyz' }))?.id, 't2')
+  const two = [
+    task({ id: 'a', title: 'Call mom', eventId: 'e1', due: '2026-09-23' }),
+    task({ id: 'b', title: 'Call mom', eventId: 'e2', due: '2026-09-23' }),
+  ]
+  assert.equal(matchLinkedTask(two, ev({ id: 'e1', title: 'Call mom', date: '2026-09-23' }))?.id, 'a')
+  assert.equal(matchLinkedTask(two, ev({ id: 'e2', title: 'Call mom', date: '2026-09-23' }))?.id, 'b')
+})
+
+test('collapse duplicate tasks keeps two different events with the same title', () => {
+  const collapsed = collapseDuplicateTasks([
+    task({ id: 't1', title: 'Call mom', eventId: 'e1', due: '2026-09-23' }),
+    task({ id: 't2', title: 'Call mom', eventId: 'e2', due: '2026-09-23' }),
+    task({ id: 't3', title: 'Walk', eventId: 'e3', due: '2026-09-23' }),
+    task({ id: 't4', title: 'Walk', due: '2026-09-23' }),
+    task({ id: 't5', title: 'Gym', googleId: 'g1', due: '2026-09-23' }),
+    task({ id: 't6', title: 'Gym', googleId: 'g1', due: '2026-09-23' }),
+  ])
+  const ids = collapsed.map((t) => t.id).sort()
+  assert.deepEqual(ids, ['t1', 't2', 't3', 't5'])
+  assert.equal(collapsed.find((t) => t.id === 't3')?.googleId, undefined)
 })
 
 test('calendar overlapping blocks get side-by-side columns', () => {

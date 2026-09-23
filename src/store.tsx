@@ -11,7 +11,7 @@ import { todayISO } from './lib/dates'
 import { nowISO, uid } from './lib/id'
 import { depsReady } from './lib/project-engine'
 import { readLink } from './lib/google-calendar'
-import { matchLinkedTask } from './lib/cal-sync'
+import { collapseDuplicateTasks, matchLinkedTask } from './lib/cal-sync'
 import { seedProjectBundle } from './lib/project-seed'
 import { rebrandState } from './lib/rebrand'
 import type {
@@ -460,7 +460,13 @@ function linkExisting(s: State): State {
     used.push(color.toLowerCase())
     return { ...e, color }
   })
-  return pruneGoogleToToday(syncTasksFromEvents({ ...s, events, tasks }))
+  const synced = pruneGoogleToToday(syncTasksFromEvents({ ...s, events, tasks }))
+  const collapsed = collapseDuplicateTasks(synced.tasks)
+  if (collapsed === synced.tasks || collapsed.length === synced.tasks.length) {
+    const same = collapsed.every((t, i) => t === synced.tasks[i])
+    if (same) return synced
+  }
+  return { ...synced, tasks: collapsed }
 }
 
 function pruneGoogleToToday(s: State): State {
@@ -653,15 +659,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             title: input.title.trim(),
           }
           const next = { ...s, events: [event, ...s.events] }
-          if (opts?.daily === false) return next
-          return syncTasksFromEvents(next)
+          if (opts?.daily !== true) return next
+          return syncTasksFromEvents(next, [event], true)
         })
         return id
       },
       updateEvent: (id, next) =>
         patch((s) => {
           const events = s.events.map((e) => (e.id === id ? { ...e, ...next } : e))
-          return syncTasksFromEvents({ ...s, events })
+          const event = events.find((e) => e.id === id)
+          if (!event) return { ...s, events }
+          const existing = linkedTask(s.tasks, event)
+          if (!existing) return { ...s, events }
+          const nextTask = taskFromEvent(event, existing)
+          if (nextTask === existing) return { ...s, events }
+          return { ...s, events, tasks: s.tasks.map((t) => (t.id === existing.id ? nextTask : t)) }
         }),
       deleteEvent: (id) =>
         patch((s) => {
@@ -698,8 +710,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }
           const lists = withCalendarList(s.lists)
           let next: State = changed || lists !== s.lists ? { ...s, lists, tasks } : s
-          const pruned = next.tasks.filter((t) => !t.googleId || t.completed || t.due === today)
-          if (pruned.length !== next.tasks.length) next = { ...next, tasks: pruned }
+          const pruned = collapseDuplicateTasks(next.tasks.filter((t) => !t.googleId || t.completed || t.due === today))
+          if (pruned.length !== next.tasks.length || pruned.some((t, i) => t !== next.tasks[i])) next = { ...next, tasks: pruned }
           return next
         }, true),
       dropGoogleItems: (googleId) =>
