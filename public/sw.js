@@ -1,4 +1,4 @@
-const CACHE = 'sepho-app-v17'
+const CACHE = 'sepho-app-v18'
 
 self.addEventListener('install', (event) => {
   self.skipWaiting()
@@ -7,7 +7,10 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()),
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim()),
   )
 })
 
@@ -16,6 +19,12 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return
   const url = new URL(req.url)
   if (url.origin !== self.location.origin) return
+  const isPage =
+    req.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html') || url.pathname.endsWith('/sw.js')
+  if (isPage) {
+    event.respondWith(fetch(req, { cache: 'no-store' }).catch(() => caches.match('/index.html')))
+    return
+  }
   event.respondWith(
     fetch(req)
       .then((res) => {

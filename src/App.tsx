@@ -10,6 +10,7 @@ import { TimerProvider, useTimerControls } from './timer'
 import { DayClock } from './components/DayClock'
 import { PageError } from './components/PageError'
 import { Login } from './views/Login'
+import { Journal } from './views/Journal'
 import { TravisHud } from './travis'
 
 const Today = lazy(() => import('./views/Today').then((m) => ({ default: m.Today })))
@@ -19,7 +20,6 @@ const Habits = lazy(() => import('./views/Habits').then((m) => ({ default: m.Hab
 const Focus = lazy(() => import('./views/Focus').then((m) => ({ default: m.Focus })))
 const Notes = lazy(() => import('./views/Notes').then((m) => ({ default: m.Notes })))
 const Goals = lazy(() => import('./views/Goals').then((m) => ({ default: m.Goals })))
-const Journal = lazy(() => import('./views/Journal').then((m) => ({ default: m.Journal })))
 const Settings = lazy(() => import('./views/Settings').then((m) => ({ default: m.Settings })))
 const Projects = lazy(() => import('./views/Projects').then((m) => ({ default: m.Projects })))
 

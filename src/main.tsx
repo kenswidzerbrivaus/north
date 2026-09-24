@@ -11,6 +11,14 @@ createRoot(document.getElementById('root')!).render(
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    void navigator.serviceWorker.register('/sw.js')
+    void navigator.serviceWorker.register('/sw.js').then((reg) => {
+      void reg.update()
+    })
+  })
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    const last = Number(sessionStorage.getItem('sepho-sw-reload') || 0)
+    if (last && Date.now() - last < 8000) return
+    sessionStorage.setItem('sepho-sw-reload', String(Date.now()))
+    location.reload()
   })
 }
