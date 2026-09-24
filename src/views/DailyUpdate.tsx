@@ -132,7 +132,7 @@ export function DailyUpdate({ date }: { date: string }) {
       </div>
 
       <section className="daily-write">
-        <p className="daily-label">Goals I am currently working towards</p>
+        <p className="daily-label">Current goals</p>
         <NoteEditor
           noteId={`${date}:goals`}
           value={draft.currentGoals}
@@ -144,7 +144,7 @@ export function DailyUpdate({ date }: { date: string }) {
 
       <div className="daily-split">
         <section className="daily-write">
-          <p className="daily-label">What actions did I take today to help achieve my goals</p>
+          <p className="daily-label">Actions I took today</p>
           <NoteEditor
             noteId={`${date}:today`}
             value={draft.actionsToday}
@@ -155,7 +155,7 @@ export function DailyUpdate({ date }: { date: string }) {
           />
         </section>
         <section className="daily-write">
-          <p className="daily-label">What actions will I take tomorrow to help achieve my goals</p>
+          <p className="daily-label">Actions I’ll take tomorrow</p>
           <NoteEditor
             noteId={`${date}:tomorrow`}
             value={draft.actionsTomorrow}
