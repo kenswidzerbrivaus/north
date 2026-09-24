@@ -365,6 +365,8 @@ test('journal draft restores newer in-progress writing', () => {
       currentGoals: '<p>Keep the truck deal moving</p>',
       actionsToday: '',
       actionsTomorrow: '',
+      mistakesToday: '<p>Rushed the call</p>',
+      mistakeReflection: '',
       affirmation: '',
     },
   }

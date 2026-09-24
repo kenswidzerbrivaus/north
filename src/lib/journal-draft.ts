@@ -4,6 +4,8 @@ export type JournalDraft = {
   currentGoals: string
   actionsToday: string
   actionsTomorrow: string
+  mistakesToday: string
+  mistakeReflection: string
   affirmation: string
 }
 
@@ -16,6 +18,8 @@ export function emptyJournalDraft(): JournalDraft {
     currentGoals: '',
     actionsToday: '',
     actionsTomorrow: '',
+    mistakesToday: '',
+    mistakeReflection: '',
     affirmation: '',
   }
 }
@@ -33,6 +37,8 @@ export function pickJournalDraft(
     Boolean(d.currentGoals?.trim()) ||
     Boolean(d.actionsToday?.trim()) ||
     Boolean(d.actionsTomorrow?.trim()) ||
+    Boolean(d.mistakesToday?.trim()) ||
+    Boolean(d.mistakeReflection?.trim()) ||
     Boolean(d.affirmation?.trim()) ||
     Boolean(d.workout) ||
     d.blessings?.some((b) => b.trim())

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { NoteEditor } from '../components/NoteEditor'
 import { formatLong } from '../lib/dates'
+import { notePlainText } from '../lib/note-body'
 import { emptyJournalDraft, readJournalDraft, writeJournalDraft, type JournalDraft } from '../lib/journal-draft'
 import { quoteForDate } from '../lib/quotes'
 import type { JournalEntry, Workout } from '../lib/types'
@@ -23,6 +24,8 @@ function fromEntry(e?: JournalEntry): Draft {
     currentGoals: e.currentGoals ?? '',
     actionsToday: e.actionsToday || e.body || '',
     actionsTomorrow: e.actionsTomorrow ?? '',
+    mistakesToday: e.mistakesToday ?? '',
+    mistakeReflection: e.mistakeReflection ?? '',
     affirmation: e.affirmation ?? '',
   }
 }
@@ -166,6 +169,31 @@ export function DailyUpdate({ date }: { date: string }) {
           />
         </section>
       </div>
+
+      <section className="daily-write daily-lesson">
+        <p className="daily-label">Key mistakes</p>
+        <p className="daily-hint">Write the miss. Then you have to write how you would do it better.</p>
+        <NoteEditor
+          noteId={`${date}:mistakes`}
+          value={draft.mistakesToday}
+          onChange={(mistakesToday) => patchDraft({ ...draftRef.current, mistakesToday })}
+          compact
+          tall
+          placeholder="What I did, skipped, or got wrong."
+        />
+        <p className="daily-label">How I could’ve done it better</p>
+        <NoteEditor
+          noteId={`${date}:better`}
+          value={draft.mistakeReflection}
+          onChange={(mistakeReflection) => patchDraft({ ...draftRef.current, mistakeReflection })}
+          compact
+          tall
+          placeholder="The better play — what I would do next time."
+        />
+        {notePlainText(draft.mistakesToday) && !notePlainText(draft.mistakeReflection) ? (
+          <p className="daily-need">Reflection required. Don’t close the day on the miss without a better play.</p>
+        ) : null}
+      </section>
 
       <section>
         <p className="daily-label">Daily affirmation</p>

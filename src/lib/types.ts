@@ -227,6 +227,8 @@ export interface JournalEntry {
   currentGoals: string
   actionsToday: string
   actionsTomorrow: string
+  mistakesToday: string
+  mistakeReflection: string
   affirmation: string
   shortTermGoal: string
   morningWins: [string, string, string]
