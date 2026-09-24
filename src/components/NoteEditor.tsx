@@ -114,24 +114,33 @@ export function NoteEditor({
     sel?.addRange(range)
   }
 
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
+  const quiet = useRef(false)
+
   const emit = useCallback(() => {
     const el = ref.current
-    if (!el) return
+    if (!el || quiet.current) return
     el.querySelectorAll('ul.note-check li:not([data-check])').forEach((li) => li.setAttribute('data-check', '0'))
     el.dataset.empty = el.textContent?.trim() ? 'false' : 'true'
-    onChange(el.innerHTML)
+    onChangeRef.current(el.innerHTML)
     setMarks(readMarks())
-  }, [onChange])
+  }, [])
 
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
+    quiet.current = true
     document.execCommand('defaultParagraphSeparator', false, 'p')
     el.innerHTML = toEditorHtml(value)
     el.dataset.empty = el.textContent?.trim() ? 'false' : 'true'
     setLinkOpen(false)
     setFindOpen(false)
     setMarks(EMPTY_MARKS)
+    const t = window.setTimeout(() => {
+      quiet.current = false
+    }, 0)
+    return () => window.clearTimeout(t)
   }, [noteId])
 
   useEffect(() => {
@@ -424,10 +433,10 @@ export function NoteEditor({
         aria-multiline
         aria-label="Note body"
         data-placeholder={placeholder ?? 'Write — headings, lists, checks, quotes…'}
-        data-empty="true"
         spellCheck
         suppressContentEditableWarning
         onInput={emit}
+        onBlur={emit}
         onKeyDown={onKey}
         onPointerDown={(e) => {
           const li = (e.target as HTMLElement).closest('li[data-check]') as HTMLElement | null

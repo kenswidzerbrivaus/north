@@ -25,7 +25,7 @@ export function Journal() {
           </button>
         </div>
       </header>
-      <DailyUpdate date={date} />
+      <DailyUpdate key={date} date={date} />
     </div>
   )
 }

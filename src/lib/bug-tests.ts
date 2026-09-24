@@ -11,6 +11,7 @@ import { metricNumber } from './goal-engine'
 import { daysLeft, depsReady, parseMilestoneLines } from './project-engine'
 import { mergeStates } from './cloud-merge'
 import { cloudAction } from './sync-policy'
+import { pickJournalDraft } from './journal-draft'
 import { countWords, escapeHtml, looksLikeHtml, plainPreview, sanitizeNoteHtml, toEditorHtml } from './note-body'
 import type { CalEvent, ProjectMilestone, Task } from './types'
 
@@ -353,6 +354,23 @@ test('note body wraps plain text and keeps html', () => {
   assert.equal(countWords('one two three').words, 3)
   assert.equal(countWords('<p></p>').words, 0)
   assert.equal(escapeHtml('<x>'), '&lt;x&gt;')
+})
+
+test('journal draft restores newer in-progress writing', () => {
+  const parked = {
+    date: '2026-09-23',
+    at: Date.parse('2026-09-23T18:00:00Z'),
+    draft: {
+      blessings: ['a', '', ''] as [string, string, string],
+      currentGoals: '<p>Keep the truck deal moving</p>',
+      actionsToday: '',
+      actionsTomorrow: '',
+      affirmation: '',
+    },
+  }
+  const got = pickJournalDraft('2026-09-23', { updatedAt: '2026-09-23T12:00:00.000Z' }, parked)
+  assert.equal(got?.currentGoals, '<p>Keep the truck deal moving</p>')
+  assert.equal(pickJournalDraft('2026-09-22', { updatedAt: '2026-09-23T12:00:00.000Z' }, parked), null)
 })
 
 test('note sanitize strips scripts without executing', () => {

@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NoteEditor } from '../components/NoteEditor'
 import { formatLong } from '../lib/dates'
+import { emptyJournalDraft, readJournalDraft, writeJournalDraft, type JournalDraft } from '../lib/journal-draft'
 import { quoteForDate } from '../lib/quotes'
 import type { JournalEntry, Workout } from '../lib/types'
-import { useStore } from '../store'
+import { flushPersist, useStore } from '../store'
 
 const WORKOUTS: { id: Workout; label: string }[] = [
   { id: 'cardio', label: 'Cardio' },
@@ -12,24 +13,10 @@ const WORKOUTS: { id: Workout; label: string }[] = [
   { id: 'other', label: 'Other' },
 ]
 
-type Draft = Pick<
-  JournalEntry,
-  'blessings' | 'workout' | 'currentGoals' | 'actionsToday' | 'actionsTomorrow' | 'affirmation'
->
-
-function emptyDraft(): Draft {
-  return {
-    blessings: ['', '', ''],
-    workout: undefined,
-    currentGoals: '',
-    actionsToday: '',
-    actionsTomorrow: '',
-    affirmation: '',
-  }
-}
+type Draft = JournalDraft
 
 function fromEntry(e?: JournalEntry): Draft {
-  if (!e) return emptyDraft()
+  if (!e) return emptyJournalDraft()
   return {
     blessings: e.blessings ?? ['', '', ''],
     workout: e.workout,
@@ -44,26 +31,51 @@ export function DailyUpdate({ date }: { date: string }) {
   const { state, upsertJournal } = useStore()
   const entry = state.journal.find((j) => j.date === date)
   const quote = quoteForDate(date)
-  const [draft, setDraft] = useState<Draft>(() => fromEntry(entry))
+  const [draft, setDraft] = useState<Draft>(() => readJournalDraft(date, entry) ?? fromEntry(entry))
+  const [savedFlash, setSavedFlash] = useState(false)
+  const draftRef = useRef(draft)
+  draftRef.current = draft
+
+  const commit = (next = draftRef.current) => {
+    writeJournalDraft(date, next)
+    upsertJournal(date, { ...next, body: next.actionsToday })
+    flushPersist()
+  }
+
+  const patchDraft = (next: Draft) => {
+    draftRef.current = next
+    writeJournalDraft(date, next)
+    setDraft(next)
+  }
 
   useEffect(() => {
-    setDraft(fromEntry(state.journal.find((j) => j.date === date)))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const save = () => commit()
+    window.addEventListener('pagehide', save)
+    window.addEventListener('beforeunload', save)
+    const vis = () => {
+      if (document.hidden) save()
+    }
+    document.addEventListener('visibilitychange', vis)
+    return () => {
+      save()
+      window.removeEventListener('pagehide', save)
+      window.removeEventListener('beforeunload', save)
+      document.removeEventListener('visibilitychange', vis)
+    }
   }, [date])
 
   useEffect(() => {
-    const current = fromEntry(entry)
-    if (JSON.stringify(draft) === JSON.stringify(current)) return
     const t = window.setTimeout(() => {
-      upsertJournal(date, { ...draft, body: draft.actionsToday })
-    }, 400)
+      commit(draftRef.current)
+      setSavedFlash(true)
+    }, 300)
     return () => window.clearTimeout(t)
-  }, [date, draft, entry, upsertJournal])
+  }, [date, draft])
 
   const setBlessing = (i: number, value: string) => {
-    const blessings = [...draft.blessings] as [string, string, string]
+    const blessings = [...draftRef.current.blessings] as [string, string, string]
     blessings[i] = value
-    setDraft({ ...draft, blessings })
+    patchDraft({ ...draftRef.current, blessings })
   }
 
   return (
@@ -73,6 +85,7 @@ export function DailyUpdate({ date }: { date: string }) {
         <h2>Daily update</h2>
         <p className="daily-quote">“{quote.text}”</p>
         <p className="daily-by">{quote.by}</p>
+        <p className="daily-saved">{savedFlash ? 'Saved on this device' : 'Saves as you write'}</p>
       </header>
 
       <div className="daily-top">
@@ -106,7 +119,9 @@ export function DailyUpdate({ date }: { date: string }) {
                 type="button"
                 className="daily-opt"
                 data-on={draft.workout === w.id}
-                onClick={() => setDraft({ ...draft, workout: draft.workout === w.id ? undefined : w.id })}
+                onClick={() =>
+                  patchDraft({ ...draftRef.current, workout: draftRef.current.workout === w.id ? undefined : w.id })
+                }
               >
                 <span className="daily-bullet" data-on={draft.workout === w.id ? 'true' : 'false'} />
                 {w.label}
@@ -121,7 +136,7 @@ export function DailyUpdate({ date }: { date: string }) {
         <NoteEditor
           noteId={`${date}:goals`}
           value={draft.currentGoals}
-          onChange={(currentGoals) => setDraft((d) => ({ ...d, currentGoals }))}
+          onChange={(currentGoals) => patchDraft({ ...draftRef.current, currentGoals })}
           compact
           placeholder="What you’re building toward."
         />
@@ -133,7 +148,7 @@ export function DailyUpdate({ date }: { date: string }) {
           <NoteEditor
             noteId={`${date}:today`}
             value={draft.actionsToday}
-            onChange={(actionsToday) => setDraft((d) => ({ ...d, actionsToday }))}
+            onChange={(actionsToday) => patchDraft({ ...draftRef.current, actionsToday })}
             compact
             tall
             placeholder="What you actually did."
@@ -144,7 +159,7 @@ export function DailyUpdate({ date }: { date: string }) {
           <NoteEditor
             noteId={`${date}:tomorrow`}
             value={draft.actionsTomorrow}
-            onChange={(actionsTomorrow) => setDraft((d) => ({ ...d, actionsTomorrow }))}
+            onChange={(actionsTomorrow) => patchDraft({ ...draftRef.current, actionsTomorrow })}
             compact
             tall
             placeholder="The next move."
@@ -158,7 +173,7 @@ export function DailyUpdate({ date }: { date: string }) {
           className="daily-affirm"
           placeholder="A sentence to carry."
           value={draft.affirmation}
-          onChange={(e) => setDraft({ ...draft, affirmation: e.target.value })}
+          onChange={(e) => patchDraft({ ...draftRef.current, affirmation: e.target.value })}
         />
       </section>
     </article>
