@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { addDays, formatLong, parseISO, toISO, todayISO } from '../lib/dates'
-import { journalHasWriting, journalPreview } from '../lib/journal-draft'
+import { downloadJournalArchive, formatJournalArchive, journalHasWriting, journalPreview } from '../lib/journal-draft'
 import { notePlainText, sanitizeNoteHtml, toEditorHtml } from '../lib/note-body'
 import { quoteForDate } from '../lib/quotes'
 import type { JournalEntry, Workout } from '../lib/types'
@@ -103,14 +103,30 @@ export function Journal() {
           {archived.length === 0 ? (
             <p className="empty-copy">Nothing filed yet. Write today, then it shows up here.</p>
           ) : (
-            <div className="journal-archive-list">
-              {archived.map((j) => (
-                <button key={j.date} type="button" className="journal-archive-row" onClick={() => setOpened(j.date)}>
-                  <strong>{formatLong(j.date)}</strong>
-                  <span>{journalPreview(j)}</span>
+            <>
+              <div className="row journal-archive-actions">
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={() =>
+                    downloadJournalArchive(
+                      `sepho-journal-${from}.txt`,
+                      formatJournalArchive(archived, formatLong),
+                    )
+                  }
+                >
+                  Download archive
                 </button>
-              ))}
-            </div>
+              </div>
+              <div className="journal-archive-list">
+                {archived.map((j) => (
+                  <button key={j.date} type="button" className="journal-archive-row" onClick={() => setOpened(j.date)}>
+                    <strong>{formatLong(j.date)}</strong>
+                    <span>{journalPreview(j)}</span>
+                  </button>
+                ))}
+              </div>
+            </>
           )}
         </section>
       )}

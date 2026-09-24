@@ -2723,6 +2723,10 @@ html.sepho .date-pop {
   min-width: 0;
 }
 
+.journal-archive-actions {
+  justify-content: flex-end;
+}
+
 .journal-archive-list {
   display: flex;
   flex-direction: column;

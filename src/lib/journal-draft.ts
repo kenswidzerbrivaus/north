@@ -90,6 +90,61 @@ export function journalHasWriting(entry: Partial<JournalEntry> | JournalDraft | 
   return Boolean('workout' in entry && entry.workout)
 }
 
+const WORKOUT_LABEL: Record<string, string> = {
+  cardio: 'Cardio',
+  weights: 'Weights',
+  rest: 'Rest day',
+  other: 'Other',
+}
+
+function block(title: string, html?: string) {
+  const text = notePlainText(html || '')
+  if (!text) return ''
+  return `${title}\n${text}\n`
+}
+
+export function formatJournalArchive(
+  entries: JournalEntry[],
+  formatDate: (iso: string) => string = (iso) => iso,
+): string {
+  const days = [...entries].filter(journalHasWriting).sort((a, b) => a.date.localeCompare(b.date))
+  const parts = days.map((e) => {
+    const blessings = (e.blessings ?? []).map((b) => b.trim()).filter(Boolean)
+    const lines = [
+      formatDate(e.date),
+      '',
+      blessings.length ? `Three blessings\n${blessings.map((b) => `• ${b}`).join('\n')}\n` : '',
+      e.workout ? `Workout\n${WORKOUT_LABEL[e.workout] || e.workout}\n` : '',
+      block('Current goals', e.currentGoals),
+      block('Actions I took today', e.actionsToday || e.body),
+      block('Actions I’ll take tomorrow', e.actionsTomorrow),
+      block('Key mistakes', e.mistakesToday),
+      block('How I could’ve done it better', e.mistakeReflection),
+      block('Daily affirmation', e.affirmation),
+    ]
+    return lines.filter(Boolean).join('\n').trim()
+  })
+  return ['SEPHO JOURNAL ARCHIVE', 'Chronological order — oldest first', '', parts.join('\n\n————\n\n')].join('\n').trim() + '\n'
+}
+
+export function downloadJournalArchive(filename: string, text: string) {
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+  const file = new File([blob], filename, { type: 'text/plain' })
+  const share = navigator as Navigator & { canShare?: (data: { files?: File[] }) => boolean; share?: (data: ShareData) => Promise<void> }
+  if (share.canShare?.({ files: [file] }) && share.share) {
+    void share.share({ files: [file], title: 'Journal archive' })
+    return
+  }
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 export function journalPreview(entry: JournalEntry, max = 110): string {
   const parts = [entry.actionsToday || entry.body, entry.mistakesToday, entry.currentGoals, entry.affirmation]
     .map((p) => notePlainText(p || ''))

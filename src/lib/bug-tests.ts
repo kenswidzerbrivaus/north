@@ -11,7 +11,7 @@ import { metricNumber } from './goal-engine'
 import { daysLeft, depsReady, parseMilestoneLines } from './project-engine'
 import { mergeStates } from './cloud-merge'
 import { cloudAction } from './sync-policy'
-import { journalHasWriting, pickJournalDraft } from './journal-draft'
+import { formatJournalArchive, journalHasWriting, pickJournalDraft } from './journal-draft'
 import { countWords, escapeHtml, looksLikeHtml, plainPreview, sanitizeNoteHtml, toEditorHtml } from './note-body'
 import type { CalEvent, ProjectMilestone, Task } from './types'
 
@@ -392,6 +392,43 @@ test('journal archive only lists days with writing', () => {
   assert.equal(journalHasWriting({ actionsToday: '<p>Shipped it</p>' }), true)
   assert.equal(journalHasWriting({ actionsToday: '<p></p>', blessings: ['', '', ''] }), false)
   assert.equal(journalHasWriting({ workout: 'cardio' }), true)
+})
+
+test('journal archive download is oldest first', () => {
+  const text = formatJournalArchive([
+    {
+      date: '2026-09-24',
+      body: '',
+      updatedAt: '',
+      blessings: ['', '', ''],
+      currentGoals: '',
+      actionsToday: '<p>Day two</p>',
+      actionsTomorrow: '',
+      mistakesToday: '',
+      mistakeReflection: '',
+      affirmation: '',
+      shortTermGoal: '',
+      morningWins: ['', '', ''],
+      morningChecks: [false, false, false],
+    },
+    {
+      date: '2026-09-23',
+      body: '',
+      updatedAt: '',
+      blessings: ['', '', ''],
+      currentGoals: '',
+      actionsToday: '<p>Day one</p>',
+      actionsTomorrow: '',
+      mistakesToday: '',
+      mistakeReflection: '',
+      affirmation: '',
+      shortTermGoal: '',
+      morningWins: ['', '', ''],
+      morningChecks: [false, false, false],
+    },
+  ])
+  assert.ok(text.indexOf('Day one') < text.indexOf('Day two'))
+  assert.match(text, /oldest first/)
 })
 
 test('note sanitize strips scripts without executing', () => {
