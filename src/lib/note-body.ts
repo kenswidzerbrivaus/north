@@ -53,7 +53,7 @@ export function escapeHtml(s: string): string {
 }
 
 export function toEditorHtml(body: string): string {
-  const raw = body.replace(/\r\n/g, '\n')
+  const raw = String(body ?? '').replace(/\r\n/g, '\n')
   if (!raw.trim()) return '<p><br></p>'
   if (looksLikeHtml(raw)) return sanitizeNoteHtml(raw) || '<p><br></p>'
   return raw
@@ -63,6 +63,7 @@ export function toEditorHtml(body: string): string {
 }
 
 export function notePlainText(body: string): string {
+  if (!body) return ''
   return body
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/(p|div|h1|h2|h3|li|blockquote|pre)>/gi, '\n')

@@ -8,6 +8,7 @@ import { ROUTES, type Route } from './lib/types'
 import { StoreProvider, useStore } from './store'
 import { TimerProvider, useTimerControls } from './timer'
 import { DayClock } from './components/DayClock'
+import { PageError } from './components/PageError'
 import { Login } from './views/Login'
 import { TravisHud } from './travis'
 
@@ -346,7 +347,9 @@ function Shell() {
             Google needs a moment — tap to finish sync
           </button>
         ) : null}
-        <Suspense fallback={<p className="muted">Loading…</p>}>{view}</Suspense>
+        <PageError>
+          <Suspense fallback={<p className="muted">Loading…</p>}>{view}</Suspense>
+        </PageError>
       </main>
       <TravisHud />
 

@@ -24,6 +24,22 @@ export function emptyJournalDraft(): JournalDraft {
   }
 }
 
+export function normalizeJournalDraft(raw?: Partial<JournalDraft> | null): JournalDraft {
+  const empty = emptyJournalDraft()
+  if (!raw) return empty
+  const b = Array.isArray(raw.blessings) ? raw.blessings : empty.blessings
+  return {
+    blessings: [String(b[0] ?? ''), String(b[1] ?? ''), String(b[2] ?? '')],
+    workout: raw.workout,
+    currentGoals: String(raw.currentGoals ?? ''),
+    actionsToday: String(raw.actionsToday ?? ''),
+    actionsTomorrow: String(raw.actionsTomorrow ?? ''),
+    mistakesToday: String(raw.mistakesToday ?? ''),
+    mistakeReflection: String(raw.mistakeReflection ?? ''),
+    affirmation: String(raw.affirmation ?? ''),
+  }
+}
+
 export function pickJournalDraft(
   date: string,
   saved?: { updatedAt?: string; currentGoals?: string; actionsToday?: string; actionsTomorrow?: string; body?: string },
@@ -43,7 +59,7 @@ export function pickJournalDraft(
     Boolean(d.workout) ||
     d.blessings?.some((b) => b.trim())
   if (!has) return null
-  return d
+  return normalizeJournalDraft(d)
 }
 
 export function writeJournalDraft(date: string, draft: JournalDraft) {

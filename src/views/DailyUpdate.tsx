@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NoteEditor } from '../components/NoteEditor'
 import { formatLong } from '../lib/dates'
 import { notePlainText } from '../lib/note-body'
-import { emptyJournalDraft, readJournalDraft, writeJournalDraft, type JournalDraft } from '../lib/journal-draft'
+import { emptyJournalDraft, normalizeJournalDraft, readJournalDraft, writeJournalDraft, type JournalDraft } from '../lib/journal-draft'
 import { quoteForDate } from '../lib/quotes'
 import type { JournalEntry, Workout } from '../lib/types'
 import { flushPersist, useStore } from '../store'
@@ -18,23 +18,23 @@ type Draft = JournalDraft
 
 function fromEntry(e?: JournalEntry): Draft {
   if (!e) return emptyJournalDraft()
-  return {
-    blessings: e.blessings ?? ['', '', ''],
+  return normalizeJournalDraft({
+    blessings: e.blessings,
     workout: e.workout,
     currentGoals: e.currentGoals ?? '',
     actionsToday: e.actionsToday || e.body || '',
     actionsTomorrow: e.actionsTomorrow ?? '',
-    mistakesToday: e.mistakesToday ?? '',
-    mistakeReflection: e.mistakeReflection ?? '',
+    mistakesToday: e.mistakesToday,
+    mistakeReflection: e.mistakeReflection,
     affirmation: e.affirmation ?? '',
-  }
+  })
 }
 
 export function DailyUpdate({ date }: { date: string }) {
   const { state, upsertJournal } = useStore()
   const entry = state.journal.find((j) => j.date === date)
   const quote = quoteForDate(date)
-  const [draft, setDraft] = useState<Draft>(() => readJournalDraft(date, entry) ?? fromEntry(entry))
+  const [draft, setDraft] = useState<Draft>(() => normalizeJournalDraft(readJournalDraft(date, entry) ?? fromEntry(entry)))
   const [savedFlash, setSavedFlash] = useState(false)
   const draftRef = useRef(draft)
   draftRef.current = draft

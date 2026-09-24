@@ -373,6 +373,19 @@ test('journal draft restores newer in-progress writing', () => {
   const got = pickJournalDraft('2026-09-23', { updatedAt: '2026-09-23T12:00:00.000Z' }, parked)
   assert.equal(got?.currentGoals, '<p>Keep the truck deal moving</p>')
   assert.equal(pickJournalDraft('2026-09-22', { updatedAt: '2026-09-23T12:00:00.000Z' }, parked), null)
+  const old = pickJournalDraft('2026-09-23', undefined, {
+    date: '2026-09-23',
+    at: Date.now(),
+    draft: {
+      blessings: ['a', '', ''],
+      currentGoals: 'x',
+      actionsToday: '',
+      actionsTomorrow: '',
+      affirmation: '',
+    } as never,
+  })
+  assert.equal(old?.mistakesToday, '')
+  assert.equal(old?.mistakeReflection, '')
 })
 
 test('note sanitize strips scripts without executing', () => {
