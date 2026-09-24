@@ -266,6 +266,7 @@ export interface Settings {
   northStar: string
   northStarHorizon: string
   northStarMetric: string
+  journalArchiveFrom: string
 }
 
 export type ProjectLifecycle = 'backlog' | 'active' | 'blocked' | 'complete' | 'archived'

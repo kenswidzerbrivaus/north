@@ -61,6 +61,7 @@ const defaultSettings = (): Settings => ({
   northStar: '',
   northStarHorizon: '',
   northStarMetric: '',
+  journalArchiveFrom: '',
 })
 
 export function freshState(): State {

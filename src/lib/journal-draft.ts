@@ -1,3 +1,6 @@
+import { notePlainText } from './note-body'
+import type { JournalEntry } from './types'
+
 export type JournalDraft = {
   blessings: [string, string, string]
   workout?: 'cardio' | 'weights' | 'rest' | 'other'
@@ -69,6 +72,31 @@ export function writeJournalDraft(date: string, draft: JournalDraft) {
   } catch {
     /* quota */
   }
+}
+
+export function journalHasWriting(entry: Partial<JournalEntry> | JournalDraft | null | undefined): boolean {
+  if (!entry) return false
+  const bits = [
+    'currentGoals' in entry ? entry.currentGoals : '',
+    'actionsToday' in entry ? entry.actionsToday : '',
+    'actionsTomorrow' in entry ? entry.actionsTomorrow : '',
+    'mistakesToday' in entry ? entry.mistakesToday : '',
+    'mistakeReflection' in entry ? entry.mistakeReflection : '',
+    'affirmation' in entry ? entry.affirmation : '',
+    'body' in entry ? entry.body : '',
+    ...('blessings' in entry && Array.isArray(entry.blessings) ? entry.blessings : []),
+  ]
+  if (bits.some((b) => notePlainText(String(b ?? '')))) return true
+  return Boolean('workout' in entry && entry.workout)
+}
+
+export function journalPreview(entry: JournalEntry, max = 110): string {
+  const parts = [entry.actionsToday || entry.body, entry.mistakesToday, entry.currentGoals, entry.affirmation]
+    .map((p) => notePlainText(p || ''))
+    .filter(Boolean)
+  const text = parts.join(' · ')
+  if (!text) return 'Written that day.'
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text
 }
 
 export function readJournalDraft(date: string, saved?: { updatedAt?: string }): JournalDraft | null {

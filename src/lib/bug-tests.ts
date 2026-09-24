@@ -11,7 +11,7 @@ import { metricNumber } from './goal-engine'
 import { daysLeft, depsReady, parseMilestoneLines } from './project-engine'
 import { mergeStates } from './cloud-merge'
 import { cloudAction } from './sync-policy'
-import { pickJournalDraft } from './journal-draft'
+import { journalHasWriting, pickJournalDraft } from './journal-draft'
 import { countWords, escapeHtml, looksLikeHtml, plainPreview, sanitizeNoteHtml, toEditorHtml } from './note-body'
 import type { CalEvent, ProjectMilestone, Task } from './types'
 
@@ -386,6 +386,12 @@ test('journal draft restores newer in-progress writing', () => {
   })
   assert.equal(old?.mistakesToday, '')
   assert.equal(old?.mistakeReflection, '')
+})
+
+test('journal archive only lists days with writing', () => {
+  assert.equal(journalHasWriting({ actionsToday: '<p>Shipped it</p>' }), true)
+  assert.equal(journalHasWriting({ actionsToday: '<p></p>', blessings: ['', '', ''] }), false)
+  assert.equal(journalHasWriting({ workout: 'cardio' }), true)
 })
 
 test('note sanitize strips scripts without executing', () => {

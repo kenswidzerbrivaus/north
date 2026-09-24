@@ -1278,6 +1278,17 @@ html.sepho .check {
   border-radius: 2px;
 }
 
+html.sepho .journal-archive-row {
+  border-color: rgba(110, 231, 255, 0.28);
+  background: rgba(4, 16, 26, 0.55);
+}
+
+html.sepho .journal-modes .btn-ghost[data-on='true'],
+html.sepho .journal-days .btn-ghost[data-on='true'] {
+  color: #6ee7ff;
+  border-color: #6ee7ff;
+}
+
 html.sepho .daily-need {
   color: #d4b45a;
 }
@@ -2693,6 +2704,78 @@ html.sepho .date-pop {
   font-family: Fraunces, ui-serif, Georgia, serif;
   font-style: italic;
   font-size: 18px;
+}
+
+.journal-modes .btn-ghost[data-on='true'],
+.journal-days .btn-ghost[data-on='true'] {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.journal-days {
+  margin: 0 0 12px;
+}
+
+.journal-archive {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.journal-archive-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.journal-archive-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-2) 40%, transparent);
+  color: inherit;
+}
+
+.journal-archive-row strong {
+  font-size: 15px;
+}
+
+.journal-archive-row span {
+  font-size: 13px;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.journal-read-bar {
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.journal-html {
+  font-size: 16px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.journal-html p {
+  margin: 0 0 0.7em;
+}
+
+.journal-html ul,
+.journal-html ol {
+  margin: 0 0 0.7em;
+  padding-left: 1.3em;
+}
+
+.empty-copy {
+  color: var(--ink-soft);
+  margin: 8px 0 0;
 }
 
 @media (max-width: 760px) {
