@@ -286,11 +286,22 @@ test('calendar done: unlinked event still matches a lone completed task by title
   assert.equal(eventIsDone(ev({ id: 'other', title: 'Gym', date: '2026-09-20' }), tasks), false)
 })
 
+test('calendar done: two same-title events only strike the completed one', () => {
+  const a = ev({ id: 'e1', title: 'Standup', date: '2026-09-24' })
+  const b = ev({ id: 'e2', title: 'Standup', date: '2026-09-24' })
+  const tasks = [task({ id: 't1', title: 'Standup', completed: true, eventId: 'e1', due: '2026-09-24' })]
+  assert.equal(eventIsDone(a, tasks, [a, b]), true)
+  assert.equal(eventIsDone(b, tasks, [a, b]), false)
+  assert.equal(matchLinkedTask(tasks, b), undefined)
+})
+
 test('calendar task link matches google all-day ids and unlinked same-day title', () => {
   const linked = task({ id: 't1', title: 'Standup', googleId: 'abc', due: '2026-09-23' })
   assert.equal(matchLinkedTask([linked], ev({ id: 'gcal:abc:2026-09-23', title: 'Standup', date: '2026-09-23', googleId: 'abc' }))?.id, 't1')
   const local = task({ id: 't2', title: 'Walk', due: '2026-09-23' })
   assert.equal(matchLinkedTask([local], ev({ id: 'gcal:xyz', title: 'Walk', date: '2026-09-23', googleId: 'xyz' }))?.id, 't2')
+  const taken = task({ id: 't3', title: 'Walk', eventId: 'e9', due: '2026-09-23' })
+  assert.equal(matchLinkedTask([taken], ev({ id: 'gcal:zzz', title: 'Walk', date: '2026-09-23', googleId: 'zzz' })), undefined)
   const two = [
     task({ id: 'a', title: 'Call mom', eventId: 'e1', due: '2026-09-23' }),
     task({ id: 'b', title: 'Call mom', eventId: 'e2', due: '2026-09-23' }),

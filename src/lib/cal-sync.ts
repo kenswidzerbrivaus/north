@@ -23,11 +23,10 @@ export function matchLinkedTask(tasks: readonly Task[], event: CalEvent) {
   const hit = tasks.find((t) => idsMatch(t, event))
   if (hit) return hit
   const title = normTitle(event.title)
-  const twins = tasks.filter((t) => normTitle(t.title) === title && (t.due || '') === event.date)
-  if (!twins.length) return undefined
-  const unlinked = twins.filter((t) => !t.googleId && !t.eventId)
+  const unlinked = tasks.filter(
+    (t) => normTitle(t.title) === title && (t.due || '') === event.date && !t.googleId && !t.eventId,
+  )
   if (unlinked.length === 1) return unlinked[0]
-  if (twins.length === 1) return twins[0]
   return undefined
 }
 

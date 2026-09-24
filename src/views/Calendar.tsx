@@ -138,7 +138,7 @@ export function Calendar() {
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const dayIso = toISO(cursor)
 
-  const isDone = (e: CalEvent) => eventIsDone(e, state.tasks)
+  const isDone = (e: CalEvent) => eventIsDone(e, state.tasks, allEvents)
 
   const eventsOn = (iso: string) => allEvents.filter((e) => e.date === iso)
   const tasksOn = (iso: string) =>
