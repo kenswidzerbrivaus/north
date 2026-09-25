@@ -102,7 +102,22 @@ function Shell() {
   const [more, setMore] = useState(false)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('sepho.sidebar') === '1'
+    } catch {
+      return false
+    }
+  })
   const tabStrip = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sepho.sidebar', collapsed ? '1' : '0')
+    } catch {
+      /* private */
+    }
+  }, [collapsed])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -132,6 +147,11 @@ function Shell() {
         setCmd(true)
         setQuery('')
         setActive(0)
+        return
+      }
+      if (e.key === '[' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault()
+        setCollapsed((v) => !v)
         return
       }
       if (e.key.toLowerCase() === 'p' && route !== 'projects') go('projects')
@@ -287,36 +307,53 @@ function Shell() {
   }[route]
 
   return (
-    <div className="shell" data-route={route}>
+    <div className="shell" data-route={route} data-sidebar={collapsed ? 'in' : 'out'}>
       <div className="sepho-scan" aria-hidden />
       <aside className="sidebar">
-        <a className="brand" href="#/today">
-          <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden>
-            <path d="M16 3 L18.4 13.6 L29 16 L18.4 18.4 L16 29 L13.6 18.4 L3 16 L13.6 13.6 Z" fill="var(--accent)" />
-          </svg>
-          <div>
-            <h1>Sepho</h1>
-            <small>Systems online</small>
-          </div>
-        </a>
+        <div className="sidebar-top">
+          <a className="brand" href="#/today" title="Sepho">
+            <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden>
+              <path d="M16 3 L18.4 13.6 L29 16 L18.4 18.4 L16 29 L13.6 18.4 L3 16 L13.6 13.6 Z" fill="var(--accent)" />
+            </svg>
+            <div>
+              <h1>Sepho</h1>
+              <small>Systems online</small>
+            </div>
+          </a>
+          <button
+            className="btn-icon sidebar-toggle"
+            type="button"
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            onClick={() => setCollapsed((v) => !v)}
+          >
+            <Icon name={collapsed ? 'chevron' : 'chevronL'} size={16} />
+          </button>
+        </div>
         <nav className="nav" aria-label="Primary">
           {ROUTES.map((r) => (
-            <button key={r.id} className="nav-btn" data-on={route === r.id} onClick={() => go(r.id)}>
+            <button
+              key={r.id}
+              className="nav-btn"
+              data-on={route === r.id}
+              title={r.label}
+              onClick={() => go(r.id)}
+            >
               <Icon name={NAV_ICON[r.id]} />
-              {r.label}
+              <span className="nav-label">{r.label}</span>
               <span>{r.hint}</span>
             </button>
           ))}
         </nav>
         <div className="sidebar-foot">
           {route !== 'today' ? <DayClock /> : null}
-          <button className="search-btn" onClick={() => setCmd(true)}>
+          <button className="search-btn" onClick={() => setCmd(true)} title="Search">
             <Icon name="search" size={16} />
-            Search
-            <span style={{ marginLeft: 'auto', fontSize: 11 }}>⌘K</span>
+            <span className="nav-label">Search</span>
+            <span className="nav-kbd">⌘K</span>
           </button>
-          <button className="btn-ghost" onClick={signOut}>
-            Sign out
+          <button className="btn-ghost" onClick={signOut} title="Sign out">
+            <span className="nav-label">Sign out</span>
           </button>
         </div>
       </aside>

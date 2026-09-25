@@ -96,6 +96,11 @@ h3,
   display: grid;
   grid-template-columns: var(--sidebar) 1fr;
   min-height: 100dvh;
+  transition: grid-template-columns 0.18s ease;
+}
+
+.shell[data-sidebar='in'] {
+  --sidebar: 76px;
 }
 
 .sidebar {
@@ -109,6 +114,19 @@ h3,
   border-right: 1px solid var(--line);
   background: color-mix(in srgb, var(--paper) 70%, transparent);
   backdrop-filter: blur(16px);
+  min-width: 0;
+}
+
+.sidebar-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.sidebar-toggle {
+  flex: 0 0 auto;
+  margin-top: 4px;
 }
 
 .brand {
@@ -204,6 +222,55 @@ h3,
   border-radius: 12px;
   background: var(--paper);
   color: var(--ink-soft);
+}
+
+.search-btn .nav-kbd {
+  margin-left: auto;
+  font-size: 11px;
+}
+
+.shell[data-sidebar='in'] .sidebar {
+  padding: 16px 8px 14px;
+  align-items: center;
+}
+
+.shell[data-sidebar='in'] .sidebar-top {
+  flex-direction: column;
+  align-items: center;
+}
+
+.shell[data-sidebar='in'] .brand {
+  padding: 4px 0;
+  justify-content: center;
+}
+
+.shell[data-sidebar='in'] .brand div,
+.shell[data-sidebar='in'] .nav-label,
+.shell[data-sidebar='in'] .nav-btn span:last-child,
+.shell[data-sidebar='in'] .nav-kbd,
+.shell[data-sidebar='in'] .sidebar .day-clock {
+  display: none;
+}
+
+.shell[data-sidebar='in'] .nav {
+  width: 100%;
+}
+
+.shell[data-sidebar='in'] .nav-btn,
+.shell[data-sidebar='in'] .search-btn,
+.shell[data-sidebar='in'] .sidebar-foot .btn-ghost {
+  justify-content: center;
+  padding: 10px 8px;
+}
+
+.shell[data-sidebar='in'] .sidebar-foot .btn-ghost {
+  min-height: 36px;
+}
+
+.shell[data-sidebar='in'] .sidebar-foot .btn-ghost::after {
+  content: '⎋';
+  font-size: 14px;
+  opacity: 0.85;
 }
 
 .main {
