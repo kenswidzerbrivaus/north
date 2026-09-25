@@ -295,6 +295,14 @@ test('calendar done: two same-title events only strike the completed one', () =>
   assert.equal(matchLinkedTask(tasks, b), undefined)
 })
 
+test('calendar done: same google id on different days stay independent', () => {
+  const mon = ev({ id: 'gcal:series:2026-09-21', title: 'Standup', date: '2026-09-21', googleId: 'series' })
+  const tue = ev({ id: 'gcal:series:2026-09-22', title: 'Standup', date: '2026-09-22', googleId: 'series' })
+  const tasks = [task({ id: 't1', title: 'Standup', completed: true, googleId: 'series', due: '2026-09-21' })]
+  assert.equal(eventIsDone(mon, tasks, [mon]), true)
+  assert.equal(eventIsDone(tue, tasks, [tue]), false)
+})
+
 test('calendar task link matches google all-day ids and unlinked same-day title', () => {
   const linked = task({ id: 't1', title: 'Standup', googleId: 'abc', due: '2026-09-23' })
   assert.equal(matchLinkedTask([linked], ev({ id: 'gcal:abc:2026-09-23', title: 'Standup', date: '2026-09-23', googleId: 'abc' }))?.id, 't1')
@@ -318,9 +326,10 @@ test('collapse duplicate tasks keeps two different events with the same title', 
     task({ id: 't4', title: 'Walk', due: '2026-09-23' }),
     task({ id: 't5', title: 'Gym', googleId: 'g1', due: '2026-09-23' }),
     task({ id: 't6', title: 'Gym', googleId: 'g1', due: '2026-09-23' }),
+    task({ id: 't7', title: 'Gym', googleId: 'g1', due: '2026-09-24' }),
   ])
   const ids = collapsed.map((t) => t.id).sort()
-  assert.deepEqual(ids, ['t1', 't2', 't3', 't5'])
+  assert.deepEqual(ids, ['t1', 't2', 't3', 't5', 't7'])
   assert.equal(collapsed.find((t) => t.id === 't3')?.googleId, undefined)
 })
 

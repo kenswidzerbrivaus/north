@@ -474,7 +474,7 @@ export function useGoogleCalendar() {
 }
 
 export function mergeCalendars(local: CalEvent[], google: CalEvent[]) {
-  const googleIds = new Set(google.map((e) => e.googleId).filter(Boolean))
-  const localOnly = local.filter((e) => !e.googleId || !googleIds.has(e.googleId))
+  const googleKeys = new Set(google.map((e) => (e.googleId ? `${e.googleId}|${e.date}` : '')).filter(Boolean))
+  const localOnly = local.filter((e) => !e.googleId || !googleKeys.has(`${e.googleId}|${e.date}`))
   return [...localOnly, ...google]
 }

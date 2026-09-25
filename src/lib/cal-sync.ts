@@ -80,9 +80,10 @@ export function collapseDuplicateTasks(tasks: Task[]): Task[] {
       else byEvent.set(t.eventId, t.id)
     }
     if (t.googleId) {
-      const prev = byGoogle.get(t.googleId)
+      const key = `${t.googleId}|${t.due || ''}`
+      const prev = byGoogle.get(key)
       if (prev) union(prev, t.id)
-      else byGoogle.set(t.googleId, t.id)
+      else byGoogle.set(key, t.id)
     }
   }
 
@@ -98,7 +99,7 @@ export function collapseDuplicateTasks(tasks: Task[]): Task[] {
     if (group.length < 2) continue
     const linked = group.filter((t) => t.googleId || t.eventId)
     const unlinked = group.filter((t) => !t.googleId && !t.eventId)
-    if (linked.length && unlinked.length) {
+    if (linked.length === 1 && unlinked.length) {
       for (const u of unlinked) union(linked[0]!.id, u.id)
     }
   }
