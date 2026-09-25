@@ -9,6 +9,10 @@ export function todayISO(): string {
   return toISO(new Date())
 }
 
+export function shiftISO(iso: string, days: number): string {
+  return toISO(addDays(parseISO(iso), days))
+}
+
 export function parseDeadline(raw: string): string {
   const s = raw.trim()
   if (!s) return ''

@@ -3,7 +3,7 @@ import { DayClock } from '../components/DayClock'
 import { Continuance } from '../components/Continuance'
 import { Check } from '../components/ui'
 import { hhmmFromMinutes, roundDown5, stashCalGap } from '../lib/cal-gap'
-import { formatTime, minutesOf, parseISO, todayISO } from '../lib/dates'
+import { formatTime, minutesOf, parseISO, shiftISO, todayISO } from '../lib/dates'
 import { habitDone, isHabitDue } from '../lib/habits'
 import { linkedGoalId } from '../lib/goal-engine'
 import { exceptions, pendingDecisions, pickNow } from '../lib/project-engine'
@@ -32,11 +32,12 @@ function nowMinutes() {
 }
 
 export function Today({ go }: { go: (r: Route) => void }) {
-  const { state, updateTask, setHabitCount, addTask, addNote, addEvent, resolveDecision, resolveWaiting } = useStore()
+  const { state, updateTask, toggleTask, setHabitCount, addTask, addNote, addEvent, resolveDecision, resolveWaiting } = useStore()
   const [cont, setCont] = useState<string | null>(null)
   const gcal = useGoogleCalendar()
   const timer = useTimer()
   const today = todayISO()
+  const yesterday = shiftISO(today, -1)
   const date = parseISO(today)
   const quote = quoteForDate(today)
   const [quick, setQuick] = useState('')
@@ -328,6 +329,22 @@ export function Today({ go }: { go: (r: Route) => void }) {
           <p className="today-empty">No active objective. Queue one below.</p>
         )}
       </section>
+
+      {state.tasks.filter((t) => !t.completed && t.due === yesterday).length ? (
+        <section className="board-queue hud-frame">
+          <p className="board-label">Close yesterday</p>
+          <ul className="today-rituals">
+            {state.tasks
+              .filter((t) => !t.completed && t.due === yesterday)
+              .map((t) => (
+                <li key={t.id}>
+                  <Check on={false} onClick={() => toggleTask(t.id)} label={t.title} />
+                  <span>{t.title}</span>
+                </li>
+              ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="board-queue hud-frame">
         <p className="board-label">Execution queue</p>

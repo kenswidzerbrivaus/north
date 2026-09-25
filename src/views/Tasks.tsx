@@ -3,11 +3,11 @@ import { Continuance } from '../components/Continuance'
 import { DateField } from '../components/DateField'
 import { Check, Empty, Field, Modal } from '../components/ui'
 import { Icon } from '../icons'
-import { formatShort, formatTime, todayISO } from '../lib/dates'
+import { formatShort, formatTime, shiftISO, todayISO } from '../lib/dates'
 import { PALETTE } from '../lib/types'
 import { useStore } from '../store'
 
-type Filter = 'today' | 'inbox' | 'upcoming' | 'all' | 'done'
+type Filter = 'today' | 'yesterday' | 'inbox' | 'upcoming' | 'all' | 'done'
 
 const PRI = ['None', 'Low', 'Med', 'High'] as const
 
@@ -15,6 +15,7 @@ export function Tasks() {
   const { state, addTask, toggleTask, updateTask, deleteTask, addList, deleteList, addSubtask, toggleSubtask } =
     useStore()
   const today = todayISO()
+  const yesterday = shiftISO(today, -1)
   const [filter, setFilter] = useState<Filter>('today')
   const [listId, setListId] = useState<string | 'all'>('all')
   const [draft, setDraft] = useState('')
@@ -37,6 +38,7 @@ export function Tasks() {
       if (filter === 'done') return t.completed
       if (t.completed) return false
       if (filter === 'inbox') return t.listId === 'inbox' && !t.due
+      if (filter === 'yesterday') return t.due === yesterday && !t.completed
       if (filter === 'today') {
         if (!t.due) return false
         if (t.googleId || t.listId === 'calendar') return t.due === today
@@ -79,7 +81,7 @@ export function Tasks() {
 
       <div className="split">
         <aside className="list-col filter-rail">
-          {(['today', 'inbox', 'upcoming', 'all', 'done'] as Filter[]).map((f) => (
+          {(['today', 'yesterday', 'inbox', 'upcoming', 'all', 'done'] as Filter[]).map((f) => (
             <button key={f} className="list-btn" data-on={filter === f && listId === 'all'} onClick={() => { setFilter(f); setListId('all') }}>
               {f[0].toUpperCase() + f.slice(1)}
             </button>
@@ -145,7 +147,7 @@ export function Tasks() {
                   <Check
                     on={t.completed}
                     onClick={() => {
-                      if (t.completed) toggleTask(t.id)
+                      if (t.completed || (t.due && t.due < today)) toggleTask(t.id)
                       else setCont(t.id)
                     }}
                   />

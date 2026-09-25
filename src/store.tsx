@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { todayISO } from './lib/dates'
+import { shiftISO, todayISO } from './lib/dates'
 import { nowISO, uid } from './lib/id'
 import { depsReady } from './lib/project-engine'
 import { readLink } from './lib/google-calendar'
@@ -470,9 +470,16 @@ function linkExisting(s: State): State {
   return { ...synced, tasks: collapsed }
 }
 
+function keepGoogleTask(t: { googleId?: string; completed: boolean; due?: string }, today: string) {
+  if (!t.googleId) return true
+  if (t.completed) return true
+  if (!t.due) return true
+  return t.due >= shiftISO(today, -14)
+}
+
 function pruneGoogleToToday(s: State): State {
   const today = todayISO()
-  const tasks = s.tasks.filter((t) => !t.googleId || t.completed || t.due === today)
+  const tasks = s.tasks.filter((t) => keepGoogleTask(t, today))
   if (tasks.length === s.tasks.length) return s
   return { ...s, tasks }
 }
@@ -693,6 +700,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       syncFromCalendar: (events) =>
         patch((s) => {
           const today = todayISO()
+          const oldest = shiftISO(today, -14)
           let tasks = s.tasks
           let changed = false
           for (const event of events) {
@@ -705,13 +713,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               }
               continue
             }
-            if (event.date !== today) continue
+            if (event.date < oldest || event.date > today) continue
             changed = true
             tasks = [taskFromEvent(event), ...tasks]
           }
           const lists = withCalendarList(s.lists)
           let next: State = changed || lists !== s.lists ? { ...s, lists, tasks } : s
-          const pruned = collapseDuplicateTasks(next.tasks.filter((t) => !t.googleId || t.completed || t.due === today))
+          const pruned = collapseDuplicateTasks(next.tasks.filter((t) => keepGoogleTask(t, today)))
           if (pruned.length !== next.tasks.length || pruned.some((t, i) => t !== next.tasks[i])) next = { ...next, tasks: pruned }
           return next
         }, true),
