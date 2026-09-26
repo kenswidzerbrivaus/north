@@ -1,4 +1,4 @@
-const HTML_TAG = /<\/?[a-z][\s\S]*>/i
+const HTML_TAG = /<(p|div|br|h[1-3]|ul|ol|li|strong|b|em|i|u|s|blockquote|pre|code|span|mark|hr)\b/i
 const DROP = new Set([
   'SCRIPT',
   'STYLE',

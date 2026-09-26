@@ -2719,7 +2719,10 @@ html.sepho .date-pop {
 }
 
 .daily-box {
+  display: block;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 110px;
   border: 1px solid var(--line-strong);
   background: color-mix(in srgb, var(--bg-2) 55%, transparent);
@@ -2727,6 +2730,10 @@ html.sepho .date-pop {
   padding: 12px;
   resize: vertical;
   outline: none;
+  font-size: 16px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .daily-box-tall {

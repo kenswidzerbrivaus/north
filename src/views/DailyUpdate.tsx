@@ -136,12 +136,12 @@ export function DailyUpdate({ date }: { date: string }) {
 
       <section className="daily-write">
         <p className="daily-label">Current goals</p>
-        <NoteEditor
-          noteId={`${date}:goals`}
-          value={draft.currentGoals}
-          onChange={(currentGoals) => patchDraft({ ...draftRef.current, currentGoals })}
-          compact
+        <textarea
+          className="daily-box"
+          rows={5}
           placeholder="What you’re building toward."
+          value={notePlainText(draft.currentGoals)}
+          onChange={(e) => patchDraft({ ...draftRef.current, currentGoals: e.target.value })}
         />
       </section>
 

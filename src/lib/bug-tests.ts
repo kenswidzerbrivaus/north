@@ -366,6 +366,8 @@ test('calendar now line sits at the current minute on the day grid', () => {
 test('note body wraps plain text and keeps html', () => {
   assert.equal(looksLikeHtml('<p>Hi</p>'), true)
   assert.equal(looksLikeHtml('just text < 3'), false)
+  assert.equal(looksLikeHtml('Hit <profit> this quarter'), false)
+  assert.match(toEditorHtml('Hit <profit> this quarter'), /profit/)
   assert.equal(toEditorHtml(''), '<p><br></p>')
   assert.match(toEditorHtml('hello\n\nworld'), /<p>hello<\/p>/)
   assert.match(toEditorHtml('hello\nworld'), /hello<br>world/)
