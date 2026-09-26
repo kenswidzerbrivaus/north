@@ -27,7 +27,7 @@ type GCal = {
   error: string
   connect: () => Promise<void>
   disconnect: () => void
-  refresh: (around?: Date, force?: boolean) => Promise<void>
+  refresh: (around?: Date, force?: boolean, reauth?: boolean) => Promise<void>
   syncCloud: () => Promise<void>
   cloudAt: number
   cloudMsg: string
@@ -67,7 +67,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refresh = useCallback(
-    async (around?: Date, force = false) => {
+    async (around?: Date, force = false, reauth = false) => {
       const center = around ?? aroundRef.current
       aroundRef.current = center
       const key = `${center.getFullYear()}-${center.getMonth()}`
@@ -85,11 +85,20 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
         return
       }
       markLinked()
-      if (!force && rangeKey.current === key && readToken()) return
+      if (!force && !reauth && rangeKey.current === key && readToken()) return
       if (loadingRef.current) return
       if (!readToken()) {
-        if (isGoogleLinked()) setError('Calendar is still linked. Tap Sync Google to resume.')
-        return
+        if (!reauth) {
+          if (isGoogleLinked()) setError('Calendar is still linked. Tap Sync Google to resume.')
+          return
+        }
+        try {
+          await ensureGoogleToken(clientId, true)
+        } catch (err) {
+          const code = err instanceof Error ? err.message : ''
+          setError(code === 'GOOGLE_NEEDS_GESTURE' || code === 'GOOGLE_AUTH' ? 'Tap Sync Google again and finish Google sign-in.' : code || 'Google sign-in was cancelled')
+          return
+        }
       }
       rangeKey.current = key
       loadingRef.current = true
@@ -109,6 +118,23 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         rangeKey.current = ''
         const code = err instanceof Error ? err.message : ''
+        if (reauth && (code === 'GOOGLE_NEEDS_GESTURE' || code === 'GOOGLE_AUTH') && clientId) {
+          try {
+            await ensureGoogleToken(clientId, true)
+            rangeKey.current = key
+            const items = await load()
+            setEvents(items)
+            syncFromCalendar(items)
+            markLinked()
+            setError('')
+            return
+          } catch (inner) {
+            const innerCode = inner instanceof Error ? inner.message : code
+            markLinked()
+            setError(innerCode === 'GOOGLE_NEEDS_GESTURE' ? 'Tap Sync Google again and finish Google sign-in.' : innerCode || 'Google Calendar needs to reconnect')
+            return
+          }
+        }
         if (code === 'GOOGLE_NEEDS_GESTURE' || code === 'GOOGLE_AUTH') {
           markLinked()
           setError('Calendar is still linked. Tap Sync Google to resume.')

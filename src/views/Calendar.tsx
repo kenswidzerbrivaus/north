@@ -400,7 +400,7 @@ export function Calendar() {
         </div>
         <div className="row">
           {gcal.connected ? (
-            <button className="btn-ghost" onClick={() => void gcal.refresh(cursor, true)} disabled={gcal.loading}>
+            <button className="btn-ghost" onClick={() => void gcal.refresh(cursor, true, true)} disabled={gcal.loading}>
               <Icon name="google" size={16} /> {gcal.loading ? 'Syncing…' : 'Sync Google'}
             </button>
           ) : (
