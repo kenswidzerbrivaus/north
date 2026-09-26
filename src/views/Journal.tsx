@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { addDays, formatLong, parseISO, toISO, todayISO } from '../lib/dates'
-import { downloadJournalArchive, formatJournalArchive, journalHasWriting, journalPreview } from '../lib/journal-draft'
+import { downloadJournalArchive, formatJournalArchive, journalGoalsText, journalHasWriting, journalPreview } from '../lib/journal-draft'
 import { notePlainText } from '../lib/note-body'
 import { quoteForDate } from '../lib/quotes'
 import type { JournalEntry, Workout } from '../lib/types'
@@ -20,16 +20,18 @@ export function Journal() {
   const [mode, setMode] = useState<'write' | 'archive'>('write')
   const [date, setDate] = useState(today)
   const [opened, setOpened] = useState<string | null>(null)
-  const [editing, setEditing] = useState(true)
+  const [forceEdit, setForceEdit] = useState(false)
   const from = state.settings.journalArchiveFrom || today
+  const isToday = date === today
+  const showEditor = isToday || forceEdit
 
   useEffect(() => {
     if (!state.settings.journalArchiveFrom) updateSettings({ journalArchiveFrom: today })
   }, [state.settings.journalArchiveFrom, today, updateSettings])
 
   useEffect(() => {
-    setEditing(date === today)
-  }, [date, today])
+    if (isToday) setForceEdit(false)
+  }, [isToday])
 
   const archived = useMemo(
     () =>
@@ -58,7 +60,7 @@ export function Journal() {
               setMode('write')
               setOpened(null)
               setDate(today)
-              setEditing(true)
+              setForceEdit(false)
             }}
           >
             Write
@@ -84,12 +86,11 @@ export function Journal() {
               className="btn-ghost"
               type="button"
               onClick={() => {
-                setEditing(false)
+                setForceEdit(false)
                 try {
                   setDate(toISO(addDays(parseISO(date), -1)))
                 } catch {
                   setDate(today)
-                  setEditing(true)
                 }
               }}
             >
@@ -100,7 +101,7 @@ export function Journal() {
               type="button"
               data-on={date === today}
               onClick={() => {
-                setEditing(true)
+                setForceEdit(false)
                 setDate(today)
               }}
             >
@@ -117,25 +118,28 @@ export function Journal() {
                     return today
                   }
                 })()
-                setEditing(next === today)
+                setForceEdit(false)
                 setDate(next)
               }}
             >
               Next
             </button>
           </div>
-          {date === today || editing ? (
+          {showEditor ? (
             <DailyUpdate key={date} date={date} />
           ) : past && journalHasWriting(past) ? (
             <JournalRead
               entry={past}
-              onBack={() => setDate(today)}
-              onEdit={() => setEditing(true)}
+              onBack={() => {
+                setForceEdit(false)
+                setDate(today)
+              }}
+              onEdit={() => setForceEdit(true)}
             />
           ) : (
             <section className="journal-archive">
               <p className="empty-copy">Nothing written on {formatLong(date)}.</p>
-              <button className="btn" type="button" onClick={() => setEditing(true)}>
+              <button className="btn" type="button" onClick={() => setForceEdit(true)}>
                 Write this day
               </button>
             </section>
@@ -149,6 +153,7 @@ export function Journal() {
             if (opened) setDate(opened)
             setOpened(null)
             setMode('write')
+            setForceEdit(true)
           }}
         />
       ) : (
@@ -238,7 +243,10 @@ function JournalRead({
           <p>{WORKOUT_LABEL[entry.workout] ?? String(entry.workout)}</p>
         </section>
       ) : null}
-      <ReadBlock label="Current goals" html={entry.currentGoals || entry.shortTermGoal} />
+      <section>
+        <p className="daily-label">Current goals</p>
+        <p className="journal-html">{journalGoalsText(entry) || '—'}</p>
+      </section>
       <ReadBlock label="Actions I took today" html={entry.actionsToday || entry.body} />
       <ReadBlock label="Actions I’ll take tomorrow" html={entry.actionsTomorrow} />
       <ReadBlock label="Key mistakes" html={entry.mistakesToday} />

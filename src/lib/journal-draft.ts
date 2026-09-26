@@ -145,6 +145,16 @@ export function downloadJournalArchive(filename: string, text: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+export function journalGoalsText(entry: Partial<JournalEntry> | null | undefined): string {
+  if (!entry) return ''
+  const fromGoals = notePlainText(String(entry.currentGoals ?? ''))
+  if (fromGoals) return fromGoals
+  const fromShort = notePlainText(String(entry.shortTermGoal ?? ''))
+  if (fromShort) return fromShort
+  const wins = Array.isArray(entry.morningWins) ? entry.morningWins.map((w) => String(w ?? '').trim()).filter(Boolean) : []
+  return wins.join('\n')
+}
+
 export function journalPreview(entry: JournalEntry, max = 110): string {
   const parts = [entry.actionsToday || entry.body, entry.mistakesToday, entry.currentGoals, entry.affirmation]
     .map((p) => notePlainText(p || ''))
