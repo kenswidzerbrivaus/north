@@ -21,7 +21,7 @@ function fromEntry(e?: JournalEntry): Draft {
   return normalizeJournalDraft({
     blessings: e.blessings,
     workout: e.workout,
-    currentGoals: e.currentGoals ?? '',
+    currentGoals: e.currentGoals || e.shortTermGoal || '',
     actionsToday: e.actionsToday || e.body || '',
     actionsTomorrow: e.actionsTomorrow ?? '',
     mistakesToday: e.mistakesToday,

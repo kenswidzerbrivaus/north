@@ -1,15 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { addDays, formatLong, parseISO, toISO, todayISO } from '../lib/dates'
 import { downloadJournalArchive, formatJournalArchive, journalHasWriting, journalPreview } from '../lib/journal-draft'
-import { notePlainText, sanitizeNoteHtml, toEditorHtml } from '../lib/note-body'
+import { notePlainText } from '../lib/note-body'
 import { quoteForDate } from '../lib/quotes'
 import type { JournalEntry, Workout } from '../lib/types'
 import { useStore } from '../store'
 import { DailyUpdate } from './DailyUpdate'
-
-function escapeText(s: string) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
 
 const WORKOUT_LABEL: Record<Workout, string> = {
   cardio: 'Cardio',
@@ -88,27 +84,41 @@ export function Journal() {
               className="btn-ghost"
               type="button"
               onClick={() => {
+                setEditing(false)
                 try {
                   setDate(toISO(addDays(parseISO(date), -1)))
                 } catch {
                   setDate(today)
+                  setEditing(true)
                 }
               }}
             >
               Previous
             </button>
-            <button className="btn-ghost" type="button" data-on={date === today} onClick={() => setDate(today)}>
+            <button
+              className="btn-ghost"
+              type="button"
+              data-on={date === today}
+              onClick={() => {
+                setEditing(true)
+                setDate(today)
+              }}
+            >
               Today
             </button>
             <button
               className="btn-ghost"
               type="button"
               onClick={() => {
-                try {
-                  setDate(toISO(addDays(parseISO(date), 1)))
-                } catch {
-                  setDate(today)
-                }
+                const next = (() => {
+                  try {
+                    return toISO(addDays(parseISO(date), 1))
+                  } catch {
+                    return today
+                  }
+                })()
+                setEditing(next === today)
+                setDate(next)
               }}
             >
               Next
@@ -228,7 +238,7 @@ function JournalRead({
           <p>{WORKOUT_LABEL[entry.workout] ?? String(entry.workout)}</p>
         </section>
       ) : null}
-      <ReadBlock label="Current goals" html={entry.currentGoals} />
+      <ReadBlock label="Current goals" html={entry.currentGoals || entry.shortTermGoal} />
       <ReadBlock label="Actions I took today" html={entry.actionsToday || entry.body} />
       <ReadBlock label="Actions I’ll take tomorrow" html={entry.actionsTomorrow} />
       <ReadBlock label="Key mistakes" html={entry.mistakesToday} />
@@ -244,18 +254,12 @@ function JournalRead({
 }
 
 function ReadBlock({ label, html }: { label: string; html?: string }) {
-  const text = notePlainText(html || '')
+  const text = notePlainText(String(html ?? ''))
   if (!text) return null
-  let markup = text
-  try {
-    markup = sanitizeNoteHtml(toEditorHtml(html || '')) || text
-  } catch {
-    markup = escapeText(text)
-  }
   return (
     <section>
       <p className="daily-label">{label}</p>
-      <div className="journal-html" dangerouslySetInnerHTML={{ __html: markup }} />
+      <p className="journal-html">{text}</p>
     </section>
   )
 }

@@ -2829,9 +2829,11 @@ html.sepho .date-pop {
 }
 
 .journal-html {
+  margin: 0;
   font-size: 16px;
   line-height: 1.55;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .journal-html p {
