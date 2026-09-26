@@ -131,8 +131,12 @@ export function NoteEditor({
     const el = ref.current
     if (!el) return
     quiet.current = true
-    document.execCommand('defaultParagraphSeparator', false, 'p')
-    el.innerHTML = toEditorHtml(value)
+    try {
+      document.execCommand('defaultParagraphSeparator', false, 'p')
+      el.innerHTML = toEditorHtml(value)
+    } catch {
+      el.textContent = String(value ?? '')
+    }
     el.dataset.empty = el.textContent?.trim() ? 'false' : 'true'
     setLinkOpen(false)
     setFindOpen(false)

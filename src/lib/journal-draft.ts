@@ -60,7 +60,7 @@ export function pickJournalDraft(
     Boolean(d.mistakeReflection?.trim()) ||
     Boolean(d.affirmation?.trim()) ||
     Boolean(d.workout) ||
-    d.blessings?.some((b) => b.trim())
+    d.blessings?.some((b) => String(b ?? '').trim())
   if (!has) return null
   return normalizeJournalDraft(d)
 }

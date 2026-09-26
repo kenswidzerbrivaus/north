@@ -59,11 +59,17 @@ export function monthName(d: Date): string {
 }
 
 export function formatLong(iso: string): string {
-  return parseISO(iso).toLocaleDateString(undefined, {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  })
+  try {
+    const d = parseISO(iso)
+    if (Number.isNaN(d.getTime())) return iso
+    return d.toLocaleDateString(undefined, {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    })
+  } catch {
+    return iso
+  }
 }
 
 export function formatMedium(iso: string): string {

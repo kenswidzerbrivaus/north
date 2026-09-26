@@ -7,6 +7,10 @@ import type { JournalEntry, Workout } from '../lib/types'
 import { useStore } from '../store'
 import { DailyUpdate } from './DailyUpdate'
 
+function escapeText(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 const WORKOUT_LABEL: Record<Workout, string> = {
   cardio: 'Cardio',
   weights: 'Weights',
@@ -20,11 +24,16 @@ export function Journal() {
   const [mode, setMode] = useState<'write' | 'archive'>('write')
   const [date, setDate] = useState(today)
   const [opened, setOpened] = useState<string | null>(null)
+  const [editing, setEditing] = useState(true)
   const from = state.settings.journalArchiveFrom || today
 
   useEffect(() => {
     if (!state.settings.journalArchiveFrom) updateSettings({ journalArchiveFrom: today })
   }, [state.settings.journalArchiveFrom, today, updateSettings])
+
+  useEffect(() => {
+    setEditing(date === today)
+  }, [date, today])
 
   const archived = useMemo(
     () =>
@@ -34,6 +43,7 @@ export function Journal() {
     [from, state.journal],
   )
 
+  const past = state.journal.find((j) => j.date === date)
   const reading = mode === 'archive' && opened ? archived.find((j) => j.date === opened) : undefined
 
   return (
@@ -52,6 +62,7 @@ export function Journal() {
               setMode('write')
               setOpened(null)
               setDate(today)
+              setEditing(true)
             }}
           >
             Write
@@ -73,17 +84,52 @@ export function Journal() {
       {mode === 'write' ? (
         <>
           <div className="row journal-days">
-            <button className="btn-ghost" type="button" onClick={() => setDate(toISO(addDays(parseISO(date), -1)))}>
+            <button
+              className="btn-ghost"
+              type="button"
+              onClick={() => {
+                try {
+                  setDate(toISO(addDays(parseISO(date), -1)))
+                } catch {
+                  setDate(today)
+                }
+              }}
+            >
               Previous
             </button>
             <button className="btn-ghost" type="button" data-on={date === today} onClick={() => setDate(today)}>
               Today
             </button>
-            <button className="btn-ghost" type="button" onClick={() => setDate(toISO(addDays(parseISO(date), 1)))}>
+            <button
+              className="btn-ghost"
+              type="button"
+              onClick={() => {
+                try {
+                  setDate(toISO(addDays(parseISO(date), 1)))
+                } catch {
+                  setDate(today)
+                }
+              }}
+            >
               Next
             </button>
           </div>
-          <DailyUpdate key={date} date={date} />
+          {date === today || editing ? (
+            <DailyUpdate key={date} date={date} />
+          ) : past && journalHasWriting(past) ? (
+            <JournalRead
+              entry={past}
+              onBack={() => setDate(today)}
+              onEdit={() => setEditing(true)}
+            />
+          ) : (
+            <section className="journal-archive">
+              <p className="empty-copy">Nothing written on {formatLong(date)}.</p>
+              <button className="btn" type="button" onClick={() => setEditing(true)}>
+                Write this day
+              </button>
+            </section>
+          )}
         </>
       ) : reading ? (
         <JournalRead
@@ -144,7 +190,9 @@ function JournalRead({
   onEdit: () => void
 }) {
   const quote = quoteForDate(entry.date)
-  const blessings = (entry.blessings ?? ['', '', '']).filter((b) => b.trim())
+  const blessings = (Array.isArray(entry.blessings) ? entry.blessings : [])
+    .map((b) => String(b ?? ''))
+    .filter((b) => b.trim())
   return (
     <article className="daily-page journal-read">
       <div className="row journal-read-bar">
@@ -168,7 +216,7 @@ function JournalRead({
             {blessings.map((b, i) => (
               <li key={`${i}-${b}`}>
                 <span className="daily-bullet" data-on="true" />
-                <span>{b}</span>
+                <span>{String(b)}</span>
               </li>
             ))}
           </ol>
@@ -177,7 +225,7 @@ function JournalRead({
       {entry.workout ? (
         <section>
           <p className="daily-label">Workout</p>
-          <p>{WORKOUT_LABEL[entry.workout]}</p>
+          <p>{WORKOUT_LABEL[entry.workout] ?? String(entry.workout)}</p>
         </section>
       ) : null}
       <ReadBlock label="Current goals" html={entry.currentGoals} />
@@ -198,10 +246,16 @@ function JournalRead({
 function ReadBlock({ label, html }: { label: string; html?: string }) {
   const text = notePlainText(html || '')
   if (!text) return null
+  let markup = text
+  try {
+    markup = sanitizeNoteHtml(toEditorHtml(html || '')) || text
+  } catch {
+    markup = escapeText(text)
+  }
   return (
     <section>
       <p className="daily-label">{label}</p>
-      <div className="journal-html" dangerouslySetInnerHTML={{ __html: sanitizeNoteHtml(toEditorHtml(html || '')) }} />
+      <div className="journal-html" dangerouslySetInnerHTML={{ __html: markup }} />
     </section>
   )
 }
