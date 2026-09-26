@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   adoptPendingToken,
-  beginGoogleRedirect,
   clearToken,
   createGoogleEvent,
   deleteGoogleEvent,
@@ -9,7 +8,6 @@ import {
   isGoogleLinked,
   linkedClientId,
   listGoogleEvents,
-  prefersRedirectAuth,
   readLink,
   readToken,
   tokenHasDriveScope,
@@ -88,6 +86,11 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       }
       markLinked()
       if (!force && rangeKey.current === key && readToken()) return
+      if (loadingRef.current) return
+      if (!readToken()) {
+        if (isGoogleLinked()) setError('Calendar is still linked. Tap Sync Google to resume.')
+        return
+      }
       rangeKey.current = key
       loadingRef.current = true
       setLoading(true)
@@ -98,7 +101,6 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
         return listGoogleEvents(from, to)
       }
       try {
-        await ensureGoogleToken(clientId)
         const items = await load()
         setEvents(items)
         syncFromCalendar(items)
@@ -107,37 +109,17 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         rangeKey.current = ''
         const code = err instanceof Error ? err.message : ''
-        if ((code === 'GOOGLE_AUTH' || code === 'GOOGLE_SCOPES') && clientId) {
-          try {
-            await ensureGoogleToken(clientId, code === 'GOOGLE_SCOPES')
-            rangeKey.current = key
-            const items = await load()
-            setEvents(items)
-            syncFromCalendar(items)
-            markLinked()
-            setError('')
-            return
-          } catch (inner) {
-            rangeKey.current = ''
-            const innerCode = inner instanceof Error ? inner.message : code
-            if (innerCode === 'GOOGLE_NEEDS_GESTURE') {
-              markLinked()
-              setError('Calendar is still linked. Click Sync Google to resume (Google requires a click after the token expires).')
-              return
-            }
-          }
-        }
-        if (code === 'GOOGLE_NEEDS_GESTURE') {
+        if (code === 'GOOGLE_NEEDS_GESTURE' || code === 'GOOGLE_AUTH') {
           markLinked()
-          setError('Calendar is still linked. Click Sync Google to resume.')
+          setError('Calendar is still linked. Tap Sync Google to resume.')
           return
         }
         if (code === 'GOOGLE_SCOPES') {
           markLinked()
-          setError('Google signed you in without Calendar access. Click Connect again and allow calendar permission.')
+          setError('Google signed you in without Calendar access. Tap Link Google and allow calendar permission.')
           return
         }
-        setError(code && code !== 'GOOGLE_AUTH' ? code : 'Google Calendar needs to reconnect')
+        setError(code || 'Google Calendar needs to reconnect')
         if (!isGoogleLinked()) setConnected(false)
       } finally {
         loadingRef.current = false
@@ -150,12 +132,16 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isGoogleLinked()) return
     markLinked()
-    void refresh(undefined, true)
+    if (readToken()) void refresh(undefined, true)
   }, [clientId, markLinked, refresh])
 
   useEffect(() => {
+    let last = 0
     const onVis = () => {
-      if (document.visibilityState === 'visible' && isGoogleLinked()) void refresh(undefined, true)
+      if (document.visibilityState !== 'visible' || !isGoogleLinked() || !readToken()) return
+      if (Date.now() - last < 30_000) return
+      last = Date.now()
+      void refresh(undefined, true)
     }
     document.addEventListener('visibilitychange', onVis)
     return () => document.removeEventListener('visibilitychange', onVis)
@@ -288,15 +274,7 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
         await syncCloud()
         return
       }
-      if (readToken()) {
-        void syncCloud()
-        return
-      }
-      if (!sessionStorage.getItem('sepho.oauth.bounce') && prefersRedirectAuth()) {
-        sessionStorage.setItem('sepho.oauth.bounce', '1')
-        const silent = Boolean(readLink()?.email) && sessionStorage.getItem('sepho.oauth.error') !== 'interaction_required'
-        beginGoogleRedirect(clientId, silent)
-      }
+      if (readToken()) void syncCloud()
     })()
     return () => {
       cancelled = true
@@ -305,17 +283,8 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!clientId) return
-    let armed = true
     const onUse = () => {
-      if (readToken()) {
-        if (!cloudReady.current) void syncCloud()
-        return
-      }
-      if (!armed) return
-      armed = false
-      void ensureGoogleToken(clientId, true).then(() => syncCloud()).catch(() => {
-        armed = true
-      })
+      if (readToken() && !cloudReady.current) void syncCloud()
     }
     document.addEventListener('pointerdown', onUse, { capture: true })
     return () => document.removeEventListener('pointerdown', onUse, { capture: true })
@@ -396,12 +365,12 @@ export function GoogleCalendarProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onAuthed = () => {
-      if (!clientId || readToken()) return
-      void connect()
+      if (!clientId || !readToken()) return
+      void syncCloud()
     }
     window.addEventListener('sepho-authed', onAuthed)
     return () => window.removeEventListener('sepho-authed', onAuthed)
-  }, [clientId, connect])
+  }, [clientId, syncCloud])
 
   const disconnect = useCallback(() => {
     clearToken(true)
