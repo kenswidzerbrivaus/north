@@ -58,6 +58,8 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
   const [moverCal, setMoverCal] = useState<{ pick: string[] } | null>(null)
   const [calStart, setCalStart] = useState('09:00')
   const [calDaily, setCalDaily] = useState(false)
+  const [pathEdit, setPathEdit] = useState(false)
+  const [todoDraft, setTodoDraft] = useState<Record<string, string>>({})
 
   const path = ms.filter((m) => m.criticalPath).length ? ms.filter((m) => m.criticalPath) : ms
   const variance = vel.variance
@@ -168,14 +170,127 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                   Add key movers to calendar
                 </button>
               ) : null}
+              {project.state !== 'complete' ? (
+                <button className="chip" type="button" data-on={pathEdit} onClick={() => setPathEdit((v) => !v)}>
+                  {pathEdit ? 'Done editing' : 'Edit path'}
+                </button>
+              ) : null}
             </div>
             <p className="muted">
               Variance {variance ? `-${variance} days` : '0'} · Projected {projected} · Original {project.deadline}
             </p>
-            {path.length === 0 ? (
+            {path.length === 0 && !pathEdit ? (
               <div className="cpath-empty">
                 <p className="kicker">No sequence defined</p>
                 <p>The critical path is the ordered chain of outcomes that must complete for this project to finish.</p>
+              </div>
+            ) : pathEdit ? (
+              <div className="cpath-editor">
+                {path.map((m, i) => {
+                  const stepTodos = tasks.filter((t) => t.milestoneId === m.id)
+                  return (
+                    <div key={m.id} className="cpath-edit-block">
+                      <div className="cpath-edit-row">
+                        <span className="cpath-mark">{m.status === 'complete' ? '✓' : m.status === 'current' || m.status === 'blocked' ? '●' : '○'}</span>
+                        <input
+                          className="input"
+                          value={m.name}
+                          onChange={(e) => store.updateMilestone(m.id, { name: e.target.value })}
+                          aria-label={`Step ${i + 1} name`}
+                        />
+                        <DateField
+                          value={m.plannedEnd ?? ''}
+                          onChange={(v) => store.updateMilestone(m.id, { plannedEnd: v || undefined })}
+                          aria-label={`Accomplish by for ${m.name}`}
+                        />
+                        <div className="cpath-edit-tools">
+                          <button
+                            type="button"
+                            className="btn-ghost"
+                            disabled={i === 0}
+                            onClick={() => {
+                              const ids = path.map((x) => x.id)
+                              const swap = ids[i - 1]!
+                              ids[i - 1] = m.id
+                              ids[i] = swap
+                              store.reorderMilestones(project.id, ids)
+                            }}
+                            aria-label="Move step up"
+                          >
+                            Up
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-ghost"
+                            disabled={i === path.length - 1}
+                            onClick={() => {
+                              const ids = path.map((x) => x.id)
+                              const swap = ids[i + 1]!
+                              ids[i + 1] = m.id
+                              ids[i] = swap
+                              store.reorderMilestones(project.id, ids)
+                            }}
+                            aria-label="Move step down"
+                          >
+                            Down
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-ghost"
+                            onClick={() => {
+                              if (!window.confirm(`Remove “${m.name || 'this step'}” from the path?`)) return
+                              store.deleteMilestone(m.id)
+                            }}
+                            aria-label="Remove step"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                      {stepTodos.map((t) => (
+                        <div key={t.id} className="cpath-edit-todo">
+                          <Check on={t.completed} onClick={() => store.toggleTask(t.id)} />
+                          <input
+                            className="input"
+                            value={t.title}
+                            onChange={(e) => store.updateTask(t.id, { title: e.target.value })}
+                          />
+                          <button type="button" className="btn-ghost" onClick={() => store.deleteTask(t.id)} aria-label="Remove to-do">
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <div className="cpath-edit-todo">
+                        <input
+                          className="input"
+                          placeholder="To-do under this step"
+                          value={todoDraft[m.id] ?? ''}
+                          onChange={(e) => setTodoDraft((d) => ({ ...d, [m.id]: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key !== 'Enter') return
+                            e.preventDefault()
+                            const title = (todoDraft[m.id] ?? '').trim()
+                            if (!title) return
+                            store.addTask({ title, projectId: project.id, milestoneId: m.id, listId: 'work' })
+                            setTodoDraft((d) => ({ ...d, [m.id]: '' }))
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn-ghost"
+                          onClick={() => {
+                            const title = (todoDraft[m.id] ?? '').trim()
+                            if (!title) return
+                            store.addTask({ title, projectId: project.id, milestoneId: m.id, listId: 'work' })
+                            setTodoDraft((d) => ({ ...d, [m.id]: '' }))
+                          }}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             ) : (
               <ol className="cpath">
@@ -267,6 +382,7 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                 ))}
               </ol>
             )}
+            {project.state !== 'complete' ? (
             <form
               className="stack"
               onSubmit={(e) => {
@@ -285,17 +401,19 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                 store.addMilestones(project.id, steps)
                 setAddMs('')
                 setAddDate('')
+                setPathEdit(true)
               }}
             >
               <div className="cpath-edit-row is-add">
                 <input className="input" value={addMs} onChange={(e) => setAddMs(e.target.value)} placeholder={path.length ? 'Next milestone' : 'Secure Financing'} />
                 <DateField value={addDate} onChange={setAddDate} aria-label="Accomplishment date" />
               </div>
-              <p className="muted">Paste several lines as Name — YYYY-MM-DD if you want to add a chain at once.</p>
+              <p className="muted">Rename, reorder, or remove steps with Edit path. Paste several lines as Name — YYYY-MM-DD to add a chain.</p>
               <button className="btn" type="submit">
                 {path.length ? 'Add to path' : 'Build critical path'}
               </button>
             </form>
+            ) : null}
           </section>
 
           {ws.length ? (

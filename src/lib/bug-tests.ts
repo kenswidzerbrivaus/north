@@ -8,7 +8,7 @@ import { parseDeadline, stampTime } from './dates'
 import { summarizeProjectDraft } from './drafts'
 import { fromGoogleEvent, toGoogleBody } from './google-calendar'
 import { metricNumber } from './goal-engine'
-import { daysLeft, depsReady, parseMilestoneLines } from './project-engine'
+import { applyMilestoneOrder, daysLeft, depsReady, dropMilestoneChain, parseMilestoneLines } from './project-engine'
 import { mergeStates } from './cloud-merge'
 import { cloudAction } from './sync-policy'
 import { formatJournalArchive, journalHasWriting, pickJournalDraft } from './journal-draft'
@@ -224,6 +224,72 @@ test('milestones: parse lines with dates', () => {
   assert.equal(rows[0]?.name, 'Secure Financing')
   assert.equal(rows[0]?.plannedEnd, '2026-10-04')
   assert.equal(rows[1]?.name, 'Purchase Truck')
+})
+
+test('critical path: reorder swaps two steps and rechains dependsOn', () => {
+  const a: ProjectMilestone = {
+    id: 'a',
+    projectId: 'p',
+    name: 'A',
+    owner: 'K',
+    status: 'current',
+    criticalPath: true,
+    sortOrder: 0,
+    notes: '',
+    dependsOn: [],
+  }
+  const b: ProjectMilestone = { ...a, id: 'b', name: 'B', status: 'upcoming', sortOrder: 1, dependsOn: ['a'] }
+  const c: ProjectMilestone = { ...a, id: 'c', name: 'C', status: 'upcoming', sortOrder: 2, dependsOn: ['b'] }
+  const next = applyMilestoneOrder([a, b, c], 'p', ['b', 'a', 'c'], 't')
+  assert.ok(next)
+  const ordered = [...next!].filter((m) => m.projectId === 'p').sort((x, y) => x.sortOrder - y.sortOrder)
+  assert.deepEqual(ordered.map((m) => m.id), ['b', 'a', 'c'])
+  assert.deepEqual(ordered[0]?.dependsOn, [])
+  assert.deepEqual(ordered[1]?.dependsOn, ['b'])
+  assert.deepEqual(ordered[2]?.dependsOn, ['a'])
+})
+
+test('critical path: reorder path only leaves off-path milestones in place', () => {
+  const a: ProjectMilestone = {
+    id: 'a',
+    projectId: 'p',
+    name: 'A',
+    owner: 'K',
+    status: 'current',
+    criticalPath: true,
+    sortOrder: 0,
+    notes: '',
+    dependsOn: [],
+  }
+  const side: ProjectMilestone = { ...a, id: 's', name: 'Side', criticalPath: false, sortOrder: 1, dependsOn: [] }
+  const c: ProjectMilestone = { ...a, id: 'c', name: 'C', status: 'upcoming', sortOrder: 2, dependsOn: ['a'] }
+  const next = applyMilestoneOrder([a, side, c], 'p', ['c', 'a'], 't')
+  assert.ok(next)
+  const ordered = [...next!].sort((x, y) => x.sortOrder - y.sortOrder)
+  assert.deepEqual(ordered.map((m) => m.id), ['c', 's', 'a'])
+  assert.equal(ordered[1]?.criticalPath, false)
+})
+
+test('critical path: drop a current step promotes the next and unlinks dependsOn', () => {
+  const a: ProjectMilestone = {
+    id: 'a',
+    projectId: 'p',
+    name: 'A',
+    owner: 'K',
+    status: 'current',
+    criticalPath: true,
+    sortOrder: 0,
+    notes: '',
+    dependsOn: [],
+  }
+  const b: ProjectMilestone = { ...a, id: 'b', name: 'B', status: 'upcoming', sortOrder: 1, dependsOn: ['a'] }
+  const result = dropMilestoneChain([a, b], 'a', 't')
+  assert.ok(result)
+  assert.equal(result!.milestones.length, 1)
+  assert.equal(result!.milestones[0]?.id, 'b')
+  assert.equal(result!.milestones[0]?.status, 'current')
+  assert.deepEqual(result!.milestones[0]?.dependsOn, [])
+  assert.equal(result!.milestones[0]?.sortOrder, 0)
 })
 
 test('critical path: depsReady', () => {

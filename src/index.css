@@ -2144,11 +2144,15 @@ html.sepho .date-pop {
 }
 
 .cpath-edit-todo {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  display: flex;
   gap: 8px;
   margin-left: 32px;
   align-items: center;
+}
+
+.cpath-edit-todo .input {
+  flex: 1;
+  min-width: 0;
 }
 
 .cpath-edit-row {
@@ -2156,6 +2160,13 @@ html.sepho .date-pop {
   grid-template-columns: 24px minmax(0, 1fr) minmax(168px, 210px) auto;
   gap: 8px;
   align-items: center;
+}
+
+.cpath-edit-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-self: end;
 }
 
 .cpath-edit-row.is-add {

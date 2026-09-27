@@ -236,6 +236,70 @@ export function depsReady(m: ProjectMilestone, all: ProjectMilestone[]) {
   return m.dependsOn.every((id) => all.find((x) => x.id === id)?.status === 'complete')
 }
 
+/** Reorder the given project steps. Other project milestones keep their slots. */
+export function applyMilestoneOrder(
+  milestones: ProjectMilestone[],
+  projectId: string,
+  ids: string[],
+  now: string,
+): ProjectMilestone[] | null {
+  const unique = ids.filter((id, i) => ids.indexOf(id) === i)
+  const project = milestones.filter((m) => m.projectId === projectId).sort((a, b) => a.sortOrder - b.sortOrder)
+  const byId = new Map(project.map((m) => [m.id, m]))
+  if (!unique.length || unique.some((id) => !byId.has(id))) return null
+  const slots = project.map((m, i) => (unique.includes(m.id) ? i : -1)).filter((i) => i >= 0)
+  if (slots.length !== unique.length) return null
+  const next = project.slice()
+  unique.forEach((id, n) => {
+    next[slots[n]!] = byId.get(id)!
+  })
+  const indexOf = new Map(next.map((m, i) => [m.id, i]))
+  return milestones.map((m) => {
+    if (m.projectId !== projectId) return m
+    const i = indexOf.get(m.id) ?? m.sortOrder
+    const pathIndex = unique.indexOf(m.id)
+    return {
+      ...m,
+      sortOrder: i,
+      dependsOn: pathIndex >= 0 ? (pathIndex > 0 ? [unique[pathIndex - 1]!] : []) : m.dependsOn,
+      updatedAt: now,
+    }
+  })
+}
+
+export function dropMilestoneChain(
+  milestones: ProjectMilestone[],
+  id: string,
+  now: string,
+): { milestones: ProjectMilestone[]; removed: ProjectMilestone } | null {
+  const prev = milestones.find((m) => m.id === id)
+  if (!prev) return null
+  let next = milestones
+    .filter((m) => m.id !== id)
+    .map((m) => ({ ...m, dependsOn: m.dependsOn.filter((d) => d !== id) }))
+  const siblings = next.filter((m) => m.projectId === prev.projectId).sort((a, b) => a.sortOrder - b.sortOrder)
+  const marked = siblings.filter((m) => m.criticalPath)
+  const chain = marked.length ? marked : siblings
+  next = next.map((m) => {
+    if (m.projectId !== prev.projectId) return m
+    const i = siblings.findIndex((x) => x.id === m.id)
+    const pathIndex = chain.findIndex((x) => x.id === m.id)
+    return {
+      ...m,
+      sortOrder: i,
+      dependsOn: pathIndex >= 0 ? (pathIndex > 0 ? [chain[pathIndex - 1]!.id] : []) : m.dependsOn,
+      updatedAt: now,
+    }
+  })
+  if (prev.status === 'current' || prev.status === 'blocked') {
+    const nxt = siblings.find((m) => m.status !== 'complete')
+    if (nxt && nxt.status === 'upcoming') {
+      next = next.map((m) => (m.id === nxt.id ? { ...m, status: 'current' as const } : m))
+    }
+  }
+  return { milestones: next, removed: prev }
+}
+
 export function waitingEffective(w: WaitingOn, from = todayISO()): WaitingOn['status'] {
   if (w.status === 'received' || w.status === 'cancelled') return w.status
   if (w.dueAt && w.dueAt < from) return 'overdue'

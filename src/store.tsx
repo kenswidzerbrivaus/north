@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { shiftISO, todayISO } from './lib/dates'
 import { nowISO, uid } from './lib/id'
-import { depsReady } from './lib/project-engine'
+import { applyMilestoneOrder, depsReady, dropMilestoneChain } from './lib/project-engine'
 import { readLink } from './lib/google-calendar'
 import { collapseDuplicateTasks, matchLinkedTask } from './lib/cal-sync'
 import { seedProjectBundle } from './lib/project-seed'
@@ -364,6 +364,8 @@ export type Store = {
   addMilestone: (projectId: string, name: string, extra?: Partial<ProjectMilestone>) => string
   addMilestones: (projectId: string, steps: { name: string; plannedEnd?: string; todos?: string[] }[]) => void
   updateMilestone: (id: string, patch: Partial<ProjectMilestone>) => void
+  deleteMilestone: (id: string) => void
+  reorderMilestones: (projectId: string, ids: string[]) => void
   addWorkstream: (projectId: string, name: string, owner: string) => string
   addDecision: (input: Partial<ProjectDecision> & { projectId: string; title: string; owner: string }) => string
   resolveDecision: (id: string, status: ProjectDecision['status'], decision?: string) => void
@@ -1177,12 +1179,43 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               if (nxt) milestones = milestones.map((m) => (m.id === nxt.id ? { ...m, status: 'current' as const } : m))
             }
           }
+          const log = next.status !== undefined || next.criticalPath !== undefined
           return {
             ...s,
             milestones,
-            projectActivity: prev
-              ? [{ id: uid(), projectId: prev.projectId, type: 'milestone', description: `Milestone updated: ${prev.name}.`, createdAt: nowISO() }, ...s.projectActivity]
-              : s.projectActivity,
+            projectActivity:
+              log && prev
+                ? [{ id: uid(), projectId: prev.projectId, type: 'milestone', description: `Milestone updated: ${prev.name}.`, createdAt: nowISO() }, ...s.projectActivity]
+                : s.projectActivity,
+          }
+        }),
+      deleteMilestone: (id) =>
+        patch((s) => {
+          const t = nowISO()
+          const result = dropMilestoneChain(s.milestones, id, t)
+          if (!result) return s
+          return {
+            ...s,
+            milestones: result.milestones,
+            tasks: s.tasks.map((task) => (task.milestoneId === id ? { ...task, milestoneId: undefined, updatedAt: t } : task)),
+            projectActivity: [
+              { id: uid(), projectId: result.removed.projectId, type: 'milestone', description: `Milestone removed: ${result.removed.name}.`, createdAt: t },
+              ...s.projectActivity,
+            ],
+          }
+        }),
+      reorderMilestones: (projectId, ids) =>
+        patch((s) => {
+          const t = nowISO()
+          const next = applyMilestoneOrder(s.milestones, projectId, ids, t)
+          if (!next) return s
+          return {
+            ...s,
+            milestones: next,
+            projectActivity: [
+              { id: uid(), projectId, type: 'milestone', description: 'Critical path reordered.', createdAt: t },
+              ...s.projectActivity,
+            ],
           }
         }),
       addWorkstream: (projectId, name, owner) => {
