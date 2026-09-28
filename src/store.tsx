@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { shiftISO, todayISO } from './lib/dates'
 import { nowISO, uid } from './lib/id'
-import { applyMilestoneOrder, depsReady, dropMilestoneChain } from './lib/project-engine'
+import { applyMilestoneOrder, depsReady, dropMilestoneChain, isWorkingOn, migrateProjectFocusLimit } from './lib/project-engine'
 import { readLink } from './lib/google-calendar'
 import { collapseDuplicateTasks, matchLinkedTask } from './lib/cal-sync'
 import { seedProjectBundle } from './lib/project-seed'
@@ -55,7 +55,7 @@ const defaultSettings = (): Settings => ({
   googleClientId: '',
   pushToGoogle: true,
   morningRituals: ['Prayer', 'Self affirmation', 'Read through journal'],
-  activeProjectLimit: 10,
+  activeProjectLimit: 3,
   activeGoalLimit: 3,
   travisVoice: true,
   northStar: '',
@@ -258,6 +258,7 @@ function load(): State {
       ]
       loaded.goalCycles = loaded.goalCycles.map((c) => (c.northStarId ? c : { ...c, northStarId: nid }))
     }
+    loaded.settings.activeProjectLimit = migrateProjectFocusLimit(loaded.settings.activeProjectLimit)
     if (needsSeed) {
       const seed = packSeed(loaded.settings.name || 'Kens')
       const { seedTasks, ...rest } = seed
@@ -360,7 +361,7 @@ export type Store = {
   hydrateFromCloud: (data: State, savedAt: number) => void
   resetState: () => void
   addProject: (input: Partial<Project> & { name: string; owner: string; deadline: string; objective: string; definitionOfDone: string; successMetric: string }, opts?: { overrideCapacity?: boolean }) => string | { error: 'capacity' }
-  updateProject: (id: string, patch: Partial<Project>) => void
+  updateProject: (id: string, patch: Partial<Project>, opts?: { overrideCapacity?: boolean }) => void | { error: 'capacity' }
   addMilestone: (projectId: string, name: string, extra?: Partial<ProjectMilestone>) => string
   addMilestones: (projectId: string, steps: { name: string; plannedEnd?: string; todos?: string[] }[]) => void
   updateMilestone: (id: string, patch: Partial<ProjectMilestone>) => void
@@ -981,7 +982,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             ...freshState(),
             ...d,
             version: 1,
-            settings: { ...defaultSettings(), ...d.settings },
+            settings: {
+              ...defaultSettings(),
+              ...d.settings,
+              activeProjectLimit: migrateProjectFocusLimit(d.settings?.activeProjectLimit),
+            },
           }),
         )
       },
@@ -1020,6 +1025,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               ...defaultSettings(),
               ...data.settings,
               googleClientId: data.settings?.googleClientId || clientId,
+              activeProjectLimit: migrateProjectFocusLimit(data.settings?.activeProjectLimit),
             },
           }
           return rebrandState(linkExisting(next))
@@ -1027,12 +1033,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
       resetState: () => patch(() => freshState()),
       addProject: (input, opts) => {
-        const current = stateRef.current
-        const activeCount = current.projects.filter((p) => p.state === 'active').length
-        const limit = current.settings.activeProjectLimit ?? 10
-        const lifecycle = input.state ?? 'active'
-        if (lifecycle === 'active' && activeCount >= limit && !opts?.overrideCapacity) {
-          return { error: 'capacity' }
+        const current = peekState() ?? stateRef.current
+        const workingCount = current.projects.filter(isWorkingOn).length
+        const limit = migrateProjectFocusLimit(current.settings.activeProjectLimit)
+        let lifecycle = input.state ?? 'active'
+        if (lifecycle === 'active' && workingCount >= limit && !opts?.overrideCapacity) {
+          lifecycle = 'backlog'
         }
         const id = uid()
         patch((s) => {
@@ -1045,7 +1051,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             desiredOutcome: '',
             assumptions: '',
             killPivot: '',
-            state: lifecycle,
             priority: 2,
             createdAt: t,
             updatedAt: t,
@@ -1057,6 +1062,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             objective: input.objective.trim(),
             definitionOfDone: input.definitionOfDone.trim(),
             successMetric: input.successMetric.trim(),
+            state: lifecycle,
           }
           return {
             ...s,
@@ -1069,7 +1075,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })
         return id
       },
-      updateProject: (id, next) =>
+      updateProject: (id, next, opts) => {
+        if (next.state === 'active' && !opts?.overrideCapacity) {
+          const current = peekState() ?? stateRef.current
+          const existing = current.projects.find((p) => p.id === id)
+          const limit = migrateProjectFocusLimit(current.settings.activeProjectLimit)
+          const workingCount = current.projects.filter(isWorkingOn).length
+          if (existing && !isWorkingOn(existing) && workingCount >= limit) return { error: 'capacity' }
+        }
         patch((s) => ({
           ...s,
           projects: s.projects.map((p) => (p.id === id ? { ...p, ...next, updatedAt: nowISO() } : p)),
@@ -1077,7 +1090,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             { id: uid(), projectId: id, type: 'update', description: 'Project updated.', createdAt: nowISO() },
             ...s.projectActivity,
           ],
-        })),
+        }))
+      },
       addMilestone: (projectId, name, extra) => {
         const id = uid()
         patch((s) => {

@@ -94,16 +94,17 @@ export function Settings() {
               <option value="dark">Dark</option>
             </select>
           </Field>
-          <Field label="Active project capacity">
+          <Field label="Working-on projects">
             <input
               className="input"
               type="number"
               min={1}
-              max={50}
-              value={s.activeProjectLimit ?? 10}
-              onChange={(e) => updateSettings({ activeProjectLimit: Math.max(1, Number(e.target.value) || 10) })}
+              max={12}
+              value={s.activeProjectLimit ?? 3}
+              onChange={(e) => updateSettings({ activeProjectLimit: Math.max(1, Number(e.target.value) || 3) })}
             />
           </Field>
+          <p className="muted">How many you run at once. The rest wait in Next. Default is 3.</p>
           <Field label="Week starts on">
             <select
               className="select"

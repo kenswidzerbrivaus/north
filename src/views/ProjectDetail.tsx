@@ -81,14 +81,22 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
           </p>
         </div>
         <div className="row">
-          {project.state === 'active' ? (
+          {project.state === 'active' || project.state === 'blocked' ? (
             <button className="btn-ghost" onClick={() => store.updateProject(project.id, { state: 'backlog' })}>
-              Pause
+              Move to next
             </button>
           ) : null}
           {project.state === 'backlog' ? (
-            <button className="btn-ghost" onClick={() => store.updateProject(project.id, { state: 'active' })}>
-              Activate
+            <button
+              className="btn-ghost"
+              onClick={() => {
+                const result = store.updateProject(project.id, { state: 'active' })
+                if (result && result.error === 'capacity') {
+                  alert('Working on is full. Move one of those projects to Next first.')
+                }
+              }}
+            >
+              Work on now
             </button>
           ) : null}
           {project.state !== 'complete' ? (

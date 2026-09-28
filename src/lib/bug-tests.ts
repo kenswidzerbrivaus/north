@@ -8,7 +8,17 @@ import { parseDeadline, stampTime } from './dates'
 import { summarizeProjectDraft } from './drafts'
 import { fromGoogleEvent, toGoogleBody } from './google-calendar'
 import { metricNumber } from './goal-engine'
-import { applyMilestoneOrder, daysLeft, depsReady, dropMilestoneChain, parseMilestoneLines } from './project-engine'
+import {
+  applyMilestoneOrder,
+  daysLeft,
+  depsReady,
+  dropMilestoneChain,
+  isNextUp,
+  isWorkingOn,
+  labelState,
+  migrateProjectFocusLimit,
+  parseMilestoneLines,
+} from './project-engine'
 import { mergeStates } from './cloud-merge'
 import { cloudAction } from './sync-policy'
 import { formatJournalArchive, journalHasWriting, pickJournalDraft } from './journal-draft'
@@ -216,6 +226,24 @@ test('project draft: owner-only is empty; named form can park', () => {
   assert.deepEqual(summarizeProjectDraft({ form: { owner: 'Kens' }, steps: [{ name: 'Secure Financing', date: '2026-10-30' }] }, 'Kens'), {
     name: 'Untitled project',
   })
+})
+
+test('projects: working on vs next', () => {
+  assert.equal(isWorkingOn({ state: 'active' }), true)
+  assert.equal(isWorkingOn({ state: 'blocked' }), true)
+  assert.equal(isWorkingOn({ state: 'backlog' }), false)
+  assert.equal(isNextUp({ state: 'backlog' }), true)
+  assert.equal(isNextUp({ state: 'active' }), false)
+  assert.equal(labelState('active'), 'WORKING ON')
+  assert.equal(labelState('backlog'), 'NEXT')
+  assert.equal(labelState('blocked'), 'BLOCKED')
+})
+
+test('projects: legacy capacity 10 becomes 3', () => {
+  assert.equal(migrateProjectFocusLimit(undefined), 3)
+  assert.equal(migrateProjectFocusLimit(10), 3)
+  assert.equal(migrateProjectFocusLimit(3), 3)
+  assert.equal(migrateProjectFocusLimit(5), 5)
 })
 
 test('milestones: parse lines with dates', () => {

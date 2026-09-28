@@ -131,7 +131,26 @@ export function labelHealth(h: ProjectHealth) {
 }
 
 export function labelState(s: Project['state']) {
+  if (s === 'active') return 'WORKING ON'
+  if (s === 'backlog') return 'NEXT'
   return s.replace('_', ' ').toUpperCase()
+}
+
+export const DEFAULT_WORKING_PROJECTS = 3
+
+/** Old installs stored 10 as the default cap. Treat that as 3. */
+export function migrateProjectFocusLimit(n?: number) {
+  if (typeof n !== 'number' || !Number.isFinite(n) || n < 1) return DEFAULT_WORKING_PROJECTS
+  if (n === 10) return DEFAULT_WORKING_PROJECTS
+  return Math.round(n)
+}
+
+export function isWorkingOn(p: Pick<Project, 'state'>) {
+  return p.state === 'active' || p.state === 'blocked'
+}
+
+export function isNextUp(p: Pick<Project, 'state'>) {
+  return p.state === 'backlog'
 }
 
 export function labelVelocity(m: VelocityMark) {

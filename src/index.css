@@ -1813,10 +1813,28 @@ html.sepho .daily-box {
   color: #ffb347;
 }
 
+.proj-lane {
+  margin-bottom: 22px;
+}
+
+.proj-lane-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
 .proj-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 10px;
+}
+
+.proj-card-acts {
+  margin-top: auto;
+  flex-wrap: wrap;
+  padding-top: 6px;
 }
 
 .proj-card {
