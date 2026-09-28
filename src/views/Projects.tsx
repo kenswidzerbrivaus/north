@@ -620,8 +620,8 @@ function CreateProject({
   })
   const [steps, setSteps] = useState(() => {
     const raw = loadDraft<{ steps: { name: string; date: string; todos?: string[] }[] }>('project')?.steps
-    const rows = raw?.length ? raw : [{ name: '', date: '' }, { name: '', date: '' }]
-    return rows.map((s) => ({ name: s.name, date: s.date, todos: s.todos ?? [] }))
+    const rows = raw?.length ? raw : [{ name: '', date: '', todos: [''] }, { name: '', date: '', todos: [''] }]
+    return rows.map((s) => ({ name: s.name, date: s.date, todos: s.todos?.length ? s.todos : [''] }))
   })
   const [missing, setMissing] = useState<string[]>([])
   const [resuming] = useState(() => Boolean(parkedProjectDraft(ownerDefault)))
@@ -754,7 +754,7 @@ function CreateProject({
           <input className="input" required autoComplete="off" {...bind('successMetric')} />
         </Field>
         <Field label="Critical path *">
-          <span className="muted">Each step needs a name and an accomplishment date. Add to-dos under a step if you want extra work on it.</span>
+          <span className="muted">Each outcome needs a name and date. Optionally add the steps you will take to lead that outcome.</span>
           <div className="cpath-editor">
             {steps.map((step, i) => (
               <div key={i} className="cpath-edit-block">
@@ -775,48 +775,58 @@ function CreateProject({
                     type="button"
                     className="btn-ghost"
                     onClick={() =>
-                      setSteps((rows) => (rows.length === 1 ? [{ name: '', date: '', todos: [] }] : rows.filter((_, n) => n !== i)))
+                      setSteps((rows) => (rows.length === 1 ? [{ name: '', date: '', todos: [''] }] : rows.filter((_, n) => n !== i)))
                     }
                   >
                     ×
                   </button>
                 </div>
-                {step.todos.map((todo, ti) => (
-                  <div key={ti} className="cpath-edit-todo">
-                    <input
-                      className="input"
-                      placeholder="To-do under this step"
-                      value={todo}
-                      onChange={(e) =>
-                        setSteps((rows) =>
-                          rows.map((r, n) =>
-                            n === i ? { ...r, todos: r.todos.map((t, k) => (k === ti ? e.target.value : t)) } : r,
-                          ),
-                        )
-                      }
-                    />
-                    <button
-                      type="button"
-                      className="btn-ghost"
-                      onClick={() =>
-                        setSteps((rows) => rows.map((r, n) => (n === i ? { ...r, todos: r.todos.filter((_, k) => k !== ti) } : r)))
-                      }
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  onClick={() => setSteps((rows) => rows.map((r, n) => (n === i ? { ...r, todos: [...r.todos, ''] } : r)))}
-                >
-                  + Add a to-do under this step
-                </button>
+                <div className="cpath-leads">
+                  <p className="kicker">Steps to lead this (optional)</p>
+                  {step.todos.map((todo, ti) => (
+                    <div key={ti} className="cpath-edit-todo">
+                      <input
+                        className="input"
+                        placeholder="What you will do to make this happen"
+                        value={todo}
+                        onChange={(e) =>
+                          setSteps((rows) =>
+                            rows.map((r, n) =>
+                              n === i ? { ...r, todos: r.todos.map((t, k) => (k === ti ? e.target.value : t)) } : r,
+                            ),
+                          )
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        onClick={() =>
+                          setSteps((rows) =>
+                            rows.map((r, n) => {
+                              if (n !== i) return r
+                              const next = r.todos.filter((_, k) => k !== ti)
+                              return { ...r, todos: next.length ? next : [''] }
+                            }),
+                          )
+                        }
+                        aria-label="Remove lead step"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => setSteps((rows) => rows.map((r, n) => (n === i ? { ...r, todos: [...r.todos, ''] } : r)))}
+                  >
+                    + Add a lead step
+                  </button>
+                </div>
               </div>
             ))}
           </div>
-          <button type="button" className="btn-ghost" onClick={() => setSteps((rows) => [...rows, { name: '', date: '', todos: [] }])}>
+          <button type="button" className="btn-ghost" onClick={() => setSteps((rows) => [...rows, { name: '', date: '', todos: [''] }])}>
             + Add step
           </button>
         </Field>

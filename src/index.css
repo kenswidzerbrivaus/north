@@ -2221,6 +2221,22 @@ html.sepho .date-pop {
   width: max-content;
 }
 
+.cpath-leads {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 2px;
+}
+
+.cpath-edit-block .cpath-leads > .kicker,
+.cpath-panel .cpath-leads > .kicker {
+  margin-left: 32px;
+}
+
+.cpath .cpath-leads > .kicker {
+  margin-left: 0;
+}
+
 .cpath-edit-todo {
   display: flex;
   gap: 8px;

@@ -47,6 +47,7 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
   const [complete, setComplete] = useState(false)
   const [addMs, setAddMs] = useState('')
   const [addDate, setAddDate] = useState('')
+  const [addLeads, setAddLeads] = useState<string[]>([''])
   const [decTitle, setDecTitle] = useState('')
   const [waitPerson, setWaitPerson] = useState('')
   const [waitWhat, setWaitWhat] = useState('')
@@ -255,6 +256,8 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                           </button>
                         </div>
                       </div>
+                      <div className="cpath-leads">
+                        <p className="kicker">Steps to lead this (optional)</p>
                       {stepTodos.map((t) => (
                         <div key={t.id} className="cpath-edit-todo">
                           <Check on={t.completed} onClick={() => store.toggleTask(t.id)} />
@@ -263,7 +266,7 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                             value={t.title}
                             onChange={(e) => store.updateTask(t.id, { title: e.target.value })}
                           />
-                          <button type="button" className="btn-ghost" onClick={() => store.deleteTask(t.id)} aria-label="Remove to-do">
+                          <button type="button" className="btn-ghost" onClick={() => store.deleteTask(t.id)} aria-label="Remove lead step">
                             ×
                           </button>
                         </div>
@@ -271,7 +274,7 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                       <div className="cpath-edit-todo">
                         <input
                           className="input"
-                          placeholder="To-do under this step"
+                          placeholder="Step to lead this outcome"
                           value={todoDraft[m.id] ?? ''}
                           onChange={(e) => setTodoDraft((d) => ({ ...d, [m.id]: e.target.value }))}
                           onKeyDown={(e) => {
@@ -295,6 +298,7 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                         >
                           Add
                         </button>
+                      </div>
                       </div>
                     </div>
                   )
@@ -373,16 +377,19 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                         </select>
                       ) : null}
                       {tasks.some((t) => t.milestoneId === m.id) ? (
-                        <ul className="cpath-todos">
-                          {tasks
-                            .filter((t) => t.milestoneId === m.id)
-                            .map((t) => (
-                              <li key={t.id} className={t.completed ? 'is-done' : undefined}>
-                                <Check on={t.completed} onClick={() => store.toggleTask(t.id)} />
-                                <span>{t.title}</span>
-                              </li>
-                            ))}
-                        </ul>
+                        <div className="cpath-leads">
+                          <p className="kicker">Lead steps</p>
+                          <ul className="cpath-todos">
+                            {tasks
+                              .filter((t) => t.milestoneId === m.id)
+                              .map((t) => (
+                                <li key={t.id} className={t.completed ? 'is-done' : undefined}>
+                                  <Check on={t.completed} onClick={() => store.toggleTask(t.id)} />
+                                  <span>{t.title}</span>
+                                </li>
+                              ))}
+                          </ul>
+                        </div>
                       ) : null}
                     </div>
                     {i < path.length - 1 ? <div className="cpath-line">↓</div> : null}
@@ -396,10 +403,15 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
               onSubmit={(e) => {
                 e.preventDefault()
                 const parsed = parseMilestoneLines(addMs)
+                const leads = addLeads.map((t) => t.trim()).filter(Boolean)
                 const steps = parsed.length
-                  ? parsed.map((s) => ({ name: s.name, plannedEnd: s.plannedEnd || addDate || undefined }))
+                  ? parsed.map((s, i) => ({
+                      name: s.name,
+                      plannedEnd: s.plannedEnd || addDate || undefined,
+                      todos: parsed.length === 1 && i === 0 ? leads : undefined,
+                    }))
                   : addMs.trim()
-                    ? [{ name: addMs.trim(), plannedEnd: addDate || undefined }]
+                    ? [{ name: addMs.trim(), plannedEnd: addDate || undefined, todos: leads }]
                     : []
                 if (!steps.length) return
                 if (steps.some((s) => !s.plannedEnd)) {
@@ -409,12 +421,37 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                 store.addMilestones(project.id, steps)
                 setAddMs('')
                 setAddDate('')
+                setAddLeads([''])
                 setPathEdit(true)
               }}
             >
               <div className="cpath-edit-row is-add">
                 <input className="input" value={addMs} onChange={(e) => setAddMs(e.target.value)} placeholder={path.length ? 'Next milestone' : 'Secure Financing'} />
                 <DateField value={addDate} onChange={setAddDate} aria-label="Accomplishment date" />
+              </div>
+              <div className="cpath-leads">
+                <p className="kicker">Steps to lead this (optional)</p>
+                {addLeads.map((lead, i) => (
+                  <div key={i} className="cpath-edit-todo">
+                    <input
+                      className="input"
+                      placeholder="What you will do to make this happen"
+                      value={lead}
+                      onChange={(e) => setAddLeads((rows) => rows.map((r, n) => (n === i ? e.target.value : r)))}
+                    />
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={() => setAddLeads((rows) => (rows.length === 1 ? [''] : rows.filter((_, n) => n !== i)))}
+                      aria-label="Remove lead step"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="btn-ghost" onClick={() => setAddLeads((rows) => [...rows, ''])}>
+                  + Add a lead step
+                </button>
               </div>
               <p className="muted">Rename, reorder, or remove steps with Edit path. Paste several lines as Name — YYYY-MM-DD to add a chain.</p>
               <button className="btn" type="submit">
