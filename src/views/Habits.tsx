@@ -12,7 +12,16 @@ export function Habits() {
   const { state, addHabit, updateHabit, deleteHabit, setHabitCount } = useStore()
   const today = todayISO()
   const [edit, setEdit] = useState<Partial<Habit> & { name?: string } | null>(null)
-  const habits = state.habits.filter((h) => !h.archived)
+  const habits = (() => {
+    const seen = new Set<string>()
+    return state.habits.filter((h) => {
+      if (h.archived) return false
+      const key = h.name.trim().toLowerCase()
+      if (key && seen.has(key)) return false
+      if (key) seen.add(key)
+      return true
+    })
+  })()
 
   const save = () => {
     if (!edit?.name?.trim()) return

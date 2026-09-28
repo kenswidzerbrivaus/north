@@ -119,7 +119,16 @@ export function Today({ go }: { go: (r: Route) => void }) {
   const attn = exceptions(state)
   const exec = Math.round((queue.filter((r) => r.done).length / Math.max(1, queue.length)) * 100)
 
-  const habits = state.habits.filter((h) => !h.archived && isHabitDue(h, date))
+  const habits = (() => {
+    const seen = new Set<string>()
+    return state.habits.filter((h) => {
+      if (h.archived || !isHabitDue(h, date)) return false
+      const key = h.name.trim().toLowerCase()
+      if (key && seen.has(key)) return false
+      if (key) seen.add(key)
+      return true
+    })
+  })()
 
   const nextTimed = events.find((e) => e.start && minutesOf(e.start) > clock)
   const opening = nextTimed?.start ? minutesOf(nextTimed.start) - clock : 24 * 60 - clock

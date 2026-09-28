@@ -9,7 +9,8 @@ import {
 } from 'react'
 import { shiftISO, todayISO } from './lib/dates'
 import { nowISO, uid } from './lib/id'
-import { collapseDuplicateProjects } from './lib/project-dupes'
+import { habitDupKey } from './lib/habits'
+import { collapseDuplicateRecords } from './lib/project-dupes'
 import { applyMilestoneOrder, depsReady, dropMilestoneChain, isWorkingOn, migrateProjectFocusLimit } from './lib/project-engine'
 import { readLink } from './lib/google-calendar'
 import { collapseDuplicateTasks, matchLinkedTask } from './lib/cal-sync'
@@ -212,7 +213,7 @@ function blankState(): State {
 function load(): State {
   try {
     const raw = localStorage.getItem(KEY)
-    if (!raw) return collapseDuplicateProjects(linkExisting(freshState()))
+    if (!raw) return collapseDuplicateRecords(linkExisting(freshState()))
     const parsed = JSON.parse(raw) as Partial<State>
     if (!Array.isArray(parsed.lists) || !Array.isArray(parsed.tasks)) return freshState()
     const loaded: State = {
@@ -266,9 +267,9 @@ function load(): State {
       Object.assign(loaded, rest)
       if (seedTasks?.length) loaded.tasks = [...seedTasks, ...loaded.tasks]
     }
-    return collapseDuplicateProjects(rebrandState(linkExisting(loaded)))
+    return collapseDuplicateRecords(rebrandState(linkExisting(loaded)))
   } catch {
-    return collapseDuplicateProjects(rebrandState(linkExisting(freshState())))
+    return collapseDuplicateRecords(rebrandState(linkExisting(freshState())))
   }
 }
 
@@ -734,6 +735,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           tasks: s.tasks.filter((t) => t.completed || t.googleId !== googleId),
         })),
       addHabit: (input) => {
+        const name = input.name.trim()
+        const key = habitDupKey({ name })
+        const current = peekState() ?? stateRef.current
+        const existing = current.habits.find((h) => !h.archived && habitDupKey(h) === key)
+        if (existing) return existing.id
         const id = uid()
         patch((s) => ({
           ...s,
@@ -745,7 +751,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               archived: false,
               ...input,
               id,
-              name: input.name.trim(),
+              name,
               createdAt: nowISO(),
             },
             ...s.habits,
@@ -979,7 +985,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const d = data as Partial<State>
         if (!Array.isArray(d.lists) || !Array.isArray(d.tasks)) throw new Error('Backup is missing lists or tasks')
         patch(() =>
-          collapseDuplicateProjects(
+          collapseDuplicateRecords(
             rebrandState({
               ...freshState(),
               ...d,
@@ -1031,7 +1037,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               activeProjectLimit: migrateProjectFocusLimit(data.settings?.activeProjectLimit),
             },
           }
-          return collapseDuplicateProjects(rebrandState(linkExisting(next)))
+          return collapseDuplicateRecords(rebrandState(linkExisting(next)))
         }, true)
       },
       resetState: () => patch(() => freshState()),

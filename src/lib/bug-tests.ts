@@ -9,6 +9,7 @@ import { parseDeadline, stampTime } from './dates'
 import { summarizeProjectDraft } from './drafts'
 import { fromGoogleEvent, toGoogleBody } from './google-calendar'
 import { metricNumber } from './goal-engine'
+import { collapseDuplicateHabits } from './habits'
 import {
   applyMilestoneOrder,
   daysLeft,
@@ -399,6 +400,52 @@ test('projects: different names are not collapsed', () => {
   }
   const next = collapseDuplicateProjects(state as never)
   assert.equal(next.projects.length, 2)
+})
+
+test('habits: collapse same-name daily systems keeps the logged copy', () => {
+  const blank = {
+    version: 1 as const,
+    savedAt: 1,
+    lists: [],
+    tasks: [],
+    events: [],
+    habits: [
+      { id: 'old', name: 'Read', color: '#fff', days: [] as number[], target: 1, archived: false, createdAt: '2026-09-01T00:00:00.000Z' },
+      { id: 'new', name: 'Read', color: '#0ff', days: [1, 2, 3], target: 1, archived: false, createdAt: '2026-09-28T00:00:00.000Z' },
+      { id: 'gym', name: 'Workout', color: '#f00', days: [] as number[], target: 1, archived: false, createdAt: 't' },
+    ],
+    habitLogs: [
+      { habitId: 'old', date: '2026-09-20', count: 1 },
+      { habitId: 'old', date: '2026-09-21', count: 1 },
+      { habitId: 'new', date: '2026-09-21', count: 1 },
+    ],
+    notes: [],
+    goals: [],
+    journal: [],
+    sessions: [],
+    settings: { googleClientId: '' },
+    projects: [],
+    milestones: [],
+    workstreams: [],
+    projectDecisions: [],
+    blockers: [],
+    waitingOnItems: [],
+    projectActivity: [],
+    goalCycles: [],
+    goalCheckpoints: [],
+    goalMovers: [{ id: 'mv', goalId: 'g', rank: 0, entityType: 'habit' as const, entityId: 'new' }],
+    goalReviews: [],
+    envActions: [{ id: 'e', cycleId: 'c', kind: 'digital' as const, action: 'remove' as const, description: 'x', habitId: 'new', done: false }],
+    northStars: [],
+  }
+  const next = collapseDuplicateHabits(blank as never)
+  assert.equal(next.habits.filter((h) => h.name === 'Read').length, 1)
+  assert.equal(next.habits.find((h) => h.name === 'Read')?.id, 'old')
+  assert.equal(next.habits.some((h) => h.id === 'gym'), true)
+  assert.equal(next.habitLogs.every((l) => l.habitId === 'old' || l.habitId === 'gym'), true)
+  assert.equal(next.habitLogs.filter((l) => l.date === '2026-09-21').length, 1)
+  assert.equal(next.goalMovers[0]?.entityId, 'old')
+  assert.equal(next.envActions[0]?.habitId, 'old')
 })
 
 test('projects: working on vs next', () => {

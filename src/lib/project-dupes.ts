@@ -1,4 +1,5 @@
 import { collapseDuplicateTasks } from './cal-sync'
+import { collapseDuplicateHabits } from './habits'
 import type { Project, State } from './types'
 
 function normName(name: string) {
@@ -132,4 +133,8 @@ export function collapseDuplicateProjects(state: State): State {
   }
   next.tasks = collapseDuplicateTasks(next.tasks)
   return next
+}
+
+export function collapseDuplicateRecords(state: State): State {
+  return collapseDuplicateHabits(collapseDuplicateProjects(state))
 }
