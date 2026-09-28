@@ -6,6 +6,7 @@ import { layoutTimedEvents, nowLineTop, nowMinutes } from './cal-layout'
 import { matchCalEvents } from './cal-search'
 import { collapseDuplicateTasks, matchLinkedTask } from './cal-sync'
 import { parseDeadline, stampTime } from './dates'
+import { sortTasksChronological } from './task-sort'
 import { summarizeProjectDraft } from './drafts'
 import { fromGoogleEvent, toGoogleBody } from './google-calendar'
 import { metricNumber } from './goal-engine'
@@ -198,6 +199,29 @@ test('metricNumber uses times-count not concatenated digits', () => {
   assert.equal(metricNumber('praying 1 time daily'), 1)
   assert.equal(metricNumber('Pray 3 times daily and fast 3 days weekly'), 3)
   assert.equal(metricNumber('$82,000'), 82000)
+})
+
+test('tasks: chronological order is due date then time, undated last', () => {
+  const t = (id: string, extra: Partial<Task>): Task => ({
+    id,
+    title: id,
+    notes: '',
+    listId: 'inbox',
+    completed: false,
+    priority: 0,
+    createdAt: extra.createdAt ?? '2026-09-01T00:00:00.000Z',
+    updatedAt: 't',
+    subtasks: [],
+    ...extra,
+  })
+  const rows = sortTasksChronological([
+    t('late', { due: '2026-10-02', dueTime: '09:00' }),
+    t('early', { due: '2026-10-01', dueTime: '15:00' }),
+    t('morning', { due: '2026-10-02', dueTime: '08:00' }),
+    t('undated', { createdAt: '2026-09-10T00:00:00.000Z' }),
+    t('allday', { due: '2026-10-01' }),
+  ])
+  assert.deepEqual(rows.map((r) => r.id), ['allday', 'early', 'morning', 'late', 'undated'])
 })
 
 test('dates: parseDeadline accepts several formats', () => {

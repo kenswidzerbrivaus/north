@@ -4,6 +4,7 @@ import { DateField } from '../components/DateField'
 import { Check, Empty, Field, Modal } from '../components/ui'
 import { Icon } from '../icons'
 import { formatShort, formatTime, shiftISO, todayISO } from '../lib/dates'
+import { sortTasksChronological } from '../lib/task-sort'
 import { PALETTE } from '../lib/types'
 import { useStore } from '../store'
 
@@ -32,7 +33,7 @@ export function Tasks() {
   }, [])
 
   const tasks = useMemo(() => {
-    return state.tasks.filter((t) => {
+    const rows = state.tasks.filter((t) => {
       if (projectId && t.projectId !== projectId) return false
       if (listId !== 'all' && t.listId !== listId) return false
       if (filter === 'done') return t.completed
@@ -47,7 +48,8 @@ export function Tasks() {
       if (filter === 'upcoming') return Boolean(t.due && t.due > today)
       return true
     })
-  }, [filter, listId, projectId, state.tasks, today])
+    return sortTasksChronological(rows)
+  }, [filter, listId, projectId, state.tasks, today, yesterday])
 
   const open = state.tasks.find((t) => t.id === selected)
   const listOf = (id: string) => state.lists.find((l) => l.id === id)

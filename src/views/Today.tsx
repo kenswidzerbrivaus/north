@@ -4,6 +4,7 @@ import { Continuance } from '../components/Continuance'
 import { Check } from '../components/ui'
 import { hhmmFromMinutes, roundDown5, stashCalGap } from '../lib/cal-gap'
 import { formatTime, minutesOf, parseISO, shiftISO, todayISO } from '../lib/dates'
+import { sortTasksChronological } from '../lib/task-sort'
 import { habitDone, isHabitDue } from '../lib/habits'
 import { linkedGoalId } from '../lib/goal-engine'
 import { exceptions, pendingDecisions, pickNow } from '../lib/project-engine'
@@ -46,7 +47,7 @@ export function Today({ go }: { go: (r: Route) => void }) {
   const clock = nowMinutes()
   const events = mergeCalendars(state.events, gcal.events)
     .filter((e) => e.date === today)
-    .sort((a, b) => (a.start ?? '99').localeCompare(b.start ?? '99'))
+    .sort((a, b) => (a.start ?? '00:00').localeCompare(b.start ?? '00:00') || a.title.localeCompare(b.title))
 
   const todayTasks = state.tasks.filter((t) => t.due === today || (!t.completed && t.due && t.due < today && !t.googleId && t.listId !== 'calendar'))
 
@@ -88,7 +89,7 @@ export function Today({ go }: { go: (r: Route) => void }) {
         taskId: t.id,
       })
     }
-    return rows.sort((a, b) => (a.time ?? '99').localeCompare(b.time ?? '99'))
+    return rows.sort((a, b) => (a.time ?? '00:00').localeCompare(b.time ?? '00:00') || a.title.localeCompare(b.title))
   }, [events, linked, state.tasks, today, todayTasks])
 
   const openWork = queue.filter((r) => !r.done && !r.blocked)
@@ -344,9 +345,7 @@ export function Today({ go }: { go: (r: Route) => void }) {
         <section className="board-queue hud-frame">
           <p className="board-label">Close yesterday</p>
           <ul className="today-rituals">
-            {state.tasks
-              .filter((t) => !t.completed && t.due === yesterday)
-              .map((t) => (
+            {sortTasksChronological(state.tasks.filter((t) => !t.completed && t.due === yesterday)).map((t) => (
                 <li key={t.id}>
                   <Check on={false} onClick={() => toggleTask(t.id)} label={t.title} />
                   <span>{t.title}</span>
