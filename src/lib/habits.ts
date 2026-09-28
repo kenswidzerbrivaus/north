@@ -2,7 +2,7 @@ import { addDays, parseISO, toISO } from './dates'
 import type { Habit, HabitLog } from './types'
 
 export function isHabitDue(habit: Habit, date: Date): boolean {
-  if (!habit.days.length) return true
+  if (!habit.days?.length) return true
   return habit.days.includes(date.getDay())
 }
 

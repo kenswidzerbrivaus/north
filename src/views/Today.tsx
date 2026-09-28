@@ -330,6 +330,7 @@ export function Today({ go }: { go: (r: Route) => void }) {
         )}
       </section>
 
+      <div className="board-queues">
       {state.tasks.filter((t) => !t.completed && t.due === yesterday).length ? (
         <section className="board-queue hud-frame">
           <p className="board-label">Close yesterday</p>
@@ -366,6 +367,7 @@ export function Today({ go }: { go: (r: Route) => void }) {
           )}
         </ol>
       </section>
+      </div>
 
       <section className="board-systems hud-frame">
         <button className="board-label as-btn" onClick={() => go('habits')}>

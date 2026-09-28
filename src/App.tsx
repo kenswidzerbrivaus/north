@@ -11,9 +11,8 @@ import { DayClock } from './components/DayClock'
 import { PageError } from './components/PageError'
 import { Login } from './views/Login'
 import { Journal } from './views/Journal'
+import { Today } from './views/Today'
 import { TravisHud } from './travis'
-
-const Today = lazy(() => import('./views/Today').then((m) => ({ default: m.Today })))
 const Tasks = lazy(() => import('./views/Tasks').then((m) => ({ default: m.Tasks })))
 const Calendar = lazy(() => import('./views/Calendar').then((m) => ({ default: m.Calendar })))
 const Habits = lazy(() => import('./views/Habits').then((m) => ({ default: m.Habits })))
@@ -384,7 +383,7 @@ function Shell() {
             Google needs a moment — tap to finish sync
           </button>
         ) : null}
-        <PageError>
+        <PageError key={route}>
           <Suspense fallback={<p className="muted">Loading…</p>}>{view}</Suspense>
         </PageError>
       </main>

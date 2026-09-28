@@ -1706,8 +1706,15 @@ html.sepho .daily-box {
   padding: 14px 16px;
 }
 
-.board-queue {
+.board-queues {
   grid-area: queue;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.board-queue {
   padding: 14px 16px;
 }
 
