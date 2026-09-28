@@ -549,13 +549,11 @@ export function Calendar() {
               <button
                 key={c.iso}
                 className={`cal-cell${c.inMonth ? '' : ' out'}${c.iso === today ? ' today' : ''}${evs.some((e) => hitIds.has(e.id) || e.id === hitId) ? ' is-hit-day' : ''}`}
+                data-cal-date={c.iso}
+                aria-label={`${c.date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}${evs.length ? `, ${evs.length} event${evs.length === 1 ? '' : 's'}` : ''}`}
                 onClick={() => {
-                  if (window.matchMedia('(max-width: 860px)').matches) {
-                    setCursor(c.date)
-                    setView('day')
-                    return
-                  }
-                  openNew(c.iso)
+                  setCursor(c.date)
+                  setView('day')
                 }}
               >
                 <span className="day-num">{c.date.getDate()}</span>
