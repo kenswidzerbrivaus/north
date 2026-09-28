@@ -19,6 +19,7 @@ import {
   migrateProjectFocusLimit,
   parseMilestoneLines,
 } from './project-engine'
+import { collapseDuplicateProjects } from './project-dupes'
 import { mergeStates } from './cloud-merge'
 import { cloudAction } from './sync-policy'
 import { formatJournalArchive, journalHasWriting, pickJournalDraft } from './journal-draft'
@@ -226,6 +227,177 @@ test('project draft: owner-only is empty; named form can park', () => {
   assert.deepEqual(summarizeProjectDraft({ form: { owner: 'Kens' }, steps: [{ name: 'Secure Financing', date: '2026-10-30' }] }, 'Kens'), {
     name: 'Untitled project',
   })
+})
+
+test('projects: collapse same-name copies keeps the newest', () => {
+  const blank = {
+    version: 1 as const,
+    savedAt: 1,
+    lists: [],
+    tasks: [
+      {
+        id: 't-old',
+        title: 'Call bank',
+        notes: '',
+        listId: 'work',
+        completed: false,
+        priority: 0,
+        createdAt: 't',
+        updatedAt: '2026-09-20T10:00:00',
+        subtasks: [],
+        projectId: 'old',
+        milestoneId: 'ms-old',
+      },
+    ],
+    events: [],
+    habits: [],
+    habitLogs: [],
+    notes: [{ id: 'n1', title: 'Note', body: 'x', pinned: false, createdAt: 't', updatedAt: 't', projectId: 'old' }],
+    goals: [],
+    journal: [],
+    sessions: [],
+    settings: { googleClientId: '' },
+    projects: [
+      {
+        id: 'old',
+        name: 'First Truck Operational',
+        company: 'Brivaus Trucking',
+        owner: 'K',
+        objective: '',
+        definitionOfDone: '',
+        successMetric: '',
+        why: '',
+        constraints: '',
+        problem: '',
+        desiredOutcome: '',
+        assumptions: '',
+        killPivot: '',
+        state: 'active' as const,
+        priority: 0,
+        deadline: '2026-10-30',
+        createdAt: '2026-09-16T16:14:19.832Z',
+        updatedAt: '2026-09-16T16:14:19.832Z',
+      },
+      {
+        id: 'new',
+        name: 'First Truck Operational',
+        company: 'Brivaus Trucking',
+        owner: 'K',
+        objective: 'Put the truck on the road.',
+        definitionOfDone: '',
+        successMetric: '',
+        why: '',
+        constraints: '',
+        problem: '',
+        desiredOutcome: '',
+        assumptions: '',
+        killPivot: '',
+        state: 'active' as const,
+        priority: 0,
+        deadline: '2026-10-30',
+        createdAt: '2026-09-27T12:00:00.000Z',
+        updatedAt: '2026-09-28T08:00:00.000Z',
+      },
+    ],
+    milestones: [
+      {
+        id: 'ms-old',
+        projectId: 'old',
+        name: 'Secure Financing',
+        owner: 'K',
+        status: 'current' as const,
+        criticalPath: true,
+        sortOrder: 0,
+        notes: '',
+        dependsOn: [],
+      },
+      {
+        id: 'ms-new',
+        projectId: 'new',
+        name: 'Secure Financing',
+        owner: 'K',
+        status: 'current' as const,
+        criticalPath: true,
+        sortOrder: 0,
+        notes: '',
+        dependsOn: [],
+        updatedAt: '2026-09-28T08:00:00.000Z',
+      },
+    ],
+    workstreams: [],
+    projectDecisions: [],
+    blockers: [],
+    waitingOnItems: [],
+    projectActivity: [{ id: 'a1', projectId: 'new', type: 'update', description: 'Edited path', createdAt: '2026-09-28T08:00:00.000Z' }],
+    goalCycles: [],
+    goalCheckpoints: [],
+    goalMovers: [{ id: 'mv', goalId: 'g', rank: 0, entityType: 'project' as const, entityId: 'old' }],
+    goalReviews: [],
+    envActions: [],
+    northStars: [],
+  }
+  const next = collapseDuplicateProjects(blank as never)
+  assert.equal(next.projects.length, 1)
+  assert.equal(next.projects[0]?.id, 'new')
+  assert.equal(next.milestones.length, 1)
+  assert.equal(next.milestones[0]?.id, 'ms-new')
+  assert.equal(next.tasks[0]?.projectId, 'new')
+  assert.equal(next.tasks[0]?.milestoneId, 'ms-new')
+  assert.equal(next.notes[0]?.projectId, 'new')
+  assert.equal(next.goalMovers[0]?.entityId, 'new')
+  assert.equal(next.projectActivity.length, 1)
+})
+
+test('projects: different names are not collapsed', () => {
+  const a = {
+    id: 'a',
+    name: 'Truck',
+    company: '',
+    owner: '',
+    objective: '',
+    definitionOfDone: '',
+    successMetric: '',
+    why: '',
+    constraints: '',
+    problem: '',
+    desiredOutcome: '',
+    assumptions: '',
+    killPivot: '',
+    state: 'active' as const,
+    priority: 0,
+    deadline: '',
+    createdAt: 't',
+    updatedAt: 't',
+  }
+  const state = {
+    version: 1 as const,
+    savedAt: 1,
+    lists: [],
+    tasks: [],
+    events: [],
+    habits: [],
+    habitLogs: [],
+    notes: [],
+    goals: [],
+    journal: [],
+    sessions: [],
+    settings: { googleClientId: '' },
+    projects: [a, { ...a, id: 'b', name: 'Suncrest' }],
+    milestones: [],
+    workstreams: [],
+    projectDecisions: [],
+    blockers: [],
+    waitingOnItems: [],
+    projectActivity: [],
+    goalCycles: [],
+    goalCheckpoints: [],
+    goalMovers: [],
+    goalReviews: [],
+    envActions: [],
+    northStars: [],
+  }
+  const next = collapseDuplicateProjects(state as never)
+  assert.equal(next.projects.length, 2)
 })
 
 test('projects: working on vs next', () => {

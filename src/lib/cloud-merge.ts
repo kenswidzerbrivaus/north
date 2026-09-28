@@ -1,4 +1,5 @@
 import { collapseDuplicateTasks } from './cal-sync'
+import { collapseDuplicateProjects } from './project-dupes'
 import type { State } from './types'
 
 function recency(item: { updatedAt?: string; createdAt?: string; requestedAt?: string; completedAt?: string }) {
@@ -59,7 +60,7 @@ export function mergeStates(local: State, remote: State): State {
   const remoteAt = Number(remote.savedAt) || 0
   const preferLocal = localAt >= remoteAt
   const base = preferLocal ? local : remote
-  return {
+  return collapseDuplicateProjects({
     ...base,
     version: 1,
     savedAt: Math.max(localAt, remoteAt),
@@ -89,7 +90,7 @@ export function mergeStates(local: State, remote: State): State {
       ...base.settings,
       googleClientId: local.settings.googleClientId || remote.settings.googleClientId,
     },
-  }
+  })
 }
 
 export function workFingerprint(state: State) {

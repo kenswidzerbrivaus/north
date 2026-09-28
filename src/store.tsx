@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { shiftISO, todayISO } from './lib/dates'
 import { nowISO, uid } from './lib/id'
+import { collapseDuplicateProjects } from './lib/project-dupes'
 import { applyMilestoneOrder, depsReady, dropMilestoneChain, isWorkingOn, migrateProjectFocusLimit } from './lib/project-engine'
 import { readLink } from './lib/google-calendar'
 import { collapseDuplicateTasks, matchLinkedTask } from './lib/cal-sync'
@@ -211,7 +212,7 @@ function blankState(): State {
 function load(): State {
   try {
     const raw = localStorage.getItem(KEY)
-    if (!raw) return linkExisting(freshState())
+    if (!raw) return collapseDuplicateProjects(linkExisting(freshState()))
     const parsed = JSON.parse(raw) as Partial<State>
     if (!Array.isArray(parsed.lists) || !Array.isArray(parsed.tasks)) return freshState()
     const loaded: State = {
@@ -265,9 +266,9 @@ function load(): State {
       Object.assign(loaded, rest)
       if (seedTasks?.length) loaded.tasks = [...seedTasks, ...loaded.tasks]
     }
-    return rebrandState(linkExisting(loaded))
+    return collapseDuplicateProjects(rebrandState(linkExisting(loaded)))
   } catch {
-    return rebrandState(linkExisting(freshState()))
+    return collapseDuplicateProjects(rebrandState(linkExisting(freshState())))
   }
 }
 
@@ -978,16 +979,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const d = data as Partial<State>
         if (!Array.isArray(d.lists) || !Array.isArray(d.tasks)) throw new Error('Backup is missing lists or tasks')
         patch(() =>
-          rebrandState({
-            ...freshState(),
-            ...d,
-            version: 1,
-            settings: {
-              ...defaultSettings(),
-              ...d.settings,
-              activeProjectLimit: migrateProjectFocusLimit(d.settings?.activeProjectLimit),
-            },
-          }),
+          collapseDuplicateProjects(
+            rebrandState({
+              ...freshState(),
+              ...d,
+              version: 1,
+              settings: {
+                ...defaultSettings(),
+                ...d.settings,
+                activeProjectLimit: migrateProjectFocusLimit(d.settings?.activeProjectLimit),
+              },
+            }),
+          ),
         )
       },
       hydrateFromCloud: (data, savedAt) => {
@@ -1028,7 +1031,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               activeProjectLimit: migrateProjectFocusLimit(data.settings?.activeProjectLimit),
             },
           }
-          return rebrandState(linkExisting(next))
+          return collapseDuplicateProjects(rebrandState(linkExisting(next)))
         }, true)
       },
       resetState: () => patch(() => freshState()),
