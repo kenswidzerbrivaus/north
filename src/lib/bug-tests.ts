@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { eventIsDone } from './cal-done'
 import { sephoCopy } from './rebrand'
 import { layoutTimedEvents, nowLineTop, nowMinutes } from './cal-layout'
+import { matchCalEvents } from './cal-search'
 import { collapseDuplicateTasks, matchLinkedTask } from './cal-sync'
 import { parseDeadline, stampTime } from './dates'
 import { summarizeProjectDraft } from './drafts'
@@ -619,6 +620,35 @@ test('calendar overlapping blocks get side-by-side columns', () => {
   assert.equal(b.cols, 2)
   assert.notEqual(a.col, b.col)
   assert.equal(c.cols, 1)
+})
+
+test('calendar search ranks title matches and upcoming first', () => {
+  const ev = (id: string, title: string, date: string, extra: Partial<CalEvent> = {}): CalEvent => ({
+    id,
+    title,
+    notes: extra.notes ?? '',
+    date,
+    start: extra.start,
+    end: extra.end,
+    allDay: extra.allDay ?? !extra.start,
+    color: '#6ee7ff',
+    location: extra.location ?? '',
+  })
+  const rows = matchCalEvents(
+    [
+      ev('past', 'Bank call', '2026-09-01', { start: '09:00' }),
+      ev('soon', 'Bank docs', '2026-10-02', { start: '11:00' }),
+      ev('notes', 'Financing', '2026-10-01', { notes: 'send bank packet', start: '08:00' }),
+      ev('exact', 'Bank', '2026-10-03', { start: '09:00' }),
+    ],
+    'bank',
+    '2026-09-28',
+  )
+  assert.deepEqual(rows.map((e) => e.id), ['exact', 'soon', 'notes', 'past'])
+})
+
+test('calendar search ignores blank queries', () => {
+  assert.deepEqual(matchCalEvents([{ id: 'a', title: 'Call', notes: '', date: '2026-10-01', allDay: true, color: '', location: '' }], '  ', '2026-09-28'), [])
 })
 
 test('calendar now line sits at the current minute on the day grid', () => {

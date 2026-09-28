@@ -600,6 +600,65 @@ form.row .input {
   margin-bottom: 14px;
 }
 
+.cal-search {
+  position: relative;
+  margin: 0 0 12px;
+}
+
+.cal-search .input {
+  width: 100%;
+}
+
+.cal-search-hits {
+  position: absolute;
+  z-index: 45;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  max-height: min(48vh, 320px);
+  overflow: auto;
+  padding: 6px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.cal-search-hit {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  text-align: left;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  color: inherit;
+}
+
+.cal-search-hit:hover,
+.cal-search-hit:focus {
+  background: var(--bg-2);
+}
+
+.cal-search-hit strong {
+  display: block;
+}
+
+.cal-cell.is-hit-day {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.pill.is-hit,
+.event-block.is-hit {
+  box-shadow:
+    inset 3px 0 0 var(--c, var(--accent)),
+    0 0 0 2px color-mix(in srgb, #6ee7ff 80%, transparent);
+  z-index: 6;
+}
+
 .cal-month {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -1241,6 +1300,7 @@ html.sepho .sidebar,
 html.sepho .card,
 html.sepho .modal,
 html.sepho .cmdk,
+html.sepho .cal-search-hits,
 html.sepho .modal-foot,
 html.sepho .cal-month,
 html.sepho .week-board,
@@ -3842,6 +3902,12 @@ html.sepho .date-pop {
     min-width: 140px;
   }
 
+  .cal-search .input {
+    font-size: 16px;
+  }
+  .cal-search-hits {
+    max-height: min(42vh, 280px);
+  }
   .cal-toolbar {
     flex-wrap: nowrap;
     overflow-x: auto;

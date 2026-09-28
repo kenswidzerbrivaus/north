@@ -6,6 +6,7 @@ import { Icon } from '../icons'
 import { matchLinkedTask } from '../lib/cal-sync'
 import {
   addDays,
+  formatMedium,
   formatTime,
   minutesOf,
   monthCells,
@@ -18,6 +19,7 @@ import {
   weekdayNames,
 } from '../lib/dates'
 import { eventIsDone } from '../lib/cal-done'
+import { matchCalEvents } from '../lib/cal-search'
 import { takeCalGap } from '../lib/cal-gap'
 import { layoutTimedEvents, minutesToStamp, nowLineTop, nowMinutes, snapStart } from '../lib/cal-layout'
 import { checkpointDate } from '../lib/goal-engine'
@@ -45,6 +47,8 @@ export function Calendar() {
   const [edits, setEdits] = useState<Record<string, Partial<CalEvent>>>({})
   const today = todayISO()
   const names = weekdayNames(weekStartsOn)
+  const [q, setQ] = useState('')
+  const [hitId, setHitId] = useState<string | null>(null)
   const [projectId, setProjectId] = useState(() => hashParam('project'))
   useEffect(() => {
     const on = () => setProjectId(hashParam('project'))
@@ -70,6 +74,15 @@ export function Calendar() {
       (e) => ids.has(e.id) || (e.googleId && ids.has(e.googleId)) || (needle && e.title.toLowerCase().includes(needle.slice(0, 8))),
     )
   }, [edits, merged, moved, projectId, state.projects, state.tasks])
+  const hits = useMemo(() => matchCalEvents(allEvents, q, today), [allEvents, q, today])
+  const hitIds = useMemo(() => new Set(hits.map((e) => e.id)), [hits])
+
+  const jumpTo = (e: CalEvent) => {
+    setHitId(e.id)
+    setQ('')
+    setCursor(parseISO(e.date))
+    setView('day')
+  }
 
   const year = cursor.getFullYear()
   const month = cursor.getMonth()
@@ -80,12 +93,15 @@ export function Calendar() {
   useEffect(() => {
     if (view !== 'day') return
     let cancelled = false
-    const scrollToNow = () => {
+    const scrollTo = () => {
       if (cancelled) return
+      const hit = hitId
+        ? (document.querySelector(`[data-cal-event="${CSS.escape(hitId)}"]`) as HTMLElement | null)
+        : null
       const line = document.querySelector('.now-line') as HTMLElement | null
       const hour = Math.min(22, Math.max(6, new Date().getHours() - 1))
       const fallback = document.querySelector(`[data-cal-hour="${hour}"]`) as HTMLElement | null
-      const target = line ?? fallback
+      const target = hit ?? (toISO(cursor) === today && !hitId ? line ?? fallback : null)
       if (!target) return
       const mobile = window.matchMedia('(max-width: 860px)').matches
       const scroller = document.querySelector('.main') as HTMLElement | null
@@ -100,16 +116,16 @@ export function Calendar() {
     }
     let raf2 = 0
     const raf1 = window.requestAnimationFrame(() => {
-      raf2 = window.requestAnimationFrame(scrollToNow)
+      raf2 = window.requestAnimationFrame(scrollTo)
     })
-    const t = window.setTimeout(scrollToNow, 80)
+    const t = window.setTimeout(scrollTo, 80)
     return () => {
       cancelled = true
       window.cancelAnimationFrame(raf1)
       window.cancelAnimationFrame(raf2)
       window.clearTimeout(t)
     }
-  }, [view, cursor])
+  }, [view, cursor, hitId, today])
 
   useEffect(() => {
     setEdits((prev) => {
@@ -416,6 +432,57 @@ export function Calendar() {
       {gcal.error ? <p className="muted" style={{ marginTop: -12 }}>{gcal.error}</p> : null}
       {gcal.connected && gcal.email ? <p className="muted" style={{ marginTop: -8 }}>Showing Google Calendar for {gcal.email}</p> : null}
 
+      <div className="cal-search">
+        <input
+          className="input"
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value)
+            setHitId(null)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setQ('')
+              setHitId(null)
+              e.currentTarget.blur()
+            }
+            if (e.key === 'Enter' && hits[0]) {
+              e.preventDefault()
+              jumpTo(hits[0])
+            }
+          }}
+          placeholder="Find an event"
+          aria-label="Find an event"
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+        />
+        {q.trim() ? (
+          <div className="cal-search-hits" role="listbox" aria-label="Matching events">
+            {hits.length === 0 ? <p className="muted">No events match.</p> : null}
+            {hits.slice(0, 16).map((e) => (
+              <button
+                key={e.id}
+                type="button"
+                className="cal-search-hit"
+                role="option"
+                onMouseDown={(ev) => ev.preventDefault()}
+                onClick={() => jumpTo(e)}
+              >
+                <span>
+                  <strong>{e.title || 'Untitled'}</strong>
+                  {e.location ? <span className="muted"> · {e.location}</span> : null}
+                </span>
+                <span className="muted">
+                  {formatMedium(e.date)}
+                  {e.allDay || !e.start ? '' : ` · ${formatTime(e.start)}`}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
       <div className={view === 'day' ? 'cal-day-shell' : undefined}>
       <div className="cal-toolbar">
         <div className="row">
@@ -481,7 +548,7 @@ export function Calendar() {
             return (
               <button
                 key={c.iso}
-                className={`cal-cell${c.inMonth ? '' : ' out'}${c.iso === today ? ' today' : ''}`}
+                className={`cal-cell${c.inMonth ? '' : ' out'}${c.iso === today ? ' today' : ''}${evs.some((e) => hitIds.has(e.id) || e.id === hitId) ? ' is-hit-day' : ''}`}
                 onClick={() => {
                   if (window.matchMedia('(max-width: 860px)').matches) {
                     setCursor(c.date)
@@ -496,7 +563,8 @@ export function Calendar() {
                 {evs.slice(0, 3).map((e) => (
                   <span
                     key={e.id}
-                    className={`pill${isDone(e) ? ' is-done' : ''}`}
+                    className={`pill${isDone(e) ? ' is-done' : ''}${hitIds.has(e.id) || e.id === hitId ? ' is-hit' : ''}`}
+                    data-cal-event={e.id}
                     style={{ ['--c' as string]: e.color }}
                     onClick={(ev) => {
                       ev.stopPropagation()
@@ -518,6 +586,8 @@ export function Calendar() {
         <WeekGrid
           days={view === 'day' ? [cursor] : weekDays}
           events={allEvents}
+          hitIds={hitIds}
+          focusId={hitId}
           onSlot={openNew}
           onSwipeDay={view === 'day' ? shift : undefined}
           onEvent={(e) => setDraft({ ...e })}
@@ -558,6 +628,8 @@ type DragState = {
 function WeekGrid({
   days,
   events,
+  hitIds,
+  focusId,
   onSlot,
   onEvent,
   onMove,
@@ -567,6 +639,8 @@ function WeekGrid({
 }: {
   days: Date[]
   events: CalEvent[]
+  hitIds: Set<string>
+  focusId: string | null
   onSlot: (iso: string, start?: string, end?: string) => void
   onEvent: (e: CalEvent) => void
   onMove: (e: CalEvent, date: string, start: string, end: string) => void
@@ -644,7 +718,8 @@ function WeekGrid({
               {all.map((e) => (
                 <button
                   key={e.id}
-                  className={`pill${isDone(e) ? ' is-done' : ''}`}
+                  className={`pill${isDone(e) ? ' is-done' : ''}${hitIds.has(e.id) || e.id === focusId ? ' is-hit' : ''}`}
+                  data-cal-event={e.id}
                   style={{ ['--c' as string]: e.color, display: 'block', marginTop: 4 }}
                   onClick={(ev) => {
                     ev.stopPropagation()
@@ -688,6 +763,8 @@ function WeekGrid({
             }}
             gap={gap}
             isDone={isDone}
+            hitIds={hitIds}
+            focusId={focusId}
             nowLine={days.length === 1 && toISO(d) === todayISO()}
           />
         ))}
@@ -716,6 +793,8 @@ function DayColumn({
   onDragStart,
   gap,
   isDone,
+  hitIds,
+  focusId,
   nowLine,
 }: {
   iso: string
@@ -725,6 +804,8 @@ function DayColumn({
   onDragStart: (ev: ReactPointerEvent, block: ReturnType<typeof layoutTimedEvents>[number]) => void
   gap: { date: string; startMin: number; endMin: number } | null
   isDone: (e: CalEvent) => boolean
+  hitIds: Set<string>
+  focusId: string | null
   nowLine?: boolean
 }) {
   const blocks = layoutTimedEvents(events)
@@ -768,7 +849,8 @@ function DayColumn({
           <button
             key={b.event.id}
             type="button"
-            className={`event-block${compact ? ' is-compact' : ''}${moving ? ' is-dragging' : ''}${isDone(b.event) ? ' is-done' : ''}`}
+            className={`event-block${compact ? ' is-compact' : ''}${moving ? ' is-dragging' : ''}${isDone(b.event) ? ' is-done' : ''}${hitIds.has(b.event.id) || b.event.id === focusId ? ' is-hit' : ''}`}
+            data-cal-event={b.event.id}
             style={{
               top,
               height,
