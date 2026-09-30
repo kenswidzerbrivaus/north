@@ -22,7 +22,7 @@ const Goals = lazy(() => import('./views/Goals').then((m) => ({ default: m.Goals
 const Settings = lazy(() => import('./views/Settings').then((m) => ({ default: m.Settings })))
 const Projects = lazy(() => import('./views/Projects').then((m) => ({ default: m.Projects })))
 
-const NAV_ICON: Record<Route, IconName> = {
+const NAV_ICON: Record<Exclude<Route, 'home'>, IconName> = {
   today: 'today',
   tasks: 'tasks',
   calendar: 'calendar',
@@ -35,8 +35,8 @@ const NAV_ICON: Record<Route, IconName> = {
   settings: 'settings',
 }
 
-const MOBILE_TABS: Route[] = ['today', 'tasks', 'calendar', 'projects']
-const MORE_TABS: Route[] = ['goals', 'notes', 'habits', 'focus', 'journal', 'settings']
+const MOBILE_TABS: Exclude<Route, 'home'>[] = ['today', 'tasks', 'calendar', 'projects']
+const MORE_TABS: Exclude<Route, 'home'>[] = ['goals', 'notes', 'habits', 'focus', 'journal', 'settings']
 
 function useResolvedTheme(mode: 'light' | 'dark' | 'system') {
   const [sysDark, setSysDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches)
@@ -91,6 +91,25 @@ function Gate() {
   )
 }
 
+function BlankSpace({ go, onSearch }: { go: (r: Route) => void; onSearch: () => void }) {
+  const date = new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
+  return (
+    <div className="blank-space">
+      <p className="blank-space-date">{date}</p>
+      <nav className="blank-space-links" aria-label="Sepho">
+        {ROUTES.map((r) => (
+          <button key={r.id} type="button" onClick={() => go(r.id)}>
+            {r.label}
+          </button>
+        ))}
+      </nav>
+      <button type="button" className="blank-space-search" onClick={onSearch}>
+        Search
+      </button>
+    </div>
+  )
+}
+
 function Shell() {
   const { state, addTask, addNote, addEvent } = useStore()
   const gcal = useGoogleCalendar()
@@ -110,6 +129,24 @@ function Shell() {
     }
   })
   const tabStrip = useRef<HTMLElement>(null)
+  const [phone, setPhone] = useState(() => {
+    try {
+      return window.matchMedia('(max-width: 860px)').matches
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 860px)')
+    const on = () => setPhone(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+
+  useEffect(() => {
+    if (!phone && route === 'home') go('today')
+  }, [go, phone, route])
 
   useEffect(() => {
     try {
@@ -290,22 +327,106 @@ function Shell() {
   }, [route])
 
   useEffect(() => {
-    const label = ROUTES.find((r) => r.id === route)?.label ?? 'Sepho'
-    document.title = `${label} — Sepho`
+    document.title = route === 'home' ? 'Sepho' : `${ROUTES.find((r) => r.id === route)?.label ?? 'Sepho'} — Sepho`
   }, [route])
 
-  const view = {
-    today: <Today go={go} />,
-    tasks: <Tasks />,
-    calendar: <Calendar />,
-    habits: <Habits />,
-    focus: <Focus />,
-    notes: <Notes />,
-    goals: <Goals />,
-    journal: <Journal />,
-    settings: <Settings />,
-    projects: <Projects />,
-  }[route]
+  const view =
+    route === 'home'
+      ? null
+      : {
+          today: <Today go={go} />,
+          tasks: <Tasks />,
+          calendar: <Calendar />,
+          habits: <Habits />,
+          focus: <Focus />,
+          notes: <Notes />,
+          goals: <Goals />,
+          journal: <Journal />,
+          settings: <Settings />,
+          projects: <Projects />,
+        }[route]
+
+  if (route === 'home') {
+    return (
+      <div className="shell is-blank-space" data-route="home">
+        <BlankSpace
+          go={(r) => {
+            setCmd(false)
+            go(r)
+          }}
+          onSearch={() => {
+            setCmd(true)
+            setQuery('')
+            setActive(0)
+          }}
+        />
+        {alert ? (
+          <div className="timer-alert" role="alertdialog" aria-modal="true" aria-label="Timer finished">
+            <div className="timer-alert-card">
+              <p className="kicker">Time’s up</p>
+              <h2>{alert.finished === 'focus' ? 'Focus session complete' : 'Break over'}</h2>
+              <p className="muted">
+                {alert.finished === 'focus'
+                  ? `Take a ${alert.next === 'long' ? 'long' : 'short'} break.`
+                  : 'Ready for another focus block.'}
+              </p>
+              <button className="btn" onClick={dismissAlert}>
+                Got it
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {cmd ? (
+          <div className="modal-backdrop" onMouseDown={() => setCmd(false)}>
+            <div
+              className="cmdk"
+              onMouseDown={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault()
+                  setActive((i) => Math.min(results.length - 1, i + 1))
+                }
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault()
+                  setActive((i) => Math.max(0, i - 1))
+                }
+                if (e.key === 'Enter') {
+                  results[active]?.run()
+                  setCmd(false)
+                }
+              }}
+            >
+              <input
+                className="input"
+                style={{ border: 0, borderRadius: 0, boxShadow: 'none' }}
+                autoFocus
+                placeholder="Jump, search, or add a task…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <div className="cmdk-list">
+                {results.map((r, i) => (
+                  <button
+                    key={r.id}
+                    className="cmdk-item"
+                    data-on={i === active}
+                    onMouseEnter={() => setActive(i)}
+                    onClick={() => {
+                      r.run()
+                      setCmd(false)
+                    }}
+                  >
+                    <span>{r.title}</span>
+                    <span className="muted">{r.hint}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
 
   return (
     <div className="shell" data-route={route} data-sidebar={collapsed ? 'in' : 'out'}>
@@ -360,6 +481,11 @@ function Shell() {
       </aside>
 
       <main className="main">
+        {phone ? (
+          <button className="blank-home" type="button" onClick={() => go('home')}>
+            Home
+          </button>
+        ) : null}
         <div className="top-mobile">
           <strong className="display">{ROUTES.find((r) => r.id === route)?.label ?? 'Sepho'}</strong>
           <DayClock compact />

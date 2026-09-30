@@ -1,6 +1,7 @@
 export type Priority = 0 | 1 | 2 | 3
 export type ThemeMode = 'light' | 'dark' | 'system'
 export type Route =
+  | 'home'
   | 'today'
   | 'tasks'
   | 'calendar'
@@ -447,7 +448,7 @@ export function nextStarColor(used: string[]) {
   return STAR_PALETTE.find((c) => !taken.has(c.toLowerCase())) ?? nextEventColor(used, STAR_PALETTE)
 }
 
-export const ROUTES: { id: Route; label: string; hint: string }[] = [
+export const ROUTES: { id: Exclude<Route, 'home'>; label: string; hint: string }[] = [
   { id: 'today', label: 'Today', hint: '1' },
   { id: 'tasks', label: 'Tasks', hint: '2' },
   { id: 'calendar', label: 'Calendar', hint: '3' },
