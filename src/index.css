@@ -3372,13 +3372,10 @@ html.sepho .date-pop {
     overflow: hidden;
   }
   .shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: var(--sidebar) 1fr;
     height: 100dvh;
     min-height: 0;
     overflow: hidden;
-  }
-  .sidebar {
-    display: none;
   }
   html.sepho {
     -webkit-tap-highlight-color: transparent;
@@ -3390,7 +3387,7 @@ html.sepho .date-pop {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-    padding: env(safe-area-inset-top, 0px) 12px calc(78px + env(safe-area-inset-bottom, 0px));
+    padding: max(22px, env(safe-area-inset-top, 0px)) 16px max(48px, env(safe-area-inset-bottom, 0px));
   }
   .sepho-scan {
     opacity: 0.25;
@@ -3399,9 +3396,6 @@ html.sepho .date-pop {
     margin-bottom: 12px;
     align-items: center;
     gap: 8px;
-  }
-  .page-head .kicker {
-    display: none;
   }
   .page-head h1 {
     font-size: 22px;
@@ -3439,12 +3433,6 @@ html.sepho .date-pop {
     width: 100%;
     justify-content: space-between;
     align-items: center;
-  }
-  .board-readouts .day-clock:not(.is-compact) {
-    display: none;
-  }
-  .board-readouts .day-clock.is-compact {
-    display: block;
   }
   .now-clock {
     font-size: 32px;
@@ -3521,59 +3509,17 @@ html.sepho .date-pop {
   .cmdk {
     width: calc(100% - 16px);
   }
+  .bottom-nav,
   html.sepho .bottom-nav,
-  .bottom-nav {
-    display: flex;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 40;
-    padding: 4px 6px calc(6px + env(safe-area-inset-bottom, 0px));
-    background: rgba(4, 12, 20, 0.96);
-    border: 0;
-    border-top: 1px solid rgba(110, 231, 255, 0.22);
-    border-radius: 0;
-    justify-content: space-around;
-    gap: 0;
-    width: 100%;
-    backdrop-filter: blur(20px);
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
-    overflow: hidden;
-  }
-  .bottom-nav button {
-    flex: 1 1 0;
-    border: 0;
-    background: transparent;
-    color: var(--ink-soft);
-    border-radius: 12px;
-    padding: 6px 4px 4px;
-    font-size: 10px;
-    letter-spacing: 0.02em;
-    text-transform: none;
-    display: grid;
-    place-items: center;
-    gap: 2px;
-    min-height: 48px;
-    min-width: 0;
-    touch-action: manipulation;
-  }
-  .bottom-nav button[data-on='true'] {
-    color: var(--accent);
-    background: transparent;
-  }
+  .more-sheet-backdrop,
   .top-mobile {
-    display: none;
+    display: none !important;
   }
   .page-head h1 {
     font-size: 22px;
   }
   .today-num {
     font-size: 36px;
-  }
-  .today-quote {
-    display: none;
   }
 }
 
@@ -3584,12 +3530,53 @@ html.sepho .date-pop {
   .clock b {
     font-size: 48px;
   }
+  .shell,
+  .shell[data-sidebar='out'],
+  .shell[data-sidebar='in'] {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+  .sidebar {
+    grid-column: 1;
+  }
+  .main {
+    grid-column: 2;
+    min-width: 0;
+  }
+  .shell[data-sidebar='out'] .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 248px;
+    z-index: 55;
+    padding: 22px 16px 18px;
+    align-items: stretch;
+  }
+  .board-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .board-readouts {
+    width: 100%;
+    max-width: 100%;
+    justify-content: space-between;
+  }
+  .board-head .day-clock {
+    max-width: 100%;
+  }
+  .board-head .day-clock b {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .today-quote {
+    overflow-wrap: anywhere;
+    max-width: 100%;
+  }
 }
 
 .travis {
   position: fixed;
   right: 18px;
-  bottom: 22px;
+  bottom: max(22px, env(safe-area-inset-bottom, 0px));
   z-index: 50;
 }
 
@@ -3646,57 +3633,8 @@ html.sepho .date-pop {
   padding: 12px 14px 14px;
 }
 
-@media (max-width: 860px) {
-  .travis {
-    display: none;
-  }
-}
-
 .more-sheet-backdrop {
   display: none;
-}
-
-@media (max-width: 860px) {
-  .more-sheet-backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 45;
-    background: rgba(0, 0, 0, 0.45);
-  }
-  .more-sheet {
-    position: absolute;
-    left: 10px;
-    right: 10px;
-    bottom: calc(70px + env(safe-area-inset-bottom, 0px));
-    background: rgba(6, 16, 26, 0.98);
-    border: 1px solid rgba(110, 231, 255, 0.28);
-    border-radius: 16px;
-    padding: 12px 10px 8px;
-    display: grid;
-    gap: 4px;
-  }
-  .more-sheet .kicker {
-    padding: 4px 10px 8px;
-  }
-  .more-sheet button {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    border: 0;
-    background: transparent;
-    color: var(--ink);
-    text-align: left;
-    min-height: 44px;
-    padding: 8px 10px;
-    border-radius: 10px;
-    font-size: 16px;
-  }
-  .more-sheet button[data-on='true'] {
-    color: var(--accent);
-    background: var(--accent-soft);
-  }
 }
 
 .install-steps {
@@ -3791,14 +3729,6 @@ html.sepho .date-pop {
   }
 
   .board {
-    grid-template-areas:
-      'head'
-      'now'
-      'capture'
-      'queue'
-      'morning'
-      'systems'
-      'command';
     gap: 8px;
   }
   .split {
@@ -3953,17 +3883,14 @@ html.sepho .date-pop {
     max-height: min(42vh, 280px);
   }
   .cal-toolbar {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     overflow-x: auto;
     gap: 8px;
     margin-bottom: 10px;
-    scrollbar-width: none;
-  }
-  .cal-toolbar::-webkit-scrollbar {
-    display: none;
+    max-width: 100%;
   }
   .cal-toolbar .row {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
   }
 
   .more-grid {
@@ -4025,5 +3952,34 @@ html.sepho .date-pop {
 
   .proj-cap {
     margin-bottom: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .board,
+  .board-head,
+  .board-morning,
+  .board-now,
+  .board-queue,
+  .board-systems,
+  .board-capture,
+  .board-command,
+  .hud-frame {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .board-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .board-readouts {
+    width: 100%;
+    max-width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  .board-head .day-clock b {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 }

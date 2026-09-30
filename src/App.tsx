@@ -103,6 +103,7 @@ function Shell() {
   const [active, setActive] = useState(0)
   const [collapsed, setCollapsed] = useState(() => {
     try {
+      if (window.matchMedia('(max-width: 640px)').matches) return true
       return localStorage.getItem('sepho.sidebar') === '1'
     } catch {
       return false
@@ -112,6 +113,7 @@ function Shell() {
 
   useEffect(() => {
     try {
+      if (window.matchMedia('(max-width: 640px)').matches) return
       localStorage.setItem('sepho.sidebar', collapsed ? '1' : '0')
     } catch {
       /* private */
