@@ -5,7 +5,8 @@ import { sephoCopy } from './rebrand'
 import { layoutTimedEvents, nowLineTop, nowMinutes } from './cal-layout'
 import { matchCalEvents } from './cal-search'
 import { collapseDuplicateTasks, matchLinkedTask } from './cal-sync'
-import { parseDeadline, stampTime } from './dates'
+import { localDay, parseDeadline, stampTime } from './dates'
+import { normalizeState } from './normalize'
 import { sortTasksChronological } from './task-sort'
 import { summarizeProjectDraft } from './drafts'
 import { fromGoogleEvent, toGoogleBody } from './google-calendar'
@@ -228,6 +229,17 @@ test('dates: parseDeadline accepts several formats', () => {
   assert.equal(parseDeadline('2026-10-30'), '2026-10-30')
   assert.equal(parseDeadline('10/30/2026'), '2026-10-30')
   assert.equal(parseDeadline(''), '')
+  assert.equal(parseDeadline('2026-10'), '')
+  assert.equal(parseDeadline('2026-10-'), '')
+})
+
+test('dates: localDay uses the device calendar date not UTC slice', () => {
+  assert.equal(localDay('2026-09-30'), '2026-09-30')
+  const d = new Date(Date.UTC(2026, 9, 1, 3, 15, 0))
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  assert.equal(localDay(d.toISOString()), `${y}-${m}-${day}`)
 })
 
 test('dates: stampTime strips seconds for time inputs', () => {
@@ -824,4 +836,275 @@ test('note sanitize strips scripts without executing', () => {
   const out = sanitizeNoteHtml('ok<script>alert(1)</script><b>hi</b>')
   assert.equal(out.includes('script'), false)
   assert.equal(out.includes('alert'), false)
+})
+
+test('google: overnight timed events split across local days', () => {
+  const rows = fromGoogleEvent({
+    id: 'night',
+    summary: 'Red-eye',
+    start: { dateTime: '2026-09-17T22:00:00' },
+    end: { dateTime: '2026-09-18T02:00:00' },
+  })
+  assert.equal(rows.length, 2)
+  assert.equal(rows[0]?.date, '2026-09-17')
+  assert.equal(rows[0]?.start, '22:00')
+  assert.equal(rows[0]?.end, '24:00')
+  assert.equal(rows[1]?.date, '2026-09-18')
+  assert.equal(rows[1]?.start, '00:00')
+  assert.equal(rows[1]?.end, '02:00')
+  const laid = layoutTimedEvents(rows.filter((e) => e.date === '2026-09-17'))
+  assert.equal(laid[0]?.end, 24 * 60)
+})
+
+test('calendar: multi-day google all-day keeps a task per day', () => {
+  const tasks = [
+    task({ id: 'd1', title: 'Offsite', googleId: 'g-off', eventId: 'gcal:g-off:2026-09-20', due: '2026-09-20' }),
+    task({ id: 'd2', title: 'Offsite', googleId: 'g-off', eventId: 'gcal:g-off:2026-09-21', due: '2026-09-21' }),
+  ]
+  assert.equal(matchLinkedTask(tasks, ev({ id: 'gcal:g-off:2026-09-20', title: 'Offsite', date: '2026-09-20', googleId: 'g-off' }))?.id, 'd1')
+  assert.equal(matchLinkedTask(tasks, ev({ id: 'gcal:g-off:2026-09-21', title: 'Offsite', date: '2026-09-21', googleId: 'g-off' }))?.id, 'd2')
+})
+
+test('normalize: missing event color and task subtasks do not throw', () => {
+  const next = normalizeState({
+    version: 1,
+    lists: [],
+    tasks: [{ id: 't', title: 'Legacy', notes: '', listId: 'inbox', completed: false, priority: 0, createdAt: '', updatedAt: '' } as never],
+    events: [{ id: 'e', title: 'Bare', notes: '', date: '2026-09-30', allDay: true, location: '' } as never],
+    habits: [{ id: 'h', name: 'Read', color: '', archived: false, target: 1 } as never],
+    habitLogs: null as never,
+    notes: [],
+    goals: [],
+    journal: [],
+    sessions: [{ id: 's', mode: 'focus', seconds: 60, completed: true } as never],
+    settings: { googleClientId: '' } as never,
+    projects: [],
+    milestones: [{ id: 'm', projectId: 'p', name: 'Step', owner: '', status: 'current', criticalPath: true, sortOrder: 0, notes: '' } as never],
+    workstreams: [],
+    projectDecisions: [],
+    blockers: [],
+    waitingOnItems: [],
+    projectActivity: [],
+    goalCycles: null as never,
+    goalCheckpoints: [],
+    goalMovers: [],
+    goalReviews: [],
+    envActions: [],
+    northStars: [],
+  })
+  assert.equal(next.tasks[0]?.subtasks.length, 0)
+  assert.ok(next.events[0]?.color)
+  assert.deepEqual(next.habits[0]?.days, [])
+  assert.equal(next.sessions[0]?.endedAt, '')
+  assert.deepEqual(next.milestones[0]?.dependsOn, [])
+  assert.deepEqual(next.goalCycles, [])
+})
+
+test('cloud merge survives missing remote settings', () => {
+  const local = {
+    savedAt: 2,
+    tasks: [],
+    events: [],
+    lists: [],
+    habits: [],
+    habitLogs: [],
+    notes: [],
+    goals: [],
+    journal: [],
+    sessions: [],
+    settings: { googleClientId: 'local' },
+    projects: [],
+    milestones: [],
+    workstreams: [],
+    projectDecisions: [],
+    blockers: [],
+    waitingOnItems: [],
+    projectActivity: [],
+    goalCycles: [],
+    goalCheckpoints: [],
+    goalMovers: [],
+    goalReviews: [],
+    envActions: [],
+    northStars: [],
+    version: 1 as const,
+  }
+  const remote = { ...local, savedAt: 1, settings: undefined as never }
+  const merged = mergeStates(local as never, remote as never)
+  assert.equal(merged.settings.googleClientId, 'local')
+})
+
+test('cloud journal merge keeps writing from the thin morning upsert', () => {
+  const base = {
+    savedAt: 2,
+    tasks: [],
+    events: [],
+    lists: [],
+    habits: [],
+    habitLogs: [],
+    notes: [],
+    goals: [],
+    sessions: [],
+    settings: { googleClientId: '' },
+    projects: [],
+    milestones: [],
+    workstreams: [],
+    projectDecisions: [],
+    blockers: [],
+    waitingOnItems: [],
+    projectActivity: [],
+    goalCycles: [],
+    goalCheckpoints: [],
+    goalMovers: [],
+    goalReviews: [],
+    envActions: [],
+    northStars: [],
+    version: 1 as const,
+  }
+  const local = {
+    ...base,
+    savedAt: 20,
+    journal: [
+      {
+        date: '2026-09-30',
+        body: '',
+        updatedAt: '2026-09-30T12:00:00.000Z',
+        blessings: ['', '', ''] as [string, string, string],
+        currentGoals: '',
+        actionsToday: '',
+        actionsTomorrow: '',
+        mistakesToday: '',
+        mistakeReflection: '',
+        affirmation: '',
+        shortTermGoal: 'Ship Sepho',
+        morningWins: ['', '', ''] as [string, string, string],
+        morningChecks: [true, false, false] as [boolean, boolean, boolean],
+      },
+    ],
+  }
+  const remote = {
+    ...base,
+    savedAt: 10,
+    journal: [
+      {
+        date: '2026-09-30',
+        body: 'Wrote code',
+        updatedAt: '2026-09-30T08:00:00.000Z',
+        blessings: ['health', '', ''] as [string, string, string],
+        currentGoals: 'Keep the truck deal moving',
+        actionsToday: 'Wrote code',
+        actionsTomorrow: 'Test',
+        mistakesToday: '',
+        mistakeReflection: '',
+        affirmation: '',
+        shortTermGoal: '',
+        morningWins: ['', '', ''] as [string, string, string],
+        morningChecks: [false, false, false] as [boolean, boolean, boolean],
+      },
+    ],
+  }
+  const merged = mergeStates(local as never, remote as never)
+  const row = merged.journal.find((j) => j.date === '2026-09-30')
+  assert.equal(row?.shortTermGoal, 'Ship Sepho')
+  assert.equal(row?.currentGoals, 'Keep the truck deal moving')
+  assert.equal(row?.blessings[0], 'health')
+  assert.equal(row?.morningChecks[0], true)
+})
+
+test('projects: unique steps on a duplicate copy move onto the keeper', () => {
+  const blank = {
+    version: 1 as const,
+    savedAt: 1,
+    lists: [],
+    tasks: [],
+    events: [],
+    habits: [],
+    habitLogs: [],
+    notes: [],
+    goals: [],
+    journal: [],
+    sessions: [],
+    settings: { googleClientId: '' },
+    projects: [
+      {
+        id: 'old',
+        name: 'Fleet',
+        company: '',
+        owner: 'K',
+        objective: '',
+        definitionOfDone: '',
+        successMetric: '',
+        why: '',
+        constraints: '',
+        problem: '',
+        desiredOutcome: '',
+        assumptions: '',
+        killPivot: '',
+        state: 'active' as const,
+        priority: 0,
+        deadline: '2026-10-30',
+        createdAt: 't',
+        updatedAt: '2026-09-01',
+      },
+      {
+        id: 'new',
+        name: 'Fleet',
+        company: '',
+        owner: 'K',
+        objective: 'Go',
+        definitionOfDone: '',
+        successMetric: '',
+        why: '',
+        constraints: '',
+        problem: '',
+        desiredOutcome: '',
+        assumptions: '',
+        killPivot: '',
+        state: 'active' as const,
+        priority: 0,
+        deadline: '2026-10-30',
+        createdAt: 't',
+        updatedAt: '2026-09-28',
+      },
+    ],
+    milestones: [
+      {
+        id: 'ms-shared',
+        projectId: 'new',
+        name: 'Secure Financing',
+        owner: 'K',
+        status: 'current' as const,
+        criticalPath: true,
+        sortOrder: 0,
+        notes: '',
+        dependsOn: [],
+      },
+      {
+        id: 'ms-unique',
+        projectId: 'old',
+        name: 'Buy the truck',
+        owner: 'K',
+        status: 'upcoming' as const,
+        criticalPath: true,
+        sortOrder: 1,
+        notes: '',
+        dependsOn: [],
+      },
+    ],
+    workstreams: [],
+    projectDecisions: [],
+    blockers: [],
+    waitingOnItems: [],
+    projectActivity: [{ id: 'a1', projectId: 'new', type: 'update', description: 'x', createdAt: '2026-09-28' }],
+    goalCycles: [],
+    goalCheckpoints: [],
+    goalMovers: [],
+    goalReviews: [],
+    envActions: [],
+    northStars: [],
+  }
+  const next = collapseDuplicateProjects(blank as never)
+  assert.equal(next.projects.length, 1)
+  assert.equal(next.projects[0]?.id, 'new')
+  assert.equal(next.milestones.length, 2)
+  assert.ok(next.milestones.some((m) => m.name === 'Buy the truck' && m.projectId === 'new'))
 })

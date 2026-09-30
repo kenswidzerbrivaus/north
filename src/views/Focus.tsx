@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Field } from '../components/ui'
 import { Icon } from '../icons'
-import { formatMedium, todayISO } from '../lib/dates'
+import { formatMedium, localDay, todayISO } from '../lib/dates'
 import { hashParam } from '../lib/route'
+import { sortTasksChronological } from '../lib/task-sort'
 import { useStore } from '../store'
 import { formatRemain, useTimer } from '../timer'
 
@@ -20,7 +21,16 @@ export function Focus() {
   const r = 108
   const c = 2 * Math.PI * r
   const progress = 1 - timer.remaining / Math.max(1, timer.total)
-  const openTasks = state.tasks.filter((t) => !t.completed).slice(0, 12)
+  const openTasks = (() => {
+    const ranked = sortTasksChronological(state.tasks.filter((t) => !t.completed))
+    const keep = timer.taskId
+    const rows = ranked.slice(0, 12)
+    if (keep && !rows.some((t) => t.id === keep)) {
+      const extra = ranked.find((t) => t.id === keep)
+      if (extra) return [...rows.slice(0, 11), extra]
+    }
+    return rows
+  })()
   const [projectId, setProjectId] = useState(() => hashParam('project'))
   const [goalId, setGoalId] = useState(() => hashParam('goal'))
   useEffect(() => {
@@ -33,7 +43,7 @@ export function Focus() {
   }, [])
   const todaySessions = state.sessions.filter(
     (sess) =>
-      sess.endedAt.slice(0, 10) === todayISO() &&
+      localDay(sess.endedAt) === todayISO() &&
       (!projectId || sess.projectId === projectId) &&
       (!goalId || sess.goalId === goalId),
   )
@@ -230,7 +240,7 @@ export function Focus() {
                       {sess.mode === 'focus' ? 'Focus' : sess.mode === 'short' ? 'Short break' : 'Long break'} ·{' '}
                       {Math.round(sess.seconds / 60)} min
                     </div>
-                    <div className="meta">{formatMedium(sess.endedAt.slice(0, 10))}</div>
+                    <div className="meta">{formatMedium(localDay(sess.endedAt) || todayISO())}</div>
                   </div>
                 </div>
               ))

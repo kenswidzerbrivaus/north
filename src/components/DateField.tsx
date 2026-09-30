@@ -87,7 +87,9 @@ export function DateField({
 
   const commit = (raw: string) => {
     const parsed = parseDeadline(raw)
-    onChange(parsed || raw.trim())
+    if (parsed) onChange(parsed)
+    else if (raw.trim() === '') onChange('')
+    else setText(iso || value)
   }
 
   const pick = (next: string) => {

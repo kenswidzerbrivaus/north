@@ -74,7 +74,6 @@ export function collapseDuplicateProjects(state: State): State {
   }
   if (!drop.size) return state
 
-  const droppedMs = new Set(state.milestones.filter((m) => drop.has(m.projectId)).map((m) => m.id))
   const droppedWs = new Set(state.workstreams.filter((w) => drop.has(w.projectId)).map((w) => w.id))
   const msByName = new Map<string, string>()
   for (const m of state.milestones) {
@@ -82,11 +81,28 @@ export function collapseDuplicateProjects(state: State): State {
     msByName.set(`${m.projectId}|${normName(m.name)}`, m.id)
   }
   const msRemap = new Map<string, string>()
+  const movedMs: State['milestones'] = []
   for (const m of state.milestones) {
     if (!drop.has(m.projectId)) continue
-    const twin = msByName.get(`${remap.get(m.projectId)}|${normName(m.name)}`)
-    if (twin) msRemap.set(m.id, twin)
+    const winnerId = remap.get(m.projectId)
+    const twin = winnerId ? msByName.get(`${winnerId}|${normName(m.name)}`) : undefined
+    if (twin) {
+      msRemap.set(m.id, twin)
+      continue
+    }
+    if (!winnerId) continue
+    const id = `${winnerId}:${m.id}`
+    msRemap.set(m.id, id)
+    movedMs.push({
+      ...m,
+      id,
+      projectId: winnerId,
+      dependsOn: Array.isArray(m.dependsOn) ? m.dependsOn : [],
+    })
   }
+  const droppedMs = new Set(
+    state.milestones.filter((m) => drop.has(m.projectId) && !msRemap.has(m.id)).map((m) => m.id),
+  )
 
   const retargetProject = (id?: string) => (id && remap.get(id)) || id
   const retargetMs = (id?: string) => {
@@ -100,7 +116,18 @@ export function collapseDuplicateProjects(state: State): State {
     ...state,
     savedAt: Math.max(Number(state.savedAt) || 0, Date.now()),
     projects: state.projects.filter((p) => !drop.has(p.id)),
-    milestones: state.milestones.filter((m) => !drop.has(m.projectId)),
+    milestones: [
+      ...state.milestones
+        .filter((m) => !drop.has(m.projectId))
+        .map((m) => ({
+          ...m,
+          dependsOn: (m.dependsOn ?? []).map((id) => msRemap.get(id) ?? id),
+        })),
+      ...movedMs.map((m) => ({
+        ...m,
+        dependsOn: (m.dependsOn ?? []).map((id) => msRemap.get(id) ?? id).filter((id) => !droppedMs.has(id)),
+      })),
+    ],
     workstreams: state.workstreams.filter((w) => !drop.has(w.projectId)),
     projectDecisions: state.projectDecisions.filter((d) => !drop.has(d.projectId)),
     blockers: state.blockers.filter((b) => !drop.has(b.projectId)),

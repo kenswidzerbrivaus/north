@@ -12,10 +12,14 @@ function idsMatch(task: Task, event: CalEvent) {
   const gid = event.googleId
   if (task.eventId && task.eventId === event.id) return true
   if (gid && task.eventId === `gcal:${gid}`) return true
-  if (gid && task.eventId?.startsWith(`gcal:${gid}:`)) return true
-  if (gid && task.googleId === gid) return true
+  if (gid && task.eventId === `gcal:${gid}:${event.date}`) return true
+  if (gid && task.googleId === gid) {
+    const perDay = event.id.startsWith(`gcal:${gid}:`)
+    if (perDay) return task.due === event.date
+    return true
+  }
   if (task.googleId && event.id === `gcal:${task.googleId}`) return true
-  if (task.googleId && event.id.startsWith(`gcal:${task.googleId}:`)) return true
+  if (task.googleId && event.id === `gcal:${task.googleId}:${task.due || event.date}`) return true
   return false
 }
 

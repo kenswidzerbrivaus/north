@@ -130,6 +130,7 @@ export function NoteEditor({
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
+    if (el === document.activeElement) return
     quiet.current = true
     try {
       document.execCommand('defaultParagraphSeparator', false, 'p')
@@ -145,7 +146,7 @@ export function NoteEditor({
       quiet.current = false
     }, 0)
     return () => window.clearTimeout(t)
-  }, [noteId])
+  }, [noteId, value])
 
   useEffect(() => {
     const onSel = () => {

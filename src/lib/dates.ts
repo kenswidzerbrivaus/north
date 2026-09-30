@@ -25,9 +25,16 @@ export function parseDeadline(raw: string): string {
     const d = new Date(year, month - 1, day)
     if (!Number.isNaN(d.getTime()) && d.getMonth() === month - 1 && d.getDate() === day) return toISO(d)
   }
-  const parsed = new Date(s)
-  if (!Number.isNaN(parsed.getTime())) return toISO(parsed)
   return ''
+}
+
+/** Local calendar day for a Date or an ISO timestamp. Do not slice UTC strings. */
+export function localDay(raw?: string) {
+  if (!raw) return ''
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw) && raw.length <= 10) return raw.slice(0, 10)
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return raw.slice(0, 10)
+  return toISO(d)
 }
 
 export function parseISO(iso: string): Date {

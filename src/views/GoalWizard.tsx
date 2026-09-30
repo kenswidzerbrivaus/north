@@ -3,6 +3,7 @@ import { DateField } from '../components/DateField'
 import { Field, Modal } from '../components/ui'
 import { clearDraft, loadDraft, saveDraft } from '../lib/drafts'
 import { GOAL_CATEGORIES, qualityCheck } from '../lib/goal-engine'
+import { sortTasksChronological } from '../lib/task-sort'
 import type { GoalCategory, MoverEntity } from '../lib/types'
 import { useStore } from '../store'
 
@@ -331,7 +332,7 @@ export function GoalWizard({
                       Project: {p.name}
                     </option>
                   ))}
-                  {state.tasks.filter((t) => !t.completed).slice(0, 40).map((t) => (
+                  {sortTasksChronological(state.tasks.filter((t) => !t.completed)).slice(0, 40).map((t) => (
                     <option key={t.id} value={`task:${t.id}`}>
                       Task: {t.title}
                     </option>

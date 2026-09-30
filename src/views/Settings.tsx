@@ -341,6 +341,7 @@ export function Settings() {
                 hidden
                 onChange={async (e) => {
                   const file = e.target.files?.[0]
+                  e.currentTarget.value = ''
                   if (!file) return
                   try {
                     importState(JSON.parse(await file.text()))

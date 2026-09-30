@@ -175,7 +175,7 @@ export function commanderBrief(input: {
   if (block && cur) {
     lines.push(`${cur.name} currently controls the completion date.`)
     lines.push(`${block.title} has been blocked for ${daysSince(block.startedAt)} day${daysSince(block.startedAt) === 1 ? '' : 's'}.`)
-    const later = input.milestones.filter((m) => m.sortOrder > (cur.sortOrder ?? 0) && !m.dependsOn.includes(cur.id))
+    const later = input.milestones.filter((m) => m.sortOrder > (cur.sortOrder ?? 0) && !(m.dependsOn ?? []).includes(cur.id))
     if (later.length) {
       lines.push(`${later[0]!.name} can begin in parallel. Starting it today could recover time.`)
     } else {
@@ -252,7 +252,7 @@ export function parseMilestoneLines(raw: string): { name: string; plannedEnd?: s
 }
 
 export function depsReady(m: ProjectMilestone, all: ProjectMilestone[]) {
-  return m.dependsOn.every((id) => all.find((x) => x.id === id)?.status === 'complete')
+  return (m.dependsOn ?? []).every((id) => all.find((x) => x.id === id)?.status === 'complete')
 }
 
 /** Reorder the given project steps. Other project milestones keep their slots. */
@@ -280,7 +280,7 @@ export function applyMilestoneOrder(
     return {
       ...m,
       sortOrder: i,
-      dependsOn: pathIndex >= 0 ? (pathIndex > 0 ? [unique[pathIndex - 1]!] : []) : m.dependsOn,
+      dependsOn: pathIndex >= 0 ? (pathIndex > 0 ? [unique[pathIndex - 1]!] : []) : (m.dependsOn ?? []),
       updatedAt: now,
     }
   })
@@ -295,7 +295,7 @@ export function dropMilestoneChain(
   if (!prev) return null
   let next = milestones
     .filter((m) => m.id !== id)
-    .map((m) => ({ ...m, dependsOn: m.dependsOn.filter((d) => d !== id) }))
+    .map((m) => ({ ...m, dependsOn: (m.dependsOn ?? []).filter((d) => d !== id) }))
   const siblings = next.filter((m) => m.projectId === prev.projectId).sort((a, b) => a.sortOrder - b.sortOrder)
   const marked = siblings.filter((m) => m.criticalPath)
   const chain = marked.length ? marked : siblings
@@ -306,7 +306,7 @@ export function dropMilestoneChain(
     return {
       ...m,
       sortOrder: i,
-      dependsOn: pathIndex >= 0 ? (pathIndex > 0 ? [chain[pathIndex - 1]!.id] : []) : m.dependsOn,
+      dependsOn: pathIndex >= 0 ? (pathIndex > 0 ? [chain[pathIndex - 1]!.id] : []) : (m.dependsOn ?? []),
       updatedAt: now,
     }
   })

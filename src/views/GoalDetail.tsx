@@ -17,6 +17,7 @@ import { formatShort, todayISO } from '../lib/dates'
 import { healthOf, labelHealth } from '../lib/project-engine'
 import type { Goal, GoalCycle, NorthStar as Star } from '../lib/types'
 import { NorthStar } from '../components/NorthStar'
+import { sortTasksChronological } from '../lib/task-sort'
 import { useStore } from '../store'
 
 export function GoalDetail({ goal, cycle, star, onBack }: { goal: Goal; cycle?: GoalCycle; star?: Star; onBack: () => void }) {
@@ -377,7 +378,7 @@ export function GoalDetail({ goal, cycle, star, onBack }: { goal: Goal; cycle?: 
               Project: {p.name}
             </label>
           ))}
-          {tasks.filter((t) => !t.completed).slice(0, 16).map((t) => (
+          {sortTasksChronological(tasks.filter((t) => !t.completed)).slice(0, 16).map((t) => (
             <label key={`t-${t.id}`} className="row">
               <input
                 type="checkbox"

@@ -23,6 +23,54 @@ function mergeById<T extends { id: string }>(
   return [...map.values()]
 }
 
+function textField(a: string | undefined, b: string | undefined, preferA: boolean) {
+  const left = a ?? ''
+  const right = b ?? ''
+  if (left.trim() && !right.trim()) return left
+  if (right.trim() && !left.trim()) return right
+  return preferA ? left : right
+}
+
+function mergeJournalEntry(
+  a: State['journal'][number],
+  b: State['journal'][number],
+  preferA: boolean,
+): State['journal'][number] {
+  const newer = preferA ? a : b
+  const older = preferA ? b : a
+  const blessA = a.blessings ?? ['', '', '']
+  const blessB = b.blessings ?? ['', '', '']
+  const winsA = a.morningWins ?? ['', '', '']
+  const winsB = b.morningWins ?? ['', '', '']
+  const chkA = a.morningChecks ?? [false, false, false]
+  const chkB = b.morningChecks ?? [false, false, false]
+  return {
+    ...older,
+    ...newer,
+    body: textField(a.body, b.body, preferA),
+    currentGoals: textField(a.currentGoals, b.currentGoals, preferA),
+    actionsToday: textField(a.actionsToday || a.body, b.actionsToday || b.body, preferA),
+    actionsTomorrow: textField(a.actionsTomorrow, b.actionsTomorrow, preferA),
+    mistakesToday: textField(a.mistakesToday, b.mistakesToday, preferA),
+    mistakeReflection: textField(a.mistakeReflection, b.mistakeReflection, preferA),
+    affirmation: textField(a.affirmation, b.affirmation, preferA),
+    shortTermGoal: textField(a.shortTermGoal, b.shortTermGoal, preferA),
+    workout: a.workout || b.workout,
+    blessings: [
+      textField(blessA[0], blessB[0], preferA),
+      textField(blessA[1], blessB[1], preferA),
+      textField(blessA[2], blessB[2], preferA),
+    ],
+    morningWins: [
+      textField(winsA[0], winsB[0], preferA),
+      textField(winsA[1], winsB[1], preferA),
+      textField(winsA[2], winsB[2], preferA),
+    ],
+    morningChecks: [chkA[0] || chkB[0], chkA[1] || chkB[1], chkA[2] || chkB[2]],
+    updatedAt: recency(a) >= recency(b) ? a.updatedAt : b.updatedAt,
+  }
+}
+
 function mergeJournal(local: State['journal'], remote: State['journal'], preferLocal: boolean) {
   const map = new Map<string, State['journal'][number]>()
   const first = preferLocal ? remote : local
@@ -30,7 +78,8 @@ function mergeJournal(local: State['journal'], remote: State['journal'], preferL
   for (const item of first ?? []) map.set(item.date, item)
   for (const item of second ?? []) {
     const prev = map.get(item.date)
-    if (!prev || recency(item) >= recency(prev)) map.set(item.date, item)
+    if (!prev) map.set(item.date, item)
+    else map.set(item.date, mergeJournalEntry(item, prev, recency(item) >= recency(prev)))
   }
   return [...map.values()]
 }
@@ -87,8 +136,8 @@ export function mergeStates(local: State, remote: State): State {
     envActions: mergeById(local.envActions, remote.envActions, preferLocal),
     northStars: mergeById(local.northStars, remote.northStars, preferLocal),
     settings: {
-      ...base.settings,
-      googleClientId: local.settings.googleClientId || remote.settings.googleClientId,
+      ...(base.settings ?? {}),
+      googleClientId: local.settings?.googleClientId || remote.settings?.googleClientId || '',
     },
   })
 }

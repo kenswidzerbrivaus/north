@@ -311,7 +311,7 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                     <span className="cpath-mark">{m.status === 'complete' ? '✓' : m.status === 'current' || m.status === 'blocked' ? '●' : '○'}</span>
                     <div>
                       <strong>{m.name}</strong>
-                      <span className="muted"> {m.owner}{m.dependsOn.length ? ` · waits on ${m.dependsOn.length}` : ''}{!depsReady(m, ms) && m.status !== 'complete' ? ' · deps open' : ''}</span>
+                      <span className="muted"> {m.owner}{(m.dependsOn ?? []).length ? ` · waits on ${(m.dependsOn ?? []).length}` : ''}{!depsReady(m, ms) && m.status !== 'complete' ? ' · deps open' : ''}</span>
                       <div className="cpath-dates">
                         <label className="cpath-date">
                           <span className="kicker">{m.status === 'complete' ? 'Planned' : 'Accomplish by'}</span>
@@ -363,14 +363,15 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack: (
                           onChange={(e) => {
                             const dep = e.target.value
                             if (!dep) return
-                            const next = m.dependsOn.includes(dep) ? m.dependsOn.filter((d) => d !== dep) : [...m.dependsOn, dep]
+                            const deps = m.dependsOn ?? []
+                            const next = deps.includes(dep) ? deps.filter((d) => d !== dep) : [...deps, dep]
                             store.updateMilestone(m.id, { dependsOn: next })
                           }}
                         >
                           <option value="">Depends on…</option>
                           {ms.filter((x) => x.id !== m.id).map((x) => (
                             <option key={x.id} value={x.id}>
-                              {m.dependsOn.includes(x.id) ? '✓ ' : ''}
+                              {(m.dependsOn ?? []).includes(x.id) ? '✓ ' : ''}
                               {x.name}
                             </option>
                           ))}

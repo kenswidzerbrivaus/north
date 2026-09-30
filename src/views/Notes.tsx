@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NoteEditor } from '../components/NoteEditor'
 import { Empty } from '../components/ui'
 import { Icon } from '../icons'
-import { formatMedium } from '../lib/dates'
+import { formatMedium, localDay } from '../lib/dates'
 import { plainPreview } from '../lib/note-body'
 import { hashParam } from '../lib/route'
 import { useStore } from '../store'
@@ -73,7 +73,7 @@ export function Notes() {
                 <div>
                   <div className="task-title">{n.title || 'Untitled'}</div>
                   <div className="meta">
-                    {plainPreview(n.body) || formatMedium(n.updatedAt.slice(0, 10))}
+                    {plainPreview(n.body) || formatMedium(localDay(n.updatedAt) || n.updatedAt)}
                   </div>
                 </div>
               </button>

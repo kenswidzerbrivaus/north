@@ -11,6 +11,7 @@ import { shiftISO, todayISO } from './lib/dates'
 import { nowISO, uid } from './lib/id'
 import { habitDupKey } from './lib/habits'
 import { collapseDuplicateRecords } from './lib/project-dupes'
+import { normalizeState } from './lib/normalize'
 import { applyMilestoneOrder, depsReady, dropMilestoneChain, isWorkingOn, migrateProjectFocusLimit } from './lib/project-engine'
 import { readLink } from './lib/google-calendar'
 import { collapseDuplicateTasks, matchLinkedTask } from './lib/cal-sync'
@@ -216,13 +217,13 @@ function load(): State {
     if (!raw) return collapseDuplicateRecords(linkExisting(freshState()))
     const parsed = JSON.parse(raw) as Partial<State>
     if (!Array.isArray(parsed.lists) || !Array.isArray(parsed.tasks)) return freshState()
-    const loaded: State = {
+    const loaded: State = normalizeState({
       ...blankState(),
       ...parsed,
       version: 1,
       lists: parsed.lists.length ? parsed.lists : blankState().lists,
       settings: { ...defaultSettings(), ...parsed.settings },
-    }
+    })
     if (!loaded.settings.googleClientId) {
       const linkedId = readLink()?.clientId
       if (linkedId) loaded.settings.googleClientId = linkedId
@@ -267,7 +268,11 @@ function load(): State {
       Object.assign(loaded, rest)
       if (seedTasks?.length) loaded.tasks = [...seedTasks, ...loaded.tasks]
     }
-    return collapseDuplicateRecords(rebrandState(linkExisting(loaded)))
+    try {
+      return collapseDuplicateRecords(rebrandState(linkExisting(loaded)))
+    } catch {
+      return collapseDuplicateRecords(rebrandState(loaded))
+    }
   } catch {
     return collapseDuplicateRecords(rebrandState(linkExisting(freshState())))
   }
@@ -321,7 +326,7 @@ export type Store = {
   addList: (name: string, color?: string) => void
   renameList: (id: string, name: string) => void
   deleteList: (id: string) => void
-  addTask: (input: Partial<Task> & { title: string }) => string
+  addTask: (input: Partial<Task> & { title: string }, opts?: { calendar?: boolean }) => string
   updateTask: (id: string, patch: Partial<Task>) => void
   toggleTask: (id: string) => void
   deleteTask: (id: string) => void
@@ -440,12 +445,12 @@ function linkExisting(s: State): State {
   let events = s.events
   const tasks = s.tasks.map((t) => {
     if (!t.due || t.eventId) return t
-    const eventId = uid()
+    const eventId = `task:${t.id}`
     events = [
       {
         id: eventId,
         title: t.title,
-        notes: t.notes,
+        notes: t.notes ?? '',
         date: t.due,
         start: t.dueTime,
         allDay: !t.dueTime,
@@ -458,9 +463,10 @@ function linkExisting(s: State): State {
   })
   const used: string[] = []
   events = events.map((e) => {
-    if (!used.includes(e.color.toLowerCase())) {
-      used.push(e.color.toLowerCase())
-      return e
+    const current = (e.color || colorFromKey(e.id)).toLowerCase()
+    if (!used.includes(current)) {
+      used.push(current)
+      return e.color ? e : { ...e, color: colorFromKey(e.id) }
     }
     const color = nextEventColor(used)
     used.push(color.toLowerCase())
@@ -496,6 +502,7 @@ function syncTasksFromEvents(s: State, extra: CalEvent[] = [], onlyExtra = false
   let changed = lists !== s.lists
   for (const event of events) {
     const existing = linkedTask(tasks, event)
+    if (!existing && !event.googleId && !onlyExtra) continue
     const next = taskFromEvent(event, existing)
     if (next === existing) continue
     changed = true
@@ -544,10 +551,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             tasks: s.tasks.map((t) => (t.listId === id ? { ...t, listId: 'inbox' } : t)),
           }
         }),
-      addTask: (input) => {
+      addTask: (input, opts) => {
         const id = uid()
         const t = nowISO()
-        const eventId = input.eventId ?? (input.due ? uid() : undefined)
+        const onCal = opts?.calendar !== false
+        const eventId = input.eventId ?? (input.due && onCal ? `task:${id}` : undefined)
         patch((s) => {
           const task: Task = {
             notes: '',
@@ -642,7 +650,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ...s,
           tasks: s.tasks.map((t) =>
             t.id === taskId
-              ? { ...t, subtasks: [...t.subtasks, { id: uid(), title, completed: false }], updatedAt: nowISO() }
+              ? { ...t, subtasks: [...(t.subtasks ?? []), { id: uid(), title, completed: false }], updatedAt: nowISO() }
               : t,
           ),
         })),
@@ -653,7 +661,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             t.id === taskId
               ? {
                   ...t,
-                  subtasks: t.subtasks.map((st) => (st.id === subId ? { ...st, completed: !st.completed } : st)),
+                  subtasks: (t.subtasks ?? []).map((st) => (st.id === subId ? { ...st, completed: !st.completed } : st)),
                   updatedAt: nowISO(),
                 }
               : t,
@@ -986,16 +994,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (!Array.isArray(d.lists) || !Array.isArray(d.tasks)) throw new Error('Backup is missing lists or tasks')
         patch(() =>
           collapseDuplicateRecords(
-            rebrandState({
-              ...freshState(),
-              ...d,
-              version: 1,
-              settings: {
-                ...defaultSettings(),
-                ...d.settings,
-                activeProjectLimit: migrateProjectFocusLimit(d.settings?.activeProjectLimit),
-              },
-            }),
+            rebrandState(
+              linkExisting(
+                normalizeState({
+                  ...blankState(),
+                  ...d,
+                  version: 1,
+                  settings: {
+                    ...defaultSettings(),
+                    ...d.settings,
+                    activeProjectLimit: migrateProjectFocusLimit(d.settings?.activeProjectLimit),
+                  },
+                }),
+              ),
+            ),
           ),
         )
       },
@@ -1037,7 +1049,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               activeProjectLimit: migrateProjectFocusLimit(data.settings?.activeProjectLimit),
             },
           }
-          return collapseDuplicateRecords(rebrandState(linkExisting(next)))
+          return collapseDuplicateRecords(rebrandState(linkExisting(normalizeState(next))))
         }, true)
       },
       resetState: () => patch(() => freshState()),

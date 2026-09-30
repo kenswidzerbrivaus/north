@@ -41,19 +41,22 @@ export function Continuance({
           { daily: false },
         )
       : undefined
-    addTask({
-      title: task.title,
-      notes: task.notes ? `${task.notes}\n\nContinuance of completed item.` : 'Continuance of completed item.',
-      listId: task.listId,
-      due: date,
-      dueTime: start,
-      priority: task.priority,
-      projectId: task.projectId,
-      goalId: task.goalId,
-      milestoneId: task.milestoneId,
-      workstreamId: task.workstreamId,
-      eventId,
-    })
+    addTask(
+      {
+        title: task.title,
+        notes: task.notes ? `${task.notes}\n\nContinuance of completed item.` : 'Continuance of completed item.',
+        listId: task.listId,
+        due: date,
+        dueTime: start,
+        priority: task.priority,
+        projectId: task.projectId,
+        goalId: task.goalId,
+        milestoneId: task.milestoneId,
+        workstreamId: task.workstreamId,
+        eventId,
+      },
+      { calendar: onCal },
+    )
     onClose()
   }
 

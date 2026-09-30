@@ -447,17 +447,49 @@ export function fromGoogleEvent(item: GEvent): CalEvent[] {
   }
   if (!start.dateTime) return []
   const s = new Date(start.dateTime)
-  const e = end?.dateTime ? new Date(end.dateTime) : undefined
-  return [
-    {
+  const e = end?.dateTime ? new Date(end.dateTime) : new Date(s.getTime() + 3_600_000)
+  const startDay = toISO(s)
+  const endDay = toISO(e)
+  const endStamp = hhmm(e)
+  if (endDay === startDay || (endStamp === '00:00' && toISO(addDays(s, 1)) === endDay)) {
+    return [
+      {
+        ...base,
+        id: `gcal:${item.id}`,
+        date: startDay,
+        start: hhmm(s),
+        end: endStamp === '00:00' && endDay !== startDay ? '24:00' : endStamp,
+        allDay: false,
+      },
+    ]
+  }
+  const days: CalEvent[] = []
+  for (let d = parseISO(startDay); toISO(d) <= endDay; d = addDays(d, 1)) {
+    const iso = toISO(d)
+    if (iso === endDay && endStamp === '00:00') break
+    const first = iso === startDay
+    const last = iso === endDay
+    days.push({
       ...base,
-      id: `gcal:${item.id}`,
-      date: toISO(s),
-      start: hhmm(s),
-      end: e ? hhmm(e) : undefined,
+      id: first ? `gcal:${item.id}` : `gcal:${item.id}:${iso}`,
+      date: iso,
+      start: first ? hhmm(s) : '00:00',
+      end: last ? endStamp : '24:00',
       allDay: false,
-    },
-  ]
+    })
+  }
+  return days.length
+    ? days
+    : [
+        {
+          ...base,
+          id: `gcal:${item.id}`,
+          date: startDay,
+          start: hhmm(s),
+          end: endStamp,
+          allDay: false,
+        },
+      ]
 }
 
 export function toGoogleBody(event: Pick<CalEvent, 'title' | 'notes' | 'date' | 'start' | 'end' | 'allDay' | 'location'>) {

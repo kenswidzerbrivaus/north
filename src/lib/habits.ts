@@ -77,7 +77,7 @@ export function habitDone(habit: Habit, logs: HabitLog[], date: string): boolean
 }
 
 export function habitStreak(habit: Habit, logs: HabitLog[], today: string): number {
-  const created = habit.createdAt.slice(0, 10)
+  const created = (habit.createdAt || '').slice(0, 10)
   let cursor = parseISO(today)
   if (!habitDone(habit, logs, today)) cursor = addDays(cursor, -1)
 
@@ -104,7 +104,7 @@ export function weekRate(habit: Habit, logs: HabitLog[], today: string): { done:
   for (let i = 6; i >= 0; i--) {
     const d = addDays(end, -i)
     if (!isHabitDue(habit, d)) continue
-    if (toISO(d) < habit.createdAt.slice(0, 10)) continue
+    if (toISO(d) < (habit.createdAt || '').slice(0, 10)) continue
     due += 1
     if (habitDone(habit, logs, toISO(d))) done += 1
   }

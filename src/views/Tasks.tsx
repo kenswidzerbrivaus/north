@@ -242,7 +242,7 @@ export function Tasks() {
               <p className="kicker" style={{ margin: '12px 0 6px' }}>
                 Subtasks
               </p>
-              {open.subtasks.map((st) => (
+              {(open.subtasks ?? []).map((st) => (
                 <div key={st.id} className="task-row">
                   <Check on={st.completed} onClick={() => toggleSubtask(open.id, st.id)} />
                   <span className={st.completed ? 'done task-title' : 'task-title'}>{st.title}</span>
