@@ -1,5 +1,6 @@
 import { uid } from './id'
 import { todayISO } from './dates'
+import { SYSTEM_APPS, SYSTEM_LABEL, isSystemAppId } from './system-apps'
 import { ROUTES } from './types'
 import type {
   Attention,
@@ -10,7 +11,9 @@ import type {
   FocusProfile,
   InterventionKind,
   SpaceAppearance,
+  ScreenTimeState,
   SpaceItem,
+  SystemAppId,
   ToolId,
   ToolLock,
 } from './types'
@@ -48,8 +51,21 @@ export function defaultAppearance(): SpaceAppearance {
   }
 }
 
-function items(ids: ToolId[]): SpaceItem[] {
-  return ids.map((toolId) => ({ toolId, label: TOOL_LABEL[toolId] }))
+function tools(ids: ToolId[]): SpaceItem[] {
+  return ids.map((toolId) => ({ kind: 'tool' as const, toolId, label: TOOL_LABEL[toolId] }))
+}
+
+function system(ids: SystemAppId[]): SpaceItem[] {
+  return ids.map((systemId) => ({ kind: 'system' as const, systemId, label: SYSTEM_LABEL[systemId] }))
+}
+
+function items(sys: SystemAppId[], ids: ToolId[]): SpaceItem[] {
+  return [...system(sys), ...tools(ids)]
+}
+
+export function itemKey(it: SpaceItem) {
+  if (it.kind === 'system' && it.systemId) return `sys:${it.systemId}`
+  return `tool:${it.toolId ?? ''}`
 }
 
 export function defaultSpaces(): AttentionSpace[] {
@@ -58,25 +74,25 @@ export function defaultSpaces(): AttentionSpace[] {
     {
       id: 'work',
       name: 'Work',
-      items: items(['today', 'tasks', 'calendar', 'projects', 'focus', 'notes']),
+      items: items(['phone', 'messages'], ['today', 'tasks', 'calendar', 'projects', 'focus', 'notes']),
       appearance: look,
     },
     {
       id: 'personal',
       name: 'Personal',
-      items: items(['today', 'habits', 'journal', 'notes', 'goals']),
+      items: items(['phone', 'messages'], ['today', 'habits', 'journal', 'notes', 'goals']),
       appearance: { ...look, wallpaper: 'fog' },
     },
     {
       id: 'deep',
       name: 'Deep Work',
-      items: items(['today', 'focus', 'notes']),
+      items: items(['phone', 'messages'], ['today', 'focus', 'notes']),
       appearance: { ...look, wallpaper: 'ink' },
     },
     {
       id: 'evening',
       name: 'Evening',
-      items: items(['journal', 'notes', 'habits', 'settings']),
+      items: items(['phone', 'messages'], ['journal', 'notes', 'habits', 'settings']),
       appearance: { ...look, wallpaper: 'dune' },
     },
   ]
@@ -138,9 +154,10 @@ export function defaultAttention(): Attention {
     visits: [],
     bypasses: [],
     quietDays: [],
-    showWeather: false,
+    showWeather: true,
     showTime: true,
     appearance: defaultAppearance(),
+    screenTime: { authorized: false, selection: '' },
   }
 }
 
@@ -156,6 +173,19 @@ function clampMin(n: unknown, fallback = 0) {
   const v = Number(n)
   if (!Number.isFinite(v)) return fallback
   return Math.max(0, Math.min(24 * 60, Math.round(v)))
+}
+
+function normUsage(raw: unknown): ScreenTimeState['lastUsage'] {
+  if (!raw || typeof raw !== 'object') return undefined
+  const o = raw as { essentialMin?: unknown; otherMin?: unknown; at?: unknown }
+  const essentialMin = Number(o.essentialMin)
+  const otherMin = Number(o.otherMin)
+  if (!Number.isFinite(essentialMin) || !Number.isFinite(otherMin)) return undefined
+  return {
+    essentialMin: Math.max(0, Math.round(essentialMin)),
+    otherMin: Math.max(0, Math.round(otherMin)),
+    at: typeof o.at === 'string' ? o.at : '',
+  }
 }
 
 export function normalizeAppearance(raw: Partial<SpaceAppearance> | null | undefined): SpaceAppearance {
@@ -198,25 +228,53 @@ export function normalizeAttention(raw: Partial<Attention> | null | undefined): 
     visits: trimVisits(Array.isArray(raw.visits) ? raw.visits.map(normVisit).filter((v): v is AttentionVisit => Boolean(v)) : []),
     bypasses: Array.isArray(raw.bypasses) ? raw.bypasses.map(normBypass).filter((b): b is BypassLog => Boolean(b)).slice(0, 200) : [],
     quietDays: Array.isArray(raw.quietDays) ? [...new Set(raw.quietDays.filter((x) => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x)))].sort() : [],
-    showWeather: Boolean(raw.showWeather),
+    showWeather: raw.showWeather !== false,
     showTime: raw.showTime !== false,
     appearance: normalizeAppearance(raw.appearance),
+    screenTime: {
+      authorized: Boolean(raw.screenTime?.authorized),
+      selection: typeof raw.screenTime?.selection === 'string' ? raw.screenTime.selection : '',
+      lastUsage: normUsage(raw.screenTime?.lastUsage),
+    },
   }
 }
 
 function normSpace(s: Partial<AttentionSpace>): AttentionSpace {
   const id = typeof s.id === 'string' && s.id.trim() ? s.id : uid()
   const name = typeof s.name === 'string' && s.name.trim() ? s.name.trim() : 'Space'
-  const seen = new Set<ToolId>()
+  const seen = new Set<string>()
   const items: SpaceItem[] = []
   for (const it of Array.isArray(s.items) ? s.items : []) {
+    const sys = it?.systemId && isSystemAppId(it.systemId) ? it.systemId : it?.kind === 'system' && isSystemAppId(String(it.toolId ?? '')) ? (it.toolId as unknown as SystemAppId) : null
+    if (sys || it?.kind === 'system') {
+      const systemId = sys ?? (isSystemAppId(String(it.systemId)) ? it.systemId : null)
+      if (!systemId || seen.has(`sys:${systemId}`)) continue
+      seen.add(`sys:${systemId}`)
+      items.push({
+        kind: 'system',
+        systemId,
+        label: typeof it.label === 'string' && it.label.trim() ? it.label.trim() : SYSTEM_LABEL[systemId],
+      })
+      continue
+    }
     const toolId = asToolId(it?.toolId)
-    if (!toolId || seen.has(toolId)) continue
-    seen.add(toolId)
+    if (!toolId || seen.has(`tool:${toolId}`)) continue
+    seen.add(`tool:${toolId}`)
     const label = typeof it.label === 'string' && it.label.trim() ? it.label.trim() : TOOL_LABEL[toolId]
-    items.push({ toolId, label })
+    items.push({ kind: 'tool', toolId, label })
   }
-  return { id, name, items, appearance: normalizeAppearance(s.appearance) }
+  const phone = items.find((i) => i.kind === 'system' && i.systemId === 'phone') ?? {
+    kind: 'system' as const,
+    systemId: 'phone' as const,
+    label: SYSTEM_LABEL.phone,
+  }
+  const messages = items.find((i) => i.kind === 'system' && i.systemId === 'messages') ?? {
+    kind: 'system' as const,
+    systemId: 'messages' as const,
+    label: SYSTEM_LABEL.messages,
+  }
+  const rest = items.filter((i) => !(i.kind === 'system' && (i.systemId === 'phone' || i.systemId === 'messages')))
+  return { id, name, items: [phone, messages, ...rest], appearance: normalizeAppearance(s.appearance) }
 }
 
 function normLock(l: Partial<ToolLock>): ToolLock | null {
@@ -331,8 +389,14 @@ export function effectiveSpace(attention: Attention, now = new Date()) {
 }
 
 export function libraryItems(space: AttentionSpace): SpaceItem[] {
-  const shown = new Set(space.items.map((i) => i.toolId))
-  return TOOL_IDS.filter((id) => !shown.has(id)).map((toolId) => ({ toolId, label: TOOL_LABEL[toolId] }))
+  const shown = new Set(space.items.map(itemKey))
+  const toolsHidden = TOOL_IDS.filter((id) => !shown.has(`tool:${id}`)).map(
+    (toolId): SpaceItem => ({ kind: 'tool', toolId, label: TOOL_LABEL[toolId] }),
+  )
+  const sysHidden = SYSTEM_APPS.filter((a) => !shown.has(`sys:${a.id}`)).map(
+    (a): SpaceItem => ({ kind: 'system', systemId: a.id, label: a.label }),
+  )
+  return [...sysHidden, ...toolsHidden]
 }
 
 export type GateReason = 'open' | 'detox' | 'lock' | 'profile'
@@ -394,7 +458,15 @@ export function visibleHomeItems(attention: Attention, now = new Date()): SpaceI
   const space = effectiveSpace(attention, now)
   if (detoxActive(attention.detox, now)) {
     const allow = new Set(attention.detox.whitelist)
-    return space.items.filter((i) => allow.has(i.toolId))
+    const sys = space.items.filter((i) => i.kind === 'system' && (i.systemId === 'phone' || i.systemId === 'messages'))
+    const tools = space.items.filter((i) => i.kind !== 'system' && i.toolId && allow.has(i.toolId))
+    const phone = sys.find((i) => i.systemId === 'phone') ?? { kind: 'system' as const, systemId: 'phone' as const, label: SYSTEM_LABEL.phone }
+    const messages = sys.find((i) => i.systemId === 'messages') ?? {
+      kind: 'system' as const,
+      systemId: 'messages' as const,
+      label: SYSTEM_LABEL.messages,
+    }
+    return [phone, messages, ...tools]
   }
   return space.items
 }

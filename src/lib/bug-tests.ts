@@ -34,10 +34,13 @@ import {
   detoxActive,
   evaluateGate,
   inWindow,
+  itemKey,
   mergeAttention,
   normalizeAttention,
   quietStreak,
+  visibleHomeItems,
 } from './attention'
+import { launcherPayload } from './native'
 
 test('cloud: unsaved local never overwrites cloud', () => {
   assert.equal(cloudAction(0, 1000), 'pull')
@@ -1204,6 +1207,45 @@ test('attention: normalize fills missing state and merge unions visits', () => {
   const m = mergeAttention(left, right, true)
   assert.equal(m.onboarded, true)
   assert.equal(m.visits.length, 2)
+})
+
+test('attention: spaces always lead with Phone.app and Messages.app', () => {
+  const a = defaultAttention()
+  const work = a.spaces[0]
+  assert.equal(work?.items[0]?.kind, 'system')
+  assert.equal(work?.items[0]?.systemId, 'phone')
+  assert.equal(work?.items[1]?.systemId, 'messages')
+  assert.equal(itemKey(work!.items[0]!), 'sys:phone')
+  const payload = launcherPayload(work!.items)
+  assert.equal(payload[0]?.id, 'phone')
+  assert.equal(payload[0]?.scheme, 'tel://')
+  assert.equal(payload[1]?.id, 'messages')
+  assert.equal(payload[1]?.scheme, 'sms://')
+  assert.ok(payload.some((p) => p.kind === 'tool' && p.tool === 'today'))
+})
+
+test('attention: normalize prepends Phone and Messages on old spaces', () => {
+  const n = normalizeAttention({
+    onboarded: true,
+    spaces: [{ id: 'work', name: 'Work', items: [{ toolId: 'today', label: 'Today' }] as never, appearance: undefined as never }],
+  })
+  assert.equal(n.spaces[0]?.items[0]?.systemId, 'phone')
+  assert.equal(n.spaces[0]?.items[1]?.systemId, 'messages')
+  assert.equal(n.spaces[0]?.items[2]?.toolId, 'today')
+  assert.equal(n.showWeather, true)
+  assert.equal(n.screenTime.authorized, false)
+})
+
+test('attention: detox home keeps Phone and Messages then whitelist tools', () => {
+  const a = defaultAttention()
+  a.detox = { active: true, whitelist: ['today', 'journal'] }
+  const items = visibleHomeItems(a, new Date('2026-09-30T12:00:00'))
+  assert.equal(items[0]?.systemId, 'phone')
+  assert.equal(items[1]?.systemId, 'messages')
+  assert.ok(items.some((it) => it.toolId === 'today'))
+  assert.equal(items.some((it) => it.toolId === 'projects'), false)
+  assert.equal(evaluateGate(a, 'projects').blocked, true)
+  assert.equal(evaluateGate(a, 'today').blocked, false)
 })
 
 test('normalizeState seeds attention on old backups', () => {

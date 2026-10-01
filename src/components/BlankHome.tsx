@@ -4,20 +4,24 @@ import {
   detoxActive,
   detoxStreak,
   effectiveSpace,
+  endDetox,
   fetchWeather,
   fmtClock,
   fmtDate,
+  itemKey,
+  libraryItems,
   localMidnightISO,
   quietBadge,
   quietStreak,
   startDetox,
-  TOOL_IDS,
   TOOL_LABEL,
   visibleHomeItems,
   type WeatherSnap,
 } from '../lib/attention'
+import { applyAppShields, clearAppShields, launcherPayload, openSystemApp, syncLauncherToDevice } from '../lib/native'
+import { SYSTEM_LABEL } from '../lib/system-apps'
 import { useStore } from '../store'
-import type { Route, ToolId } from '../lib/types'
+import type { Route, SpaceItem, ToolId } from '../lib/types'
 
 export function BlankHome({
   go,
@@ -51,36 +55,47 @@ export function BlankHome({
   const space = useMemo(() => effectiveSpace(a, now), [a, now])
   const items = useMemo(() => visibleHomeItems(a, now), [a, now])
   const hidden = useMemo(() => {
-    const shown = new Set(items.map((i) => i.toolId))
-    return TOOL_IDS.filter((id) => !shown.has(id)).map((toolId) => ({ toolId, label: TOOL_LABEL[toolId] }))
-  }, [items])
+    const shown = new Set(items.map(itemKey))
+    const map = new Map<string, SpaceItem>()
+    for (const it of [...space.items, ...libraryItems(space)]) {
+      const k = itemKey(it)
+      if (!shown.has(k)) map.set(k, it)
+    }
+    return [...map.values()]
+  }, [items, space])
   const profile = useMemo(() => activeProfile(a, now), [a, now])
   const detox = detoxActive(a.detox, now)
   const look = space.appearance
   const streak = quietStreak(a)
   const dStreak = detoxStreak(a)
   const badge = quietBadge(streak)
-  const phone = state.settings.phoneNumber.trim()
+
+  useEffect(() => {
+    void syncLauncherToDevice(launcherPayload(items))
+  }, [items])
 
   const setSpace = (id: string) => updateAttention({ activeSpaceId: id })
 
-  const rename = (toolId: ToolId, label: string) => {
+  const fallbackLabel = (it: SpaceItem) =>
+    it.kind === 'system' && it.systemId ? SYSTEM_LABEL[it.systemId] : TOOL_LABEL[it.toolId as ToolId]
+
+  const rename = (key: string, label: string) => {
     updateAttention((cur) => ({
       ...cur,
       spaces: cur.spaces.map((s) =>
         s.id === space.id
-          ? { ...s, items: s.items.map((it) => (it.toolId === toolId ? { ...it, label: label.trim() || TOOL_LABEL[toolId] } : it)) }
+          ? { ...s, items: s.items.map((it) => (itemKey(it) === key ? { ...it, label: label.trim() || fallbackLabel(it) } : it)) }
           : s,
       ),
     }))
   }
 
-  const move = (toolId: ToolId, dir: -1 | 1) => {
+  const move = (key: string, dir: -1 | 1) => {
     updateAttention((cur) => ({
       ...cur,
       spaces: cur.spaces.map((s) => {
         if (s.id !== space.id) return s
-        const i = s.items.findIndex((it) => it.toolId === toolId)
+        const i = s.items.findIndex((it) => itemKey(it) === key)
         const j = i + dir
         if (i < 0 || j < 0 || j >= s.items.length) return s
         const next = s.items.slice()
@@ -91,22 +106,28 @@ export function BlankHome({
     }))
   }
 
-  const hide = (toolId: ToolId) => {
+  const hide = (key: string) => {
     updateAttention((cur) => ({
       ...cur,
-      spaces: cur.spaces.map((s) => (s.id === space.id ? { ...s, items: s.items.filter((it) => it.toolId !== toolId) } : s)),
+      spaces: cur.spaces.map((s) => (s.id === space.id ? { ...s, items: s.items.filter((it) => itemKey(it) !== key) } : s)),
     }))
   }
 
-  const add = (toolId: ToolId) => {
+  const add = (it: SpaceItem) => {
     updateAttention((cur) => ({
       ...cur,
       spaces: cur.spaces.map((s) =>
-        s.id === space.id && !s.items.some((it) => it.toolId === toolId)
-          ? { ...s, items: [...s.items, { toolId, label: TOOL_LABEL[toolId] }] }
-          : s,
+        s.id === space.id && !s.items.some((row) => itemKey(row) === itemKey(it)) ? { ...s, items: [...s.items, it] } : s,
       ),
     }))
+  }
+
+  const openItem = (it: SpaceItem) => {
+    if (it.kind === 'system' && it.systemId) {
+      void openSystemApp(it.systemId)
+      return
+    }
+    if (it.toolId) onOpenTool(it.toolId)
   }
 
   const beginDetox = (kind: 'noon' | 'day' | 'twoh') => {
@@ -117,9 +138,13 @@ export function BlankHome({
     } else if (kind === 'twoh') {
       end.setTime(now.getTime() + 2 * 60 * 60 * 1000)
     } else {
-      return updateAttention((cur) => startDetox(cur, localMidnightISO(now), now))
+      updateAttention((cur) => startDetox(cur, localMidnightISO(now), now))
+      void applyAppShields({ selection: a.screenTime.selection, detox: true })
+      setDetoxOpen(false)
+      return
     }
     updateAttention((cur) => startDetox(cur, end.toISOString(), now))
+    void applyAppShields({ selection: a.screenTime.selection, detox: true })
     setDetoxOpen(false)
   }
 
@@ -148,43 +173,27 @@ export function BlankHome({
       </header>
 
       <nav className="blank-space-links" aria-label={space.name}>
-        {detox ? (
-          <>
-            {phone ? (
-              <a className="blank-space-link" href={`tel:${phone.replace(/[^\d+]/g, '')}`}>
-                Call
-              </a>
-            ) : null}
-            {phone ? (
-              <a className="blank-space-link" href={`sms:${phone.replace(/[^\d+]/g, '')}`}>
-                Messages
-              </a>
-            ) : (
-              <p className="blank-space-meta">Add a number in Settings for Call and Messages.</p>
-            )}
-          </>
-        ) : null}
         {items.map((it) =>
           editing ? (
-            <div key={it.toolId} className="blank-edit-row">
+            <div key={itemKey(it)} className="blank-edit-row">
               <input
                 className="blank-edit-input"
                 value={it.label}
-                onChange={(e) => rename(it.toolId, e.target.value)}
-                aria-label={`Label for ${TOOL_LABEL[it.toolId]}`}
+                onChange={(e) => rename(itemKey(it), e.target.value)}
+                aria-label={`Label for ${fallbackLabel(it)}`}
               />
-              <button type="button" onClick={() => move(it.toolId, -1)} aria-label="Move up">
+              <button type="button" onClick={() => move(itemKey(it), -1)} aria-label="Move up">
                 ↑
               </button>
-              <button type="button" onClick={() => move(it.toolId, 1)} aria-label="Move down">
+              <button type="button" onClick={() => move(itemKey(it), 1)} aria-label="Move down">
                 ↓
               </button>
-              <button type="button" onClick={() => hide(it.toolId)}>
+              <button type="button" onClick={() => hide(itemKey(it))}>
                 Hide
               </button>
             </div>
           ) : (
-            <button key={it.toolId} type="button" onClick={() => onOpenTool(it.toolId)}>
+            <button key={itemKey(it)} type="button" onClick={() => openItem(it)}>
               {it.label}
             </button>
           ),
@@ -212,7 +221,14 @@ export function BlankHome({
           <button
             type="button"
             className="blank-space-search"
-            onClick={() => (detox ? updateAttention((cur) => ({ ...cur, detox: { ...cur.detox, active: false, until: undefined } })) : setDetoxOpen((v) => !v))}
+            onClick={() => {
+              if (detox) {
+                updateAttention(endDetox)
+                void clearAppShields()
+                return
+              }
+              setDetoxOpen((v) => !v)
+            }}
           >
             {detox ? 'End detox' : 'Detox'}
           </button>
@@ -234,7 +250,7 @@ export function BlankHome({
       {detoxOpen ? (
         <div className="blank-sheet" role="dialog" aria-label="Detox">
           <p className="lock-kicker">Detox</p>
-          <p className="lock-copy">Strip the list to calls, messages, and your whitelist.</p>
+          <p className="lock-copy">Home keeps Phone.app, Messages.app, and your whitelist. Other apps are shielded when Screen Time is on.</p>
           <button type="button" className="lock-go" onClick={() => beginDetox('noon')}>
             Until noon
           </button>
@@ -254,26 +270,24 @@ export function BlankHome({
         <div className="blank-sheet" role="dialog" aria-label="Library">
           <p className="lock-kicker">Library</p>
           <p className="lock-copy">Hidden from this space. Still here.</p>
-          {(editing ? TOOL_IDS.filter((id) => !space.items.some((it) => it.toolId === id)) : hidden.map((h) => h.toolId)).map(
-            (id) => (
-              <div key={id} className="blank-lib-row">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLibrary(false)
-                    onOpenTool(id)
-                  }}
-                >
-                  {TOOL_LABEL[id]}
+          {hidden.map((it) => (
+            <div key={itemKey(it)} className="blank-lib-row">
+              <button
+                type="button"
+                onClick={() => {
+                  setLibrary(false)
+                  openItem(it)
+                }}
+              >
+                {it.label}
+              </button>
+              {editing ? (
+                <button type="button" onClick={() => add(it)}>
+                  Add
                 </button>
-                {editing ? (
-                  <button type="button" onClick={() => add(id)}>
-                    Add
-                  </button>
-                ) : null}
-              </div>
-            ),
-          )}
+              ) : null}
+            </div>
+          ))}
           {!hidden.length && !editing ? <p className="lock-copy">Every tool is on this list.</p> : null}
           <button type="button" className="lock-skip" onClick={() => setLibrary(false)}>
             Close

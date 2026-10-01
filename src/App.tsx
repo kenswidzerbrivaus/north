@@ -23,6 +23,7 @@ import {
   recordVisit,
   TOOL_LABEL,
 } from './lib/attention'
+import { clearAppShields, unshieldForUnlock } from './lib/native'
 import { Login } from './views/Login'
 import { Journal } from './views/Journal'
 import { Today } from './views/Today'
@@ -201,9 +202,13 @@ function Shell() {
     const t = Date.parse(until) - Date.now()
     if (t <= 0) {
       updateAttention(endDetox)
+      void clearAppShields()
       return
     }
-    const id = window.setTimeout(() => updateAttention(endDetox), Math.min(t, 60 * 60 * 1000))
+    const id = window.setTimeout(() => {
+      updateAttention(endDetox)
+      void clearAppShields()
+    }, Math.min(t, 60 * 60 * 1000))
     return () => window.clearTimeout(id)
   }, [state.attention.detox, updateAttention])
 
@@ -438,6 +443,7 @@ function Shell() {
             onUnlock={() => {
               visitFlag.current = { locked: true }
               writeGrant(pending.toolId)
+              void unshieldForUnlock()
               const id = pending.toolId
               setPending(null)
               go(id)
@@ -447,6 +453,7 @@ function Shell() {
                 ? () => {
                     visitFlag.current = { locked: true, bypassed: true }
                     writeGrant(pending.toolId)
+                    void unshieldForUnlock()
                     updateAttention((a) => recordBypass(a, pending.toolId))
                     const id = pending.toolId
                     setPending(null)
@@ -458,6 +465,7 @@ function Shell() {
               pending.decision.reason === 'detox'
                 ? () => {
                     updateAttention(endDetox)
+                    void clearAppShields()
                     setPending(null)
                   }
                 : undefined
@@ -696,6 +704,7 @@ function Shell() {
           onUnlock={() => {
             visitFlag.current = { locked: true }
             writeGrant(pending.toolId)
+            void unshieldForUnlock()
             const id = pending.toolId
             setPending(null)
             go(id)
@@ -705,6 +714,7 @@ function Shell() {
               ? () => {
                   visitFlag.current = { locked: true, bypassed: true }
                   writeGrant(pending.toolId)
+                  void unshieldForUnlock()
                   updateAttention((a) => recordBypass(a, pending.toolId))
                   const id = pending.toolId
                   setPending(null)
@@ -716,6 +726,7 @@ function Shell() {
             pending.decision.reason === 'detox'
               ? () => {
                   updateAttention(endDetox)
+                  void clearAppShields()
                   setPending(null)
                 }
               : undefined

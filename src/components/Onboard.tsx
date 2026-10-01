@@ -47,10 +47,15 @@ export function Onboard({
       s.id === spaceId
         ? {
             ...s,
-            items: (essentials.length ? essentials : DEFAULT_ESSENTIALS).map((toolId) => ({
-              toolId,
-              label: TOOL_LABEL[toolId],
-            })),
+            items: [
+              { kind: 'system' as const, systemId: 'phone' as const, label: 'Phone' },
+              { kind: 'system' as const, systemId: 'messages' as const, label: 'Messages' },
+              ...(essentials.length ? essentials : DEFAULT_ESSENTIALS).map((toolId) => ({
+                kind: 'tool' as const,
+                toolId,
+                label: TOOL_LABEL[toolId],
+              })),
+            ],
           }
         : s,
     )
@@ -148,7 +153,14 @@ export function Onboard({
                 onboarded: true,
                 spaces: base.spaces.map((s) =>
                   s.id === 'work'
-                    ? { ...s, items: TOOL_IDS.map((toolId) => ({ toolId, label: TOOL_LABEL[toolId] })) }
+                    ? {
+                        ...s,
+                        items: [
+                          { kind: 'system' as const, systemId: 'phone' as const, label: 'Phone' },
+                          { kind: 'system' as const, systemId: 'messages' as const, label: 'Messages' },
+                          ...TOOL_IDS.map((toolId) => ({ kind: 'tool' as const, toolId, label: TOOL_LABEL[toolId] })),
+                        ],
+                      }
                     : s,
                 ),
                 locks: [],

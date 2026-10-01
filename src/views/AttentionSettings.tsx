@@ -5,8 +5,10 @@ import {
   TOOL_LABEL,
   WALLPAPERS,
   fmtHM,
+  itemKey,
   parseHM,
 } from '../lib/attention'
+import { SYSTEM_APPS } from '../lib/system-apps'
 import { uid } from '../lib/id'
 import { useStore } from '../store'
 import type { AttentionSpace, FocusProfile, InterventionKind, ToolId, ToolLock } from '../lib/types'
@@ -41,7 +43,7 @@ function DayToggles({ value, onChange }: { value: number[]; onChange: (d: number
 }
 
 export function AttentionSettings() {
-  const { state, updateAttention, updateSettings } = useStore()
+  const { state, updateAttention } = useStore()
   const a = state.attention
   const space = a.spaces.find((s) => s.id === a.activeSpaceId) ?? a.spaces[0]
 
@@ -161,17 +163,8 @@ export function AttentionSettings() {
         </label>
         <label className="row">
           <input type="checkbox" checked={a.showWeather} onChange={(e) => updateAttention({ showWeather: e.target.checked })} />
-          Show weather on home (uses this device’s location, stays here)
+          Show weather on home (this device’s location + Open-Meteo)
         </label>
-        <Field label="Phone for Call / Messages">
-          <input
-            className="input"
-            inputMode="tel"
-            placeholder="Optional number"
-            value={state.settings.phoneNumber}
-            onChange={(e) => updateSettings({ phoneNumber: e.target.value })}
-          />
-        </Field>
       </section>
 
       <section className="card stack">
@@ -191,13 +184,13 @@ export function AttentionSettings() {
             </Field>
             <p className="kicker">Essentials on this home</p>
             {space.items.map((it, i) => (
-              <div key={it.toolId} className="row" style={{ alignItems: 'center' }}>
+              <div key={itemKey(it)} className="row" style={{ alignItems: 'center' }}>
                 <input
                   className="input"
                   value={it.label}
                   onChange={(e) =>
                     patchSpace(space.id, {
-                      items: space.items.map((row) => (row.toolId === it.toolId ? { ...row, label: e.target.value } : row)),
+                      items: space.items.map((row) => (itemKey(row) === itemKey(it) ? { ...row, label: e.target.value } : row)),
                     })
                   }
                 />
@@ -217,19 +210,41 @@ export function AttentionSettings() {
                 }}>
                   ↓
                 </button>
-                <button type="button" className="btn-ghost" onClick={() => patchSpace(space.id, { items: space.items.filter((row) => row.toolId !== it.toolId) })}>
+                <button type="button" className="btn-ghost" onClick={() => patchSpace(space.id, { items: space.items.filter((row) => itemKey(row) !== itemKey(it)) })}>
                   Hide
                 </button>
               </div>
             ))}
-            <Field label="Add from library">
+            <Field label="Add a phone app">
+              <select
+                className="select"
+                value=""
+                onChange={(e) => {
+                  const id = e.target.value
+                  if (!id) return
+                  const app = SYSTEM_APPS.find((a) => a.id === id)
+                  if (!app) return
+                  patchSpace(space.id, {
+                    items: [...space.items, { kind: 'system', systemId: app.id, label: app.label }],
+                  })
+                }}
+              >
+                <option value="">Phone, Messages, Safari…</option>
+                {SYSTEM_APPS.filter((a) => !space.items.some((it) => it.systemId === a.id)).map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Add a Sepho tool">
               <select
                 className="select"
                 value=""
                 onChange={(e) => {
                   const id = e.target.value as ToolId
                   if (!id) return
-                  patchSpace(space.id, { items: [...space.items, { toolId: id, label: TOOL_LABEL[id] }] })
+                  patchSpace(space.id, { items: [...space.items, { kind: 'tool', toolId: id, label: TOOL_LABEL[id] }] })
                 }}
               >
                 <option value="">Choose a tool</option>

@@ -264,9 +264,19 @@ export interface SpaceAppearance {
   mono: boolean
 }
 
+export type SystemAppId = 'phone' | 'messages' | 'safari' | 'mail' | 'camera' | 'photos' | 'maps' | 'music' | 'calendar-app'
+
 export interface SpaceItem {
-  toolId: ToolId
+  kind?: 'tool' | 'system'
+  toolId?: ToolId
+  systemId?: SystemAppId
   label: string
+}
+
+export interface ScreenTimeState {
+  authorized: boolean
+  selection: string
+  lastUsage?: { essentialMin: number; otherMin: number; at: string }
 }
 
 export interface AttentionSpace {
@@ -335,6 +345,7 @@ export interface Attention {
   showWeather: boolean
   showTime: boolean
   appearance: SpaceAppearance
+  screenTime: ScreenTimeState
 }
 
 export interface Settings {

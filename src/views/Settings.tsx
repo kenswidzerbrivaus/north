@@ -7,6 +7,7 @@ import { INSTALL_URL, installUrlWithClient, isIosDevice, isStandaloneApp } from 
 import { readXaiKey, writeXaiKey } from '../lib/travis'
 import { useStore } from '../store'
 import { AttentionSettings } from './AttentionSettings'
+import { PhoneSetup } from './PhoneSetup'
 
 export function Settings() {
   const { state, updateSettings, importState, resetState } = useStore()
@@ -117,6 +118,8 @@ export function Settings() {
             </select>
           </Field>
         </section>
+
+        <PhoneSetup />
 
         <AttentionSettings />
 
