@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Field } from '../components/ui'
 import { Icon } from '../icons'
-import { formatMedium, localDay, todayISO } from '../lib/dates'
+import { formatMedium, localDay, shiftISO, todayISO } from '../lib/dates'
 import { hashParam } from '../lib/route'
 import { sortTasksChronological } from '../lib/task-sort'
 import { useStore } from '../store'
 import { formatRemain, useTimer } from '../timer'
+import { activeProfile, attentionRange, detoxActive, detoxStreak, quietBadge, quietStreak } from '../lib/attention'
 
 const FOCUS_PRESETS = [15, 25, 45, 50, 90]
 
@@ -224,6 +225,10 @@ export function Focus() {
             </label>
           </section>
 
+          <FocusProfiles />
+
+          <AttentionStats />
+
           <section className="card">
             <h2>Sessions</h2>
             {state.sessions.length === 0 ? (
@@ -249,6 +254,84 @@ export function Focus() {
         </div>
       </div>
     </div>
+  )
+}
+
+function FocusProfiles() {
+  const { state, updateAttention } = useStore()
+  const now = new Date()
+  const current = activeProfile(state.attention, now)
+  return (
+    <section className="card stack">
+      <h2>Profiles</h2>
+      <p className="muted">
+        A profile picks a Space and extra locks. The timer above stays the same session clock. Edit schedules in Settings.
+      </p>
+      {current ? <p className="kicker">Now: {current.name}</p> : <p className="kicker">No profile running</p>}
+      {state.attention.profiles.map((p) => {
+        const on = state.attention.activeProfileId === p.id
+        return (
+          <div key={p.id} className="row" style={{ justifyContent: 'space-between' }}>
+            <div>
+              <div className="task-title">{p.name}</div>
+              <div className="meta">
+                {p.enabled ? 'Scheduled' : 'Manual'}
+                {on ? ' · active' : ''}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="chip"
+              data-on={on}
+              onClick={() =>
+                updateAttention({
+                  activeProfileId: on ? undefined : p.id,
+                  activeSpaceId: on ? state.attention.activeSpaceId : p.spaceId,
+                })
+              }
+            >
+              {on ? 'Stop' : 'Start'}
+            </button>
+          </div>
+        )
+      })}
+    </section>
+  )
+}
+
+function AttentionStats() {
+  const { state } = useStore()
+  const today = todayISO()
+  const weekFrom = shiftISO(today, -6)
+  const day = attentionRange(state.attention, today, today)
+  const week = attentionRange(state.attention, weekFrom, today)
+  const streak = quietStreak(state.attention, today)
+  const dStreak = detoxStreak(state.attention, today)
+  const badge = quietBadge(streak)
+  const totalDay = Math.max(1, day.essentialMin + day.otherMin)
+  return (
+    <section className="card stack">
+      <h2>Attention</h2>
+      <p className="muted">Time in this app, on this device. Absence is the point.</p>
+      <p className="kicker">Today</p>
+      <p>
+        {day.essentialMin} min essential · {day.otherMin} min other
+      </p>
+      <div className="attn-bar" aria-hidden>
+        <span style={{ width: `${(day.essentialMin / totalDay) * 100}%` }} />
+      </div>
+      <p className="kicker">This week</p>
+      <p>
+        {week.essentialMin} min essential · {week.otherMin} min other · {week.lockedOpens} locked opens · {week.bypasses}{' '}
+        skips
+      </p>
+      <p className="muted">
+        {streak} quiet day{streak === 1 ? '' : 's'}
+        {badge ? ` · ${badge}` : ''}
+        {dStreak ? ` · ${dStreak} detox` : ''}
+        {detoxActive(state.attention.detox) ? ' · detox on' : ''}
+      </p>
+    </section>
   )
 }
 

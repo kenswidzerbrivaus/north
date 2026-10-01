@@ -1,3 +1,4 @@
+import { normalizeAttention } from './attention'
 import { colorFromKey } from './types'
 import type { JournalEntry, State } from './types'
 
@@ -93,5 +94,6 @@ export function normalizeState(state: State): State {
     goalReviews: arr(state.goalReviews),
     envActions: arr(state.envActions),
     northStars: arr(state.northStars),
+    attention: normalizeAttention(state.attention),
   }
 }

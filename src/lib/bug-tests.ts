@@ -29,6 +29,15 @@ import { cloudAction } from './sync-policy'
 import { formatJournalArchive, journalHasWriting, pickJournalDraft } from './journal-draft'
 import { countWords, escapeHtml, looksLikeHtml, plainPreview, sanitizeNoteHtml, toEditorHtml } from './note-body'
 import type { CalEvent, ProjectMilestone, Task } from './types'
+import {
+  defaultAttention,
+  detoxActive,
+  evaluateGate,
+  inWindow,
+  mergeAttention,
+  normalizeAttention,
+  quietStreak,
+} from './attention'
 
 test('cloud: unsaved local never overwrites cloud', () => {
   assert.equal(cloudAction(0, 1000), 'pull')
@@ -1107,4 +1116,123 @@ test('projects: unique steps on a duplicate copy move onto the keeper', () => {
   assert.equal(next.projects[0]?.id, 'new')
   assert.equal(next.milestones.length, 2)
   assert.ok(next.milestones.some((m) => m.name === 'Buy the truck' && m.projectId === 'new'))
+})
+
+test('attention: overnight window wraps midnight', () => {
+  assert.equal(inWindow(23 * 60, 22 * 60, 6 * 60), true)
+  assert.equal(inWindow(2 * 60, 22 * 60, 6 * 60), true)
+  assert.equal(inWindow(12 * 60, 22 * 60, 6 * 60), false)
+  assert.equal(inWindow(10 * 60, 9 * 60, 12 * 60), true)
+  assert.equal(inWindow(12 * 60, 9 * 60, 12 * 60), false)
+  assert.equal(inWindow(3 * 60, 0, 0), true)
+})
+
+test('attention: settings and home never lock', () => {
+  const a = defaultAttention()
+  a.detox.active = true
+  a.locks = [{ toolId: 'settings', enabled: true, interventions: ['pause'], bypassAllowed: false, days: [], startMin: 0, endMin: 0, profileIds: [] }]
+  assert.equal(evaluateGate(a, 'home').blocked, false)
+  assert.equal(evaluateGate(a, 'settings').blocked, false)
+  assert.equal(evaluateGate(a, 'projects').blocked, true)
+  assert.equal(evaluateGate(a, 'projects').reason, 'detox')
+  assert.equal(evaluateGate(a, 'today').blocked, false)
+})
+
+test('attention: lock schedule and profile extra locks', () => {
+  const a = defaultAttention()
+  a.locks = [
+    {
+      toolId: 'notes',
+      enabled: true,
+      interventions: ['breath'],
+      bypassAllowed: true,
+      days: [1],
+      startMin: 9 * 60,
+      endMin: 12 * 60,
+      profileIds: [],
+    },
+  ]
+  const mondayMorning = new Date(2026, 8, 28, 10, 0, 0) // Monday
+  const mondayAfternoon = new Date(2026, 8, 28, 15, 0, 0)
+  const tuesdayMorning = new Date(2026, 8, 29, 10, 0, 0)
+  assert.equal(evaluateGate(a, 'notes', mondayMorning).blocked, true)
+  assert.equal(evaluateGate(a, 'notes', mondayAfternoon).blocked, false)
+  assert.equal(evaluateGate(a, 'notes', tuesdayMorning).blocked, false)
+  a.activeProfileId = 'study'
+  const g = evaluateGate(a, 'projects', mondayAfternoon)
+  assert.equal(g.blocked, true)
+  assert.equal(g.reason, 'profile')
+})
+
+test('attention: detox until expires', () => {
+  const a = defaultAttention()
+  a.detox = { active: true, until: '2020-01-01T00:00:00.000Z', whitelist: ['today'] }
+  assert.equal(detoxActive(a.detox, new Date('2026-01-01T00:00:00.000Z')), false)
+  a.detox.until = '2099-01-01T00:00:00.000Z'
+  assert.equal(detoxActive(a.detox, new Date('2026-01-01T00:00:00.000Z')), true)
+})
+
+test('attention: quiet streak ignores today after a locked open', () => {
+  const a = defaultAttention()
+  a.quietDays = ['2026-09-28', '2026-09-29']
+  a.visits = [
+    {
+      id: 'v1',
+      toolId: 'projects',
+      startedAt: '2026-09-30T12:00:00.000Z',
+      essential: false,
+      locked: true,
+    },
+  ]
+  assert.equal(quietStreak(a, '2026-09-30'), 0)
+  a.visits = []
+  a.quietDays = ['2026-09-29', '2026-09-30']
+  assert.equal(quietStreak(a, '2026-09-30'), 2)
+})
+
+test('attention: normalize fills missing state and merge unions visits', () => {
+  const n = normalizeAttention({})
+  assert.equal(n.spaces.length, 4)
+  assert.equal(n.onboarded, false)
+  const left = normalizeAttention({
+    onboarded: true,
+    visits: [{ id: 'a', toolId: 'today', startedAt: '2026-09-30T10:00:00.000Z', essential: true, locked: false }],
+  })
+  const right = normalizeAttention({
+    visits: [{ id: 'b', toolId: 'notes', startedAt: '2026-09-30T11:00:00.000Z', essential: true, locked: false }],
+  })
+  const m = mergeAttention(left, right, true)
+  assert.equal(m.onboarded, true)
+  assert.equal(m.visits.length, 2)
+})
+
+test('normalizeState seeds attention on old backups', () => {
+  const s = normalizeState({
+    version: 1,
+    lists: [],
+    tasks: [],
+    events: [],
+    habits: [],
+    habitLogs: [],
+    notes: [],
+    goals: [],
+    journal: [],
+    sessions: [],
+    settings: {} as never,
+    projects: [],
+    milestones: [],
+    workstreams: [],
+    projectDecisions: [],
+    blockers: [],
+    waitingOnItems: [],
+    projectActivity: [],
+    goalCycles: [],
+    goalCheckpoints: [],
+    goalMovers: [],
+    goalReviews: [],
+    envActions: [],
+    northStars: [],
+  } as never)
+  assert.ok(s.attention.spaces.length >= 1)
+  assert.equal(s.settings.phoneNumber, undefined)
 })

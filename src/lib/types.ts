@@ -248,6 +248,95 @@ export interface FocusSession {
   completed: boolean
 }
 
+export type ToolId = Exclude<Route, 'home'>
+export type InterventionKind = 'breath' | 'outside' | 'reps' | 'pause'
+export type TextAlign = 'left' | 'center'
+export type SpacingScale = 'tight' | 'regular' | 'loose'
+export type WallpaperId = 'dusk' | 'dune' | 'ink' | 'fog' | 'none'
+export type FontChoice = 'system' | 'serif' | 'mono'
+
+export interface SpaceAppearance {
+  font: FontChoice
+  textSize: number
+  align: TextAlign
+  spacing: SpacingScale
+  wallpaper: WallpaperId
+  mono: boolean
+}
+
+export interface SpaceItem {
+  toolId: ToolId
+  label: string
+}
+
+export interface AttentionSpace {
+  id: string
+  name: string
+  items: SpaceItem[]
+  appearance: SpaceAppearance
+}
+
+export interface ToolLock {
+  toolId: ToolId
+  enabled: boolean
+  interventions: InterventionKind[]
+  bypassAllowed: boolean
+  days: number[]
+  startMin: number
+  endMin: number
+  profileIds: string[]
+}
+
+export interface FocusProfile {
+  id: string
+  name: string
+  spaceId: string
+  extraLockToolIds: ToolId[]
+  days: number[]
+  startMin: number
+  endMin: number
+  enabled: boolean
+}
+
+export interface DetoxConfig {
+  active: boolean
+  until?: string
+  whitelist: ToolId[]
+  startedAt?: string
+}
+
+export interface AttentionVisit {
+  id: string
+  toolId: ToolId
+  startedAt: string
+  endedAt?: string
+  essential: boolean
+  locked: boolean
+  bypassed?: boolean
+}
+
+export interface BypassLog {
+  id: string
+  toolId: ToolId
+  at: string
+}
+
+export interface Attention {
+  onboarded: boolean
+  spaces: AttentionSpace[]
+  activeSpaceId: string
+  locks: ToolLock[]
+  profiles: FocusProfile[]
+  activeProfileId?: string
+  detox: DetoxConfig
+  visits: AttentionVisit[]
+  bypasses: BypassLog[]
+  quietDays: string[]
+  showWeather: boolean
+  showTime: boolean
+  appearance: SpaceAppearance
+}
+
 export interface Settings {
   name: string
   theme: ThemeMode
@@ -268,6 +357,7 @@ export interface Settings {
   northStarHorizon: string
   northStarMetric: string
   journalArchiveFrom: string
+  phoneNumber: string
 }
 
 export type ProjectLifecycle = 'backlog' | 'active' | 'blocked' | 'complete' | 'archived'
@@ -408,6 +498,7 @@ export interface State {
   goalReviews: GoalReview[]
   envActions: EnvironmentAction[]
   northStars: NorthStar[]
+  attention: Attention
 }
 
 export const PALETTE = [

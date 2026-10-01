@@ -6,6 +6,7 @@ import { Icon } from '../icons'
 import { INSTALL_URL, installUrlWithClient, isIosDevice, isStandaloneApp } from '../lib/install'
 import { readXaiKey, writeXaiKey } from '../lib/travis'
 import { useStore } from '../store'
+import { AttentionSettings } from './AttentionSettings'
 
 export function Settings() {
   const { state, updateSettings, importState, resetState } = useStore()
@@ -116,6 +117,8 @@ export function Settings() {
             </select>
           </Field>
         </section>
+
+        <AttentionSettings />
 
         <section className="card stack">
           <h2>First three after waking</h2>

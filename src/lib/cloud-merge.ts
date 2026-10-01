@@ -1,3 +1,4 @@
+import { mergeAttention } from './attention'
 import { collapseDuplicateTasks } from './cal-sync'
 import { collapseDuplicateRecords } from './project-dupes'
 import type { State } from './types'
@@ -135,6 +136,7 @@ export function mergeStates(local: State, remote: State): State {
     goalReviews: mergeById(local.goalReviews, remote.goalReviews, preferLocal),
     envActions: mergeById(local.envActions, remote.envActions, preferLocal),
     northStars: mergeById(local.northStars, remote.northStars, preferLocal),
+    attention: mergeAttention(local.attention, remote.attention, preferLocal),
     settings: {
       ...(base.settings ?? {}),
       googleClientId: local.settings?.googleClientId || remote.settings?.googleClientId || '',
@@ -161,5 +163,18 @@ export function workFingerprint(state: State) {
     journal: state.journal,
     habits: state.habits,
     habitLogs: state.habitLogs,
+    attention: {
+      onboarded: state.attention?.onboarded,
+      spaces: state.attention?.spaces,
+      activeSpaceId: state.attention?.activeSpaceId,
+      locks: state.attention?.locks,
+      profiles: state.attention?.profiles,
+      activeProfileId: state.attention?.activeProfileId,
+      detox: state.attention?.detox,
+      quietDays: state.attention?.quietDays,
+      appearance: state.attention?.appearance,
+      showWeather: state.attention?.showWeather,
+      showTime: state.attention?.showTime,
+    },
   })
 }

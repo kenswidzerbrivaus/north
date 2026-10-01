@@ -3,19 +3,11 @@ import { ROUTES, type Route } from './types'
 
 const ids = ROUTES.map((r) => r.id)
 
-function isPhone() {
-  try {
-    return window.matchMedia('(max-width: 860px)').matches
-  } catch {
-    return false
-  }
-}
-
 function parse(): Route {
   const h = location.hash.replace(/^#\/?/, '')
   const base = (h.split(/[/?]/)[0] || '') as Route
   if (base === 'home') return 'home'
-  if (!base) return isPhone() ? 'home' : 'today'
+  if (!base) return 'home'
   return ids.includes(base) ? base : 'today'
 }
 
@@ -39,7 +31,7 @@ export function useRoute(): [Route, (r: Route) => void] {
   const [route, setRoute] = useState<Route>(parse)
 
   useEffect(() => {
-    if (!location.hash) location.hash = isPhone() ? '#/home' : '#/today'
+    if (!location.hash) location.hash = '#/home'
     const on = () => {
       setRoute(parse())
       window.scrollTo(0, 0)
