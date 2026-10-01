@@ -36,13 +36,11 @@ import type {
   ProjectBlocker,
   ProjectDecision,
   ProjectMilestone,
-  Attention,
   Settings,
   State,
   Task,
   WaitingOn,
 } from './lib/types'
-import { defaultAttention } from './lib/attention'
 import { colorFromKey, nextEventColor, nextStarColor, PALETTE } from './lib/types'
 
 const KEY = 'north.v1'
@@ -67,7 +65,6 @@ const defaultSettings = (): Settings => ({
   northStarHorizon: '',
   northStarMetric: '',
   journalArchiveFrom: '',
-  phoneNumber: '',
 })
 
 export function freshState(): State {
@@ -161,7 +158,6 @@ export function freshState(): State {
     goalReviews: [],
     envActions: [],
     northStars: [],
-    attention: defaultAttention(),
     ...proj,
   }
 }
@@ -212,7 +208,6 @@ function blankState(): State {
     goalReviews: [],
     envActions: [],
     northStars: [],
-    attention: defaultAttention(),
   }
 }
 
@@ -368,7 +363,6 @@ export type Store = {
   upsertJournal: (date: string, patch: Partial<JournalEntry>) => void
   logSession: (session: Omit<FocusSession, 'id'>) => void
   updateSettings: (patch: Partial<Settings>) => void
-  updateAttention: (patch: Partial<Attention> | ((a: Attention) => Attention)) => void
   setGoogleClientId: (id: string) => void
   importState: (data: unknown) => void
   hydrateFromCloud: (data: State, savedAt: number) => void
@@ -983,12 +977,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           sessions: [{ id: uid(), ...session }, ...s.sessions].slice(0, 120),
         })),
       updateSettings: (next) => patch((s) => ({ ...s, settings: { ...s.settings, ...next } })),
-      updateAttention: (next) =>
-        patch((s) => {
-          const attention = typeof next === 'function' ? next(s.attention) : { ...s.attention, ...next }
-          if (attention === s.attention) return s
-          return { ...s, attention }
-        }),
       setGoogleClientId: (id) =>
         patch((s) => {
           const clientId = id.trim()
@@ -1054,7 +1042,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             goalReviews: data.goalReviews ?? blank.goalReviews,
             envActions: data.envActions ?? blank.envActions,
             northStars: data.northStars ?? blank.northStars,
-            attention: data.attention ?? blank.attention,
             settings: {
               ...defaultSettings(),
               ...data.settings,

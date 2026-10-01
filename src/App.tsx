@@ -1,56 +1,18 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { AuthProvider, useAuth } from './auth/auth'
 import { GoogleCalendarProvider, useGoogleCalendar } from './google'
 import { Icon, type IconName } from './icons'
 import { todayISO } from './lib/dates'
 import { isTypingTarget, useRoute } from './lib/route'
-import { ROUTES, type Route, type ToolId } from './lib/types'
+import { ROUTES, type Route } from './lib/types'
 import { StoreProvider, useStore } from './store'
 import { TimerProvider, useTimerControls } from './timer'
 import { DayClock } from './components/DayClock'
 import { PageError } from './components/PageError'
-import { BlankHome } from './components/BlankHome'
-import { LockGate, type PendingGate } from './components/LockGate'
-import { Onboard } from './components/Onboard'
-import {
-  closeOpenVisit,
-  detoxActive,
-  endDetox,
-  evaluateGate,
-  isToolId,
-  markQuietDay,
-  recordBypass,
-  recordVisit,
-  TOOL_LABEL,
-} from './lib/attention'
-import { clearAppShields, unshieldForUnlock } from './lib/native'
 import { Login } from './views/Login'
 import { Journal } from './views/Journal'
 import { Today } from './views/Today'
 import { TravisHud } from './travis'
-
-const GRANT_MS = 20 * 60 * 1000
-
-function grantKey(id: ToolId) {
-  return `sepho.unlock.${id}`
-}
-
-function hasGrant(id: ToolId) {
-  try {
-    const exp = Number(sessionStorage.getItem(grantKey(id)) || 0)
-    return Date.now() < exp
-  } catch {
-    return false
-  }
-}
-
-function writeGrant(id: ToolId) {
-  try {
-    sessionStorage.setItem(grantKey(id), String(Date.now() + GRANT_MS))
-  } catch {
-    /* private */
-  }
-}
 const Tasks = lazy(() => import('./views/Tasks').then((m) => ({ default: m.Tasks })))
 const Calendar = lazy(() => import('./views/Calendar').then((m) => ({ default: m.Calendar })))
 const Habits = lazy(() => import('./views/Habits').then((m) => ({ default: m.Habits })))
@@ -60,7 +22,7 @@ const Goals = lazy(() => import('./views/Goals').then((m) => ({ default: m.Goals
 const Settings = lazy(() => import('./views/Settings').then((m) => ({ default: m.Settings })))
 const Projects = lazy(() => import('./views/Projects').then((m) => ({ default: m.Projects })))
 
-const NAV_ICON: Record<Exclude<Route, 'home'>, IconName> = {
+const NAV_ICON: Record<Route, IconName> = {
   today: 'today',
   tasks: 'tasks',
   calendar: 'calendar',
@@ -73,8 +35,8 @@ const NAV_ICON: Record<Exclude<Route, 'home'>, IconName> = {
   settings: 'settings',
 }
 
-const MOBILE_TABS: Exclude<Route, 'home'>[] = ['today', 'tasks', 'calendar', 'projects']
-const MORE_TABS: Exclude<Route, 'home'>[] = ['goals', 'notes', 'habits', 'focus', 'journal', 'settings']
+const MOBILE_TABS: Route[] = ['today', 'tasks', 'calendar', 'projects']
+const MORE_TABS: Route[] = ['goals', 'notes', 'habits', 'focus', 'journal', 'settings']
 
 function useResolvedTheme(mode: 'light' | 'dark' | 'system') {
   const [sysDark, setSysDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches)
@@ -130,7 +92,7 @@ function Gate() {
 }
 
 function Shell() {
-  const { state, addTask, addNote, addEvent, updateAttention } = useStore()
+  const { state, addTask, addNote, addEvent } = useStore()
   const gcal = useGoogleCalendar()
   const { signOut } = useAuth()
   const { running, start, pause, alert, dismissAlert } = useTimerControls()
@@ -141,7 +103,6 @@ function Shell() {
   const [active, setActive] = useState(0)
   const [collapsed, setCollapsed] = useState(() => {
     try {
-      if (window.matchMedia('(max-width: 640px)').matches) return true
       return localStorage.getItem('sepho.sidebar') === '1'
     } catch {
       return false
@@ -149,72 +110,8 @@ function Shell() {
   })
   const tabStrip = useRef<HTMLElement>(null)
 
-  const [pending, setPending] = useState<PendingGate | null>(null)
-  const visitFlag = useRef<{ locked?: boolean; bypassed?: boolean }>({})
-  const attentionRef = useRef(state.attention)
-  attentionRef.current = state.attention
-
-  const tryGo = useCallback(
-    (r: Route) => {
-      if (r === 'home' || r === 'settings' || !isToolId(r)) {
-        go(r)
-        return
-      }
-      if (hasGrant(r)) {
-        go(r)
-        return
-      }
-      const decision = evaluateGate(state.attention, r)
-      if (!decision.blocked) {
-        go(r)
-        return
-      }
-      setPending({ toolId: r, label: TOOL_LABEL[r], decision })
-    },
-    [go, state.attention],
-  )
-
-  useEffect(() => {
-    if (route === 'home' || route === 'settings' || !isToolId(route)) return
-    if (hasGrant(route)) return
-    const decision = evaluateGate(state.attention, route)
-    if (!decision.blocked) return
-    setPending({ toolId: route, label: TOOL_LABEL[route], decision })
-    go('home')
-  }, [go, route, state.attention])
-
-  useEffect(() => {
-    if (route === 'home') {
-      updateAttention((a) => markQuietDay(closeOpenVisit(a)))
-      return
-    }
-    if (!isToolId(route)) return
-    if (evaluateGate(attentionRef.current, route).blocked && !hasGrant(route)) return
-    const extra = visitFlag.current
-    visitFlag.current = {}
-    updateAttention((a) => recordVisit(closeOpenVisit(a), route, new Date(), extra))
-  }, [route, updateAttention])
-
-  useEffect(() => {
-    if (!detoxActive(state.attention.detox)) return
-    const until = state.attention.detox.until
-    if (!until) return
-    const t = Date.parse(until) - Date.now()
-    if (t <= 0) {
-      updateAttention(endDetox)
-      void clearAppShields()
-      return
-    }
-    const id = window.setTimeout(() => {
-      updateAttention(endDetox)
-      void clearAppShields()
-    }, Math.min(t, 60 * 60 * 1000))
-    return () => window.clearTimeout(id)
-  }, [state.attention.detox, updateAttention])
-
   useEffect(() => {
     try {
-      if (window.matchMedia('(max-width: 640px)').matches) return
       localStorage.setItem('sepho.sidebar', collapsed ? '1' : '0')
     } catch {
       /* private */
@@ -241,7 +138,7 @@ function Shell() {
       }
       if (e.key >= '1' && e.key <= '9') {
         const r = ROUTES[Number(e.key) - 1]
-        if (r) tryGo(r.id)
+        if (r) go(r.id)
       }
       if (e.key === '0') go('settings')
       if (e.key === '/' && !e.metaKey && !e.ctrlKey) {
@@ -256,7 +153,7 @@ function Shell() {
         setCollapsed((v) => !v)
         return
       }
-      if (e.key.toLowerCase() === 'p' && route !== 'projects') tryGo('projects')
+      if (e.key.toLowerCase() === 'p' && route !== 'projects') go('projects')
       if (e.key.toLowerCase() === 'n') {
         if (route === 'tasks' || route === 'today') {
           const title = prompt('New task')
@@ -274,23 +171,17 @@ function Shell() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [addEvent, addNote, addTask, cmd, go, pause, route, running, start, tryGo])
+  }, [addEvent, addNote, addTask, cmd, go, pause, route, running, start])
 
   const results = useMemo(() => {
     if (!cmd) return []
     const q = query.trim().toLowerCase()
     const items: { id: string; title: string; hint: string; run: () => void }[] = [
-      {
-        id: 'go-home',
-        title: 'Go to Home',
-        hint: 'H',
-        run: () => go('home'),
-      },
       ...ROUTES.map((r) => ({
         id: `go-${r.id}`,
         title: `Go to ${r.label}`,
         hint: r.hint,
-        run: () => tryGo(r.id),
+        run: () => go(r.id),
       })),
       {
         id: 'new-task',
@@ -298,7 +189,7 @@ function Shell() {
         hint: 'N',
         run: () => {
           if (query.trim()) addTask({ title: query.trim() })
-          else tryGo('tasks')
+          else go('tasks')
         },
       },
       {
@@ -313,17 +204,17 @@ function Shell() {
     if (!q) return items
     for (const t of state.tasks) {
       if (t.title.toLowerCase().includes(q)) {
-        items.push({ id: t.id, title: t.title, hint: 'Task', run: () => tryGo('tasks') })
+        items.push({ id: t.id, title: t.title, hint: 'Task', run: () => go('tasks') })
       }
     }
     for (const n of state.notes) {
       if (`${n.title} ${n.body}`.toLowerCase().includes(q)) {
-        items.push({ id: n.id, title: n.title || 'Untitled', hint: 'Note', run: () => tryGo('notes') })
+        items.push({ id: n.id, title: n.title || 'Untitled', hint: 'Note', run: () => go('notes') })
       }
     }
     for (const e of state.events) {
       if (e.title.toLowerCase().includes(q)) {
-        items.push({ id: e.id, title: e.title, hint: 'Event', run: () => tryGo('calendar') })
+        items.push({ id: e.id, title: e.title, hint: 'Event', run: () => go('calendar') })
       }
     }
     for (const p of state.projects) {
@@ -380,12 +271,12 @@ function Shell() {
         title: 'Create decision',
         hint: 'Project',
         run: () => {
-          tryGo('projects')
+          go('projects')
         },
       })
     }
     return items.filter((i) => i.title.toLowerCase().includes(q) || i.hint.toLowerCase().includes(q) || q.length < 2).slice(0, 18)
-  }, [addTask, cmd, go, query, state.blockers, state.events, state.milestones, state.notes, state.projectDecisions, state.projects, state.tasks, tryGo])
+  }, [addTask, cmd, go, query, state.blockers, state.events, state.milestones, state.notes, state.projectDecisions, state.projects, state.tasks])
 
   useEffect(() => {
     setActive(0)
@@ -397,155 +288,29 @@ function Shell() {
   }, [route])
 
   useEffect(() => {
-    document.title = route === 'home' ? 'Sepho' : `${ROUTES.find((r) => r.id === route)?.label ?? 'Sepho'} — Sepho`
+    const label = ROUTES.find((r) => r.id === route)?.label ?? 'Sepho'
+    document.title = `${label} — Sepho`
   }, [route])
 
-  const view =
-    route === 'home'
-      ? null
-      : {
-          today: <Today go={go} />,
-          tasks: <Tasks />,
-          calendar: <Calendar />,
-          habits: <Habits />,
-          focus: <Focus />,
-          notes: <Notes />,
-          goals: <Goals />,
-          journal: <Journal />,
-          settings: <Settings />,
-          projects: <Projects />,
-        }[route]
-
-  if (route === 'home') {
-    return (
-      <div className="shell is-blank-space" data-route="home">
-        {!state.attention.onboarded ? (
-          <Onboard onFinish={(next) => updateAttention(() => next)} />
-        ) : (
-          <BlankHome
-            go={(r) => {
-              setCmd(false)
-              tryGo(r)
-            }}
-            onSearch={() => {
-              setCmd(true)
-              setQuery('')
-              setActive(0)
-            }}
-            onOpenTool={(id) => tryGo(id)}
-          />
-        )}
-        {pending ? (
-          <LockGate
-            toolLabel={pending.label}
-            decision={pending.decision}
-            onCancel={() => setPending(null)}
-            onUnlock={() => {
-              visitFlag.current = { locked: true }
-              writeGrant(pending.toolId)
-              void unshieldForUnlock()
-              const id = pending.toolId
-              setPending(null)
-              go(id)
-            }}
-            onBypass={
-              pending.decision.bypassAllowed
-                ? () => {
-                    visitFlag.current = { locked: true, bypassed: true }
-                    writeGrant(pending.toolId)
-                    void unshieldForUnlock()
-                    updateAttention((a) => recordBypass(a, pending.toolId))
-                    const id = pending.toolId
-                    setPending(null)
-                    go(id)
-                  }
-                : undefined
-            }
-            onEndDetox={
-              pending.decision.reason === 'detox'
-                ? () => {
-                    updateAttention(endDetox)
-                    void clearAppShields()
-                    setPending(null)
-                  }
-                : undefined
-            }
-          />
-        ) : null}
-        {alert ? (
-          <div className="timer-alert" role="alertdialog" aria-modal="true" aria-label="Timer finished">
-            <div className="timer-alert-card">
-              <p className="kicker">Time’s up</p>
-              <h2>{alert.finished === 'focus' ? 'Focus session complete' : 'Break over'}</h2>
-              <p className="muted">
-                {alert.finished === 'focus'
-                  ? `Take a ${alert.next === 'long' ? 'long' : 'short'} break.`
-                  : 'Ready for another focus block.'}
-              </p>
-              <button className="btn" onClick={dismissAlert}>
-                Got it
-              </button>
-            </div>
-          </div>
-        ) : null}
-        {cmd ? (
-          <div className="modal-backdrop" onMouseDown={() => setCmd(false)}>
-            <div
-              className="cmdk"
-              onMouseDown={(e) => e.stopPropagation()}
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowDown') {
-                  e.preventDefault()
-                  setActive((i) => Math.min(results.length - 1, i + 1))
-                }
-                if (e.key === 'ArrowUp') {
-                  e.preventDefault()
-                  setActive((i) => Math.max(0, i - 1))
-                }
-                if (e.key === 'Enter') {
-                  results[active]?.run()
-                  setCmd(false)
-                }
-              }}
-            >
-              <input
-                className="input"
-                style={{ border: 0, borderRadius: 0, boxShadow: 'none' }}
-                autoFocus
-                placeholder="Jump, search, or add a task…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              <div className="cmdk-list">
-                {results.map((r, i) => (
-                  <button
-                    key={r.id}
-                    className="cmdk-item"
-                    data-on={i === active}
-                    onMouseEnter={() => setActive(i)}
-                    onClick={() => {
-                      r.run()
-                      setCmd(false)
-                    }}
-                  >
-                    <span>{r.title}</span>
-                    <span className="muted">{r.hint}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : null}
-      </div>
-    )
-  }
+  const view = {
+    today: <Today go={go} />,
+    tasks: <Tasks />,
+    calendar: <Calendar />,
+    habits: <Habits />,
+    focus: <Focus />,
+    notes: <Notes />,
+    goals: <Goals />,
+    journal: <Journal />,
+    settings: <Settings />,
+    projects: <Projects />,
+  }[route]
 
   return (
     <div className="shell" data-route={route} data-sidebar={collapsed ? 'in' : 'out'}>
       <div className="sepho-scan" aria-hidden />
       <aside className="sidebar">
         <div className="sidebar-top">
-          <a className="brand" href="#/home" title="Sepho">
+          <a className="brand" href="#/today" title="Sepho">
             <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden>
               <path d="M16 3 L18.4 13.6 L29 16 L18.4 18.4 L16 29 L13.6 18.4 L3 16 L13.6 13.6 Z" fill="var(--accent)" />
             </svg>
@@ -571,7 +336,7 @@ function Shell() {
               className="nav-btn"
               data-on={route === r.id}
               title={r.label}
-              onClick={() => tryGo(r.id)}
+              onClick={() => go(r.id)}
             >
               <Icon name={NAV_ICON[r.id]} />
               <span className="nav-label">{r.label}</span>
@@ -593,9 +358,6 @@ function Shell() {
       </aside>
 
       <main className="main">
-        <button className="blank-home" type="button" onClick={() => go('home')}>
-          Home
-        </button>
         <div className="top-mobile">
           <strong className="display">{ROUTES.find((r) => r.id === route)?.label ?? 'Sepho'}</strong>
           <DayClock compact />
@@ -634,7 +396,7 @@ function Shell() {
             data-on={route === id}
             onClick={() => {
               setMore(false)
-              tryGo(id)
+              go(id)
             }}
           >
             <Icon name={NAV_ICON[id]} size={20} />
@@ -674,7 +436,7 @@ function Shell() {
                   data-on={route === id}
                   onClick={() => {
                     setMore(false)
-                    tryGo(id)
+                    go(id)
                   }}
                 >
                   <Icon name={NAV_ICON[id]} size={20} />
@@ -694,44 +456,6 @@ function Shell() {
             </button>
           </div>
         </div>
-      ) : null}
-
-      {pending ? (
-        <LockGate
-          toolLabel={pending.label}
-          decision={pending.decision}
-          onCancel={() => setPending(null)}
-          onUnlock={() => {
-            visitFlag.current = { locked: true }
-            writeGrant(pending.toolId)
-            void unshieldForUnlock()
-            const id = pending.toolId
-            setPending(null)
-            go(id)
-          }}
-          onBypass={
-            pending.decision.bypassAllowed
-              ? () => {
-                  visitFlag.current = { locked: true, bypassed: true }
-                  writeGrant(pending.toolId)
-                  void unshieldForUnlock()
-                  updateAttention((a) => recordBypass(a, pending.toolId))
-                  const id = pending.toolId
-                  setPending(null)
-                  go(id)
-                }
-              : undefined
-          }
-          onEndDetox={
-            pending.decision.reason === 'detox'
-              ? () => {
-                  updateAttention(endDetox)
-                  void clearAppShields()
-                  setPending(null)
-                }
-              : undefined
-          }
-        />
       ) : null}
 
       {alert ? (

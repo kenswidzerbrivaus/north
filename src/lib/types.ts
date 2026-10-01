@@ -1,7 +1,6 @@
 export type Priority = 0 | 1 | 2 | 3
 export type ThemeMode = 'light' | 'dark' | 'system'
 export type Route =
-  | 'home'
   | 'today'
   | 'tasks'
   | 'calendar'
@@ -248,106 +247,6 @@ export interface FocusSession {
   completed: boolean
 }
 
-export type ToolId = Exclude<Route, 'home'>
-export type InterventionKind = 'breath' | 'outside' | 'reps' | 'pause'
-export type TextAlign = 'left' | 'center'
-export type SpacingScale = 'tight' | 'regular' | 'loose'
-export type WallpaperId = 'dusk' | 'dune' | 'ink' | 'fog' | 'none'
-export type FontChoice = 'system' | 'serif' | 'mono'
-
-export interface SpaceAppearance {
-  font: FontChoice
-  textSize: number
-  align: TextAlign
-  spacing: SpacingScale
-  wallpaper: WallpaperId
-  mono: boolean
-}
-
-export type SystemAppId = 'phone' | 'messages' | 'safari' | 'mail' | 'camera' | 'photos' | 'maps' | 'music' | 'calendar-app'
-
-export interface SpaceItem {
-  kind?: 'tool' | 'system'
-  toolId?: ToolId
-  systemId?: SystemAppId
-  label: string
-}
-
-export interface ScreenTimeState {
-  authorized: boolean
-  selection: string
-  lastUsage?: { essentialMin: number; otherMin: number; at: string }
-}
-
-export interface AttentionSpace {
-  id: string
-  name: string
-  items: SpaceItem[]
-  appearance: SpaceAppearance
-}
-
-export interface ToolLock {
-  toolId: ToolId
-  enabled: boolean
-  interventions: InterventionKind[]
-  bypassAllowed: boolean
-  days: number[]
-  startMin: number
-  endMin: number
-  profileIds: string[]
-}
-
-export interface FocusProfile {
-  id: string
-  name: string
-  spaceId: string
-  extraLockToolIds: ToolId[]
-  days: number[]
-  startMin: number
-  endMin: number
-  enabled: boolean
-}
-
-export interface DetoxConfig {
-  active: boolean
-  until?: string
-  whitelist: ToolId[]
-  startedAt?: string
-}
-
-export interface AttentionVisit {
-  id: string
-  toolId: ToolId
-  startedAt: string
-  endedAt?: string
-  essential: boolean
-  locked: boolean
-  bypassed?: boolean
-}
-
-export interface BypassLog {
-  id: string
-  toolId: ToolId
-  at: string
-}
-
-export interface Attention {
-  onboarded: boolean
-  spaces: AttentionSpace[]
-  activeSpaceId: string
-  locks: ToolLock[]
-  profiles: FocusProfile[]
-  activeProfileId?: string
-  detox: DetoxConfig
-  visits: AttentionVisit[]
-  bypasses: BypassLog[]
-  quietDays: string[]
-  showWeather: boolean
-  showTime: boolean
-  appearance: SpaceAppearance
-  screenTime: ScreenTimeState
-}
-
 export interface Settings {
   name: string
   theme: ThemeMode
@@ -368,7 +267,6 @@ export interface Settings {
   northStarHorizon: string
   northStarMetric: string
   journalArchiveFrom: string
-  phoneNumber: string
 }
 
 export type ProjectLifecycle = 'backlog' | 'active' | 'blocked' | 'complete' | 'archived'
@@ -509,7 +407,6 @@ export interface State {
   goalReviews: GoalReview[]
   envActions: EnvironmentAction[]
   northStars: NorthStar[]
-  attention: Attention
 }
 
 export const PALETTE = [
@@ -550,7 +447,7 @@ export function nextStarColor(used: string[]) {
   return STAR_PALETTE.find((c) => !taken.has(c.toLowerCase())) ?? nextEventColor(used, STAR_PALETTE)
 }
 
-export const ROUTES: { id: Exclude<Route, 'home'>; label: string; hint: string }[] = [
+export const ROUTES: { id: Route; label: string; hint: string }[] = [
   { id: 'today', label: 'Today', hint: '1' },
   { id: 'tasks', label: 'Tasks', hint: '2' },
   { id: 'calendar', label: 'Calendar', hint: '3' },
